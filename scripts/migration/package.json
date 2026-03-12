@@ -1,0 +1,26 @@
+{
+  "name": "capillaris-migration",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MySQL → PostgreSQL migration scripts for Capillaris",
+  "scripts": {
+    "mysql:up": "docker compose up -d mysql-legacy && echo 'Waiting for MySQL...' && sleep 10 && echo 'MySQL ready on port 3307'",
+    "mysql:load": "docker exec -i capillaris-mysql-legacy mysql -uroot -pmigration capillaris_legacy < dump.sql",
+    "mysql:down": "docker compose down -v",
+    "migrate": "tsx src/index.ts",
+    "validate": "tsx src/validate/index.ts",
+    "migrate:step": "tsx src/index.ts --step"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "mysql2": "^3.11.0",
+    "uuid": "^10.0.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^10.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

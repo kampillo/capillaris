@@ -1,0 +1,5 @@
+node_modules/
+dist/
+dump.sql
+.env.migration.local
+MIGRATION-REPORT.md
