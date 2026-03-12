@@ -39,6 +39,12 @@ async function request<T>(
   });
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+      throw new Error('Sesión expirada');
+    }
     const error = await response.json().catch(() => ({
       message: 'An unexpected error occurred',
     }));

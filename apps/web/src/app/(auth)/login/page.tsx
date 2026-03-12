@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuthStore } from '@/store/auth';
 import {
   Card,
   CardContent,
@@ -15,21 +16,37 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
+  const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
-    // TODO: implement actual login logic with API
     try {
-      // Placeholder: call auth API
-      console.log('Login attempt:', { email, password });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/auth/login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        },
+      );
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message || 'Credenciales inválidas');
+      }
+
+      const data = await res.json();
+      login(data.accessToken, data.user);
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Login failed:', error);
+    } catch (err: any) {
+      setError(err.message || 'Error al iniciar sesión');
     } finally {
       setIsLoading(false);
     }
@@ -50,6 +67,11 @@ export default function LoginPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
+          {error && (
+            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="email">Correo electrónico</Label>
             <Input
