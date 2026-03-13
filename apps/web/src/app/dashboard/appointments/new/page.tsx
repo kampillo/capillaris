@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Search, CalendarDays, User, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,8 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Select,
@@ -95,36 +93,39 @@ export default function NewAppointmentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" asChild>
           <Link href="/dashboard/appointments">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Nueva Cita</h2>
-          <p className="text-muted-foreground">Programar una nueva cita</p>
+          <h2 className="text-2xl font-bold tracking-tight">Nueva Cita</h2>
+          <p className="text-sm text-muted-foreground">Programar una nueva cita</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 max-w-2xl">
           {error && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
               {error}
             </div>
           )}
 
           {/* Patient Search */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Paciente *</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+                <h3 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Paciente <span className="text-destructive">*</span></h3>
+              </div>
               {selectedPatientId ? (
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <span className="font-medium">{selectedPatientName}</span>
-                  <Button type="button" variant="ghost" size="sm" onClick={handleClearPatient}>
+                <div className="flex items-center justify-between rounded-lg border p-3 bg-accent/30">
+                  <span className="text-sm font-medium">{selectedPatientName}</span>
+                  <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={handleClearPatient}>
                     Cambiar
                   </Button>
                 </div>
@@ -135,10 +136,10 @@ export default function NewAppointmentPage() {
                     placeholder="Buscar paciente por nombre..."
                     value={patientSearch}
                     onChange={(e) => setPatientSearch(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 h-11"
                   />
                   {showPatientResults && (
-                    <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-60 overflow-y-auto">
+                    <div className="absolute z-10 mt-1 w-full rounded-xl border bg-popover shadow-xl max-h-60 overflow-y-auto">
                       {patients.length === 0 ? (
                         <div className="p-3 text-sm text-muted-foreground">
                           No se encontraron pacientes
@@ -148,7 +149,7 @@ export default function NewAppointmentPage() {
                           <button
                             key={p.id}
                             type="button"
-                            className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
+                            className="w-full text-left px-3 py-2.5 hover:bg-accent text-sm transition-colors first:rounded-t-xl last:rounded-b-xl"
                             onClick={() => handleSelectPatient(p.id, p.nombre, p.apellido)}
                           >
                             <span className="font-medium">{p.nombre} {p.apellido}</span>
@@ -166,89 +167,104 @@ export default function NewAppointmentPage() {
           </Card>
 
           {/* Doctor & Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Detalles de la Cita</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Doctor *</Label>
-                <Select value={doctorId} onValueChange={setDoctorId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar doctor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(doctors || []).map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        Dr. {d.nombre} {d.apellido}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+                  <CalendarDays className="h-4 w-4 text-emerald-600" />
+                </div>
+                <h3 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Detalles de la Cita</h3>
               </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Doctor <span className="text-destructive">*</span></Label>
+                  <Select value={doctorId} onValueChange={setDoctorId}>
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Seleccionar doctor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(doctors || []).map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          Dr. {d.nombre} {d.apellido}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label>Título</Label>
-                <Input
-                  placeholder="Ej. Consulta inicial, Revisión post-operatoria"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <Label>Título</Label>
+                  <Input
+                    placeholder="Ej. Consulta inicial, Revisión post-operatoria"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="h-11"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label>Descripción</Label>
-                <Textarea
-                  placeholder="Notas adicionales..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                />
+                <div className="space-y-1.5">
+                  <Label>Descripción</Label>
+                  <Textarea
+                    placeholder="Notas adicionales..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Date & Time */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Fecha y Hora *</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Fecha</Label>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+                  <Clock className="h-4 w-4 text-violet-600" />
+                </div>
+                <h3 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Fecha y Hora <span className="text-destructive">*</span></h3>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Hora inicio</Label>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Fecha</Label>
                   <Input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="h-11"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Hora fin</Label>
-                  <Input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Hora inicio</Label>
+                    <Input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Hora fin</Label>
+                    <Input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Actions */}
-          <div className="flex gap-3">
-            <Button type="submit" disabled={createMutation.isPending}>
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" className="h-11 px-8 font-medium" disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creando...' : 'Crear Cita'}
             </Button>
-            <Button type="button" variant="outline" asChild>
+            <Button type="button" variant="outline" className="h-11" asChild>
               <Link href="/dashboard/appointments">Cancelar</Link>
             </Button>
           </div>

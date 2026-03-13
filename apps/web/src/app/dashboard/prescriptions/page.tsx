@@ -2,9 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Pill } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -38,11 +37,11 @@ import {
   type Prescription,
 } from '@/hooks/use-prescriptions';
 
-const STATUS_BADGES: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  draft: { label: 'Borrador', variant: 'outline' },
-  active: { label: 'Activa', variant: 'default' },
-  completed: { label: 'Completada', variant: 'secondary' },
-  cancelled: { label: 'Cancelada', variant: 'destructive' },
+const STATUS_BADGES: Record<string, { label: string; className: string }> = {
+  draft: { label: 'Borrador', className: 'bg-slate-50 text-slate-600 border-slate-200' },
+  active: { label: 'Activa', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  completed: { label: 'Completada', className: 'bg-gray-50 text-gray-600 border-gray-200' },
+  cancelled: { label: 'Cancelada', className: 'bg-red-50 text-red-600 border-red-200' },
 };
 
 function formatDate(iso: string) {
@@ -78,12 +77,12 @@ export default function PrescriptionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Prescripciones</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold tracking-tight">Prescripciones</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
             {meta ? `${meta.total} prescripciones registradas` : 'Gestión de prescripciones médicas'}
           </p>
         </div>
-        <Button asChild>
+        <Button className="h-10 font-medium shadow-sm" asChild>
           <Link href="/dashboard/prescriptions/new">
             <Plus className="mr-2 h-4 w-4" />
             Nueva Prescripción
@@ -92,63 +91,64 @@ export default function PrescriptionsPage() {
       </div>
 
       {/* Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="draft">Borrador</SelectItem>
-                <SelectItem value="active">Activa</SelectItem>
-                <SelectItem value="completed">Completada</SelectItem>
-                <SelectItem value="cancelled">Cancelada</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
+            <SelectTrigger className="w-[200px] h-11">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="draft">Borrador</SelectItem>
+              <SelectItem value="active">Activa</SelectItem>
+              <SelectItem value="completed">Completada</SelectItem>
+              <SelectItem value="cancelled">Cancelada</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
       {/* Table */}
-      <Card>
+      <Card className="shadow-sm">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">Cargando prescripciones...</p>
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-muted-foreground">Cargando prescripciones...</p>
             </div>
           ) : error ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-destructive">Error al cargar prescripciones</p>
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-destructive">Error al cargar prescripciones</p>
             </div>
           ) : prescriptions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <p className="text-muted-foreground">No se encontraron prescripciones</p>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Pill className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No se encontraron prescripciones</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Paciente</TableHead>
-                  <TableHead>Doctor</TableHead>
-                  <TableHead>Medicamentos</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Fecha</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Paciente</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Doctor</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Medicamentos</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Estado</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {prescriptions.map((rx) => {
                   const badge = STATUS_BADGES[rx.status] || STATUS_BADGES.draft;
                   return (
-                    <TableRow key={rx.id}>
-                      <TableCell>{formatDate(rx.prescriptionDate)}</TableCell>
+                    <TableRow key={rx.id} className="hover:bg-accent/50 transition-colors">
+                      <TableCell className="text-sm">{formatDate(rx.prescriptionDate)}</TableCell>
                       <TableCell className="font-medium">
                         {rx.patient ? (
                           <Link
                             href={`/dashboard/patients/${rx.patient.id}`}
-                            className="hover:underline"
+                            className="hover:underline text-primary"
                           >
                             {rx.patient.nombre} {rx.patient.apellido}
                           </Link>
@@ -157,19 +157,21 @@ export default function PrescriptionsPage() {
                       <TableCell className="text-muted-foreground">
                         {rx.doctor ? `Dr. ${rx.doctor.nombre} ${rx.doctor.apellido}` : '—'}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-muted-foreground max-w-[200px] truncate">
                         {rx.items?.length
                           ? rx.items.map((i) => i.medicineName).join(', ')
                           : '—'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+                          {badge.label}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive hover:text-destructive"
+                          className="h-8 text-xs text-destructive hover:text-destructive"
                           onClick={() => setDeleteTarget(rx)}
                         >
                           Eliminar
@@ -185,15 +187,15 @@ export default function PrescriptionsPage() {
 
         {meta && meta.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Página {meta.page} de {meta.totalPages} ({meta.total} resultados)
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                <ChevronLeft className="h-4 w-4" /> Anterior
+              <Button variant="outline" size="sm" className="h-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= meta.totalPages} onClick={() => setPage((p) => p + 1)}>
-                Siguiente <ChevronRight className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="h-8" disabled={page >= meta.totalPages} onClick={() => setPage((p) => p + 1)}>
+                Siguiente <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -202,7 +204,7 @@ export default function PrescriptionsPage() {
 
       {/* Delete Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Eliminar Prescripción</DialogTitle>
             <DialogDescription>
@@ -211,7 +213,7 @@ export default function PrescriptionsPage() {
               {deleteTarget ? ` del ${formatDate(deleteTarget.prescriptionDate)}` : ''}?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}

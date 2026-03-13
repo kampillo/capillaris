@@ -3,6 +3,10 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import {
+  PrismaExceptionFilter,
+  PrismaValidationFilter,
+} from './common/filters/prisma-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,6 +24,12 @@ async function bootstrap() {
         enableImplicitConversion: true,
       },
     }),
+  );
+
+  // Global exception filters for Prisma errors
+  app.useGlobalFilters(
+    new PrismaExceptionFilter(),
+    new PrismaValidationFilter(),
   );
 
   // CORS

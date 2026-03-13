@@ -2,14 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, ChevronLeft, ChevronRight, AlertTriangle, Package } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, AlertTriangle, Package, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Table,
@@ -52,18 +50,19 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Inventario</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold tracking-tight">Inventario</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
             {meta ? `${meta.total} productos registrados` : 'Gestión de inventario y productos'}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
+          <Button variant="outline" className="h-10" asChild>
             <Link href="/dashboard/inventory/movements">
+              <ArrowRightLeft className="mr-2 h-4 w-4" />
               Movimientos
             </Link>
           </Button>
-          <Button asChild>
+          <Button className="h-10 font-medium shadow-sm" asChild>
             <Link href="/dashboard/inventory/products/new">
               <Plus className="mr-2 h-4 w-4" />
               Nuevo Producto
@@ -74,9 +73,11 @@ export default function InventoryPage() {
 
       {/* Low Stock Alert */}
       {lowStockCount > 0 && (
-        <Card className="border-destructive/50">
-          <CardContent className="flex items-center gap-3 pt-6">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
+        <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            </div>
             <p className="text-sm">
               <strong>{lowStockCount} producto{lowStockCount !== 1 ? 's' : ''}</strong> con stock bajo o agotado
             </p>
@@ -85,32 +86,34 @@ export default function InventoryPage() {
       )}
 
       {/* Products Table */}
-      <Card>
+      <Card className="shadow-sm">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">Cargando productos...</p>
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-muted-foreground">Cargando productos...</p>
             </div>
           ) : error ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-destructive">Error al cargar productos</p>
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-destructive">Error al cargar productos</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <Package className="h-8 w-8 text-muted-foreground" />
-              <p className="text-muted-foreground">No se encontraron productos</p>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Package className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No se encontraron productos</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Producto</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">SKU</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Categoría</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Precio</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Stock</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Tipo</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -118,7 +121,7 @@ export default function InventoryPage() {
                   const stock = product.stockBalance?.currentQuantity ?? 0;
                   const isLow = stock <= product.minStockAlert;
                   return (
-                    <TableRow key={product.id}>
+                    <TableRow key={product.id} className="hover:bg-accent/50 transition-colors">
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {product.sku || '—'}
@@ -137,16 +140,20 @@ export default function InventoryPage() {
                       </TableCell>
                       <TableCell>
                         {product.isMedicine ? (
-                          <Badge variant="secondary">Medicamento</Badge>
+                          <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium bg-violet-50 text-violet-700 border-violet-200">
+                            Medicamento
+                          </span>
                         ) : (
-                          <Badge variant="outline">Producto</Badge>
+                          <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium bg-slate-50 text-slate-600 border-slate-200">
+                            Producto
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-destructive hover:text-destructive"
+                          className="h-8 text-xs text-destructive hover:text-destructive"
                           onClick={() => setDeleteTarget(product)}
                         >
                           Desactivar
@@ -162,15 +169,15 @@ export default function InventoryPage() {
 
         {meta && meta.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Página {meta.page} de {meta.totalPages} ({meta.total} resultados)
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                <ChevronLeft className="h-4 w-4" /> Anterior
+              <Button variant="outline" size="sm" className="h-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= meta.totalPages} onClick={() => setPage((p) => p + 1)}>
-                Siguiente <ChevronRight className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="h-8" disabled={page >= meta.totalPages} onClick={() => setPage((p) => p + 1)}>
+                Siguiente <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -179,7 +186,7 @@ export default function InventoryPage() {
 
       {/* Delete Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Desactivar Producto</DialogTitle>
             <DialogDescription>
@@ -187,7 +194,7 @@ export default function InventoryPage() {
               El producto no se eliminará, solo se marcará como inactivo.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? 'Desactivando...' : 'Desactivar'}

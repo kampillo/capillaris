@@ -22,26 +22,34 @@ export default function EditPatientPage({
       Object.entries(data).filter(([, v]) => v !== '' && v !== undefined),
     );
 
-    await updateMutation.mutateAsync({
-      id: params.id,
-      data: cleaned as any,
-    });
-    router.push(`/dashboard/patients/${params.id}`);
+    if (cleaned.fechaNacimiento && typeof cleaned.fechaNacimiento === 'string' && !cleaned.fechaNacimiento.includes('T')) {
+      cleaned.fechaNacimiento = `${cleaned.fechaNacimiento}T00:00:00.000Z`;
+    }
+
+    try {
+      await updateMutation.mutateAsync({
+        id: params.id,
+        data: cleaned as any,
+      });
+      router.push(`/dashboard/patients/${params.id}`);
+    } catch {
+      // Error is captured in updateMutation.error
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Cargando paciente...</p>
+      <div className="flex items-center justify-center py-16">
+        <p className="text-sm text-muted-foreground">Cargando paciente...</p>
       </div>
     );
   }
 
   if (error || !patient) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <p className="text-destructive">Paciente no encontrado</p>
-        <Button variant="outline" onClick={() => router.push('/dashboard/patients')}>
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <p className="text-sm text-destructive">Paciente no encontrado</p>
+        <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/patients')}>
           Volver a Pacientes
         </Button>
       </div>
@@ -74,22 +82,22 @@ export default function EditPatientPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" asChild>
           <Link href={`/dashboard/patients/${params.id}`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Editar Paciente</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold tracking-tight">Editar Paciente</h2>
+          <p className="text-sm text-muted-foreground">
             {patient.nombre} {patient.apellido}
           </p>
         </div>
       </div>
 
       {updateMutation.isError && (
-        <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
           {updateMutation.error?.message || 'Error al actualizar el paciente'}
         </div>
       )}

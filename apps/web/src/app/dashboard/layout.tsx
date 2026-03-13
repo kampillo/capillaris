@@ -41,9 +41,9 @@ export default function DashboardLayout({
     <div className="min-h-screen">
       <Sidebar />
       <MobileSidebar open={mobileOpen} onClose={closeMobile} />
-      <div className="lg:pl-64">
+      <div className="lg:pl-[272px]">
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <main className="p-6">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8 max-w-[1600px]">{children}</main>
       </div>
     </div>
   );

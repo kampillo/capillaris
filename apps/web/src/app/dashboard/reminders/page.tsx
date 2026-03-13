@@ -6,7 +6,6 @@ import { ChevronLeft, ChevronRight, Search, Bell, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -42,11 +41,11 @@ import {
 } from '@/hooks/use-reminders';
 import { usePatients } from '@/hooks/use-patients';
 
-const STATUS_BADGES: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  pending: { label: 'Pendiente', variant: 'outline' },
-  sent: { label: 'Enviado', variant: 'default' },
-  failed: { label: 'Fallido', variant: 'destructive' },
-  cancelled: { label: 'Cancelado', variant: 'secondary' },
+const STATUS_BADGES: Record<string, { label: string; className: string }> = {
+  pending: { label: 'Pendiente', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  sent: { label: 'Enviado', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  failed: { label: 'Fallido', className: 'bg-red-50 text-red-600 border-red-200' },
+  cancelled: { label: 'Cancelado', className: 'bg-gray-50 text-gray-500 border-gray-200' },
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -72,7 +71,6 @@ export default function RemindersPage() {
   const [cancelTarget, setCancelTarget] = useState<Reminder | null>(null);
   const [showNew, setShowNew] = useState(false);
 
-  // New reminder form state
   const [patientSearch, setPatientSearch] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [selectedPatientName, setSelectedPatientName] = useState('');
@@ -131,76 +129,76 @@ export default function RemindersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Recordatorios</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold tracking-tight">Recordatorios</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
             {meta ? `${meta.total} recordatorios` : 'Gestión de recordatorios'}
           </p>
         </div>
-        <Button onClick={() => setShowNew(true)}>
+        <Button className="h-10 font-medium shadow-sm" onClick={() => setShowNew(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Recordatorio
         </Button>
       </div>
 
       {/* Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="pending">Pendiente</SelectItem>
-                <SelectItem value="sent">Enviado</SelectItem>
-                <SelectItem value="failed">Fallido</SelectItem>
-                <SelectItem value="cancelled">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
+            <SelectTrigger className="w-[200px] h-11">
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estados</SelectItem>
+              <SelectItem value="pending">Pendiente</SelectItem>
+              <SelectItem value="sent">Enviado</SelectItem>
+              <SelectItem value="failed">Fallido</SelectItem>
+              <SelectItem value="cancelled">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
       {/* Table */}
-      <Card>
+      <Card className="shadow-sm">
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">Cargando recordatorios...</p>
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-muted-foreground">Cargando recordatorios...</p>
             </div>
           ) : error ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-destructive">Error al cargar recordatorios</p>
+            <div className="flex items-center justify-center py-16">
+              <p className="text-sm text-destructive">Error al cargar recordatorios</p>
             </div>
           ) : reminders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <Bell className="h-8 w-8 text-muted-foreground" />
-              <p className="text-muted-foreground">No se encontraron recordatorios</p>
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Bell className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No se encontraron recordatorios</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Programado</TableHead>
-                  <TableHead>Paciente</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Canal</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Programado</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Paciente</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Tipo</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Canal</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Estado</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {reminders.map((rem) => {
                   const badge = STATUS_BADGES[rem.status] || STATUS_BADGES.pending;
                   return (
-                    <TableRow key={rem.id}>
-                      <TableCell>{formatDateTime(rem.scheduledFor)}</TableCell>
+                    <TableRow key={rem.id} className="hover:bg-accent/50 transition-colors">
+                      <TableCell className="text-sm">{formatDateTime(rem.scheduledFor)}</TableCell>
                       <TableCell className="font-medium">
                         {rem.patient ? (
                           <Link
                             href={`/dashboard/patients/${rem.patient.id}`}
-                            className="hover:underline"
+                            className="hover:underline text-primary"
                           >
                             {rem.patient.nombre} {rem.patient.apellido}
                           </Link>
@@ -213,14 +211,16 @@ export default function RemindersPage() {
                         {rem.channel}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+                          {badge.label}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         {rem.status === 'pending' && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-destructive hover:text-destructive"
+                            className="h-8 text-xs text-destructive hover:text-destructive"
                             onClick={() => setCancelTarget(rem)}
                           >
                             Cancelar
@@ -237,15 +237,15 @@ export default function RemindersPage() {
 
         {meta && meta.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Página {meta.page} de {meta.totalPages} ({meta.total} resultados)
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                <ChevronLeft className="h-4 w-4" /> Anterior
+              <Button variant="outline" size="sm" className="h-8" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= meta.totalPages} onClick={() => setPage((p) => p + 1)}>
-                Siguiente <ChevronRight className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="h-8" disabled={page >= meta.totalPages} onClick={() => setPage((p) => p + 1)}>
+                Siguiente <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -254,7 +254,7 @@ export default function RemindersPage() {
 
       {/* Cancel Dialog */}
       <Dialog open={!!cancelTarget} onOpenChange={() => setCancelTarget(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Cancelar Recordatorio</DialogTitle>
             <DialogDescription>
@@ -262,7 +262,7 @@ export default function RemindersPage() {
               <strong>{cancelTarget?.patient?.nombre} {cancelTarget?.patient?.apellido}</strong>?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setCancelTarget(null)}>Volver</Button>
             <Button variant="destructive" onClick={handleCancel} disabled={cancelMutation.isPending}>
               {cancelMutation.isPending ? 'Cancelando...' : 'Cancelar Recordatorio'}
@@ -273,27 +273,27 @@ export default function RemindersPage() {
 
       {/* New Reminder Dialog */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Nuevo Recordatorio</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {formError && (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
                 {formError}
               </div>
             )}
 
-            {/* Patient search */}
-            <div className="space-y-2">
-              <Label>Paciente *</Label>
+            <div className="space-y-1.5">
+              <Label>Paciente <span className="text-destructive">*</span></Label>
               {selectedPatientId ? (
-                <div className="flex items-center justify-between rounded-md border p-2">
+                <div className="flex items-center justify-between rounded-lg border p-3 bg-accent/30">
                   <span className="text-sm font-medium">{selectedPatientName}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
+                    className="h-8 text-xs"
                     onClick={() => {
                       setSelectedPatientId('');
                       setSelectedPatientName('');
@@ -309,10 +309,10 @@ export default function RemindersPage() {
                     placeholder="Buscar paciente..."
                     value={patientSearch}
                     onChange={(e) => setPatientSearch(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 h-11"
                   />
                   {showPatientResults && (
-                    <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+                    <div className="absolute z-10 mt-1 w-full rounded-xl border bg-popover shadow-xl max-h-48 overflow-y-auto">
                       {patients.length === 0 ? (
                         <div className="p-3 text-sm text-muted-foreground">No encontrado</div>
                       ) : (
@@ -320,7 +320,7 @@ export default function RemindersPage() {
                           <button
                             key={p.id}
                             type="button"
-                            className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
+                            className="w-full text-left px-3 py-2.5 hover:bg-accent text-sm transition-colors first:rounded-t-xl last:rounded-b-xl"
                             onClick={() => {
                               setSelectedPatientId(p.id);
                               setSelectedPatientName(`${p.nombre} ${p.apellido}`);
@@ -337,10 +337,10 @@ export default function RemindersPage() {
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Tipo</Label>
               <Select value={reminderType} onValueChange={setReminderType}>
-                <SelectTrigger>
+                <SelectTrigger className="h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -353,25 +353,27 @@ export default function RemindersPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Fecha *</Label>
+              <div className="space-y-1.5">
+                <Label>Fecha <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   value={scheduledDate}
                   onChange={(e) => setScheduledDate(e.target.value)}
+                  className="h-11"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Hora</Label>
                 <Input
                   type="time"
                   value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
+                  className="h-11"
                 />
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setShowNew(false)}>Cancelar</Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creando...' : 'Crear'}

@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, Activity } from 'lucide-react';
+import { Users, Activity, CalendarRange } from 'lucide-react';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,170 +50,171 @@ export default function ReportsPage() {
   const { data: patientsReport, isLoading: loadingPatients } = usePatientsReport(startDate, endDate);
   const { data: proceduresReport, isLoading: loadingProcedures } = useProceduresReport(startDate, endDate);
 
-  // Prepare chart data
   const pieData = (patientsReport?.byType || []).map((t) => ({
     name: TYPE_LABELS[t.type] || t.type || 'Sin tipo',
     value: t.count,
   }));
 
   const barData = [
-    {
-      name: 'Procedimientos',
-      total: proceduresReport?.totalProcedures ?? 0,
-    },
-    {
-      name: 'Promedio Folículos',
-      total: proceduresReport?.averageFollicles ? Math.round(proceduresReport.averageFollicles) : 0,
-    },
-    {
-      name: 'Total Folículos',
-      total: proceduresReport?.totalFollicles ?? 0,
-    },
+    { name: 'Procedimientos', total: proceduresReport?.totalProcedures ?? 0 },
+    { name: 'Prom. Folículos', total: proceduresReport?.averageFollicles ? Math.round(proceduresReport.averageFollicles) : 0 },
+    { name: 'Total Folículos', total: proceduresReport?.totalFollicles ?? 0 },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Reportes</h2>
-        <p className="text-muted-foreground">Reportes y análisis del sistema</p>
+        <h2 className="text-2xl font-bold tracking-tight">Reportes</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Reportes y análisis del sistema</p>
       </div>
 
       {/* Date Range */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4 items-end">
-            <div className="space-y-2">
-              <Label>Fecha inicio</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+              <CalendarRange className="h-4 w-4 text-blue-600" />
             </div>
-            <div className="space-y-2">
-              <Label>Fecha fin</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+            <div className="flex gap-4 items-end">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fecha inicio</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="h-10 w-[160px]"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fecha fin</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="h-10 w-[160px]"
+                />
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Patients Report */}
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <Users className="h-5 w-5 text-muted-foreground" />
-          <CardTitle>Pacientes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loadingPatients ? (
-            <p className="text-muted-foreground">Cargando...</p>
-          ) : patientsReport ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total de pacientes</p>
-                  <p className="text-3xl font-bold">{patientsReport.totalPatients.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Nuevos en el periodo</p>
-                  <p className="text-3xl font-bold">{patientsReport.newPatients.toLocaleString()}</p>
-                </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Patients Report */}
+        <Card className="shadow-sm">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                <Users className="h-4 w-4 text-blue-600" />
               </div>
-
-              {/* Pie Chart - Patients by Type */}
-              {pieData.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium mb-3">Distribución por tipo</p>
-                  <div className="h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={2}
-                          dataKey="value"
-                          label={({ name, value }) => `${name}: ${value}`}
-                        >
-                          {pieData.map((_, idx) => (
-                            <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
+              <h3 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Pacientes</h3>
+            </div>
+            {loadingPatients ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Cargando...</p>
+            ) : patientsReport ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-lg bg-blue-50 p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Total pacientes</p>
+                    <p className="text-2xl font-bold text-blue-700">{patientsReport.totalPatients.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg bg-emerald-50 p-4">
+                    <p className="text-xs text-muted-foreground mb-1">Nuevos en periodo</p>
+                    <p className="text-2xl font-bold text-emerald-700">{patientsReport.newPatients.toLocaleString()}</p>
                   </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">Sin datos</p>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Procedures Report */}
-      <Card>
-        <CardHeader className="flex flex-row items-center gap-2">
-          <Activity className="h-5 w-5 text-muted-foreground" />
-          <CardTitle>Procedimientos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loadingProcedures ? (
-            <p className="text-muted-foreground">Cargando...</p>
-          ) : proceduresReport ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total procedimientos</p>
-                  <p className="text-3xl font-bold">{proceduresReport.totalProcedures.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Promedio folículos</p>
-                  <p className="text-3xl font-bold">
-                    {proceduresReport.averageFollicles
-                      ? Math.round(proceduresReport.averageFollicles).toLocaleString()
-                      : '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total folículos</p>
-                  <p className="text-3xl font-bold">
-                    {proceduresReport.totalFollicles?.toLocaleString() ?? '—'}
-                  </p>
-                </div>
+                {pieData.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Distribución por tipo</p>
+                    <div className="h-[260px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={55}
+                            outerRadius={90}
+                            paddingAngle={2}
+                            dataKey="value"
+                            label={({ name, value }) => `${name}: ${value}`}
+                          >
+                            {pieData.map((_, idx) => (
+                              <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-8 text-center">Sin datos</p>
+            )}
+          </CardContent>
+        </Card>
 
-              {/* Bar Chart - Procedures metrics */}
-              {proceduresReport.totalProcedures > 0 && (
-                <div>
-                  <p className="text-sm font-medium mb-3">Métricas de procedimientos</p>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={barData}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="name" className="text-xs" tick={{ fontSize: 12 }} />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip />
-                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+        {/* Procedures Report */}
+        <Card className="shadow-sm">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+                <Activity className="h-4 w-4 text-violet-600" />
+              </div>
+              <h3 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Procedimientos</h3>
+            </div>
+            {loadingProcedures ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Cargando...</p>
+            ) : proceduresReport ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg bg-violet-50 p-3">
+                    <p className="text-[10px] text-muted-foreground mb-1 uppercase">Total</p>
+                    <p className="text-xl font-bold text-violet-700">{proceduresReport.totalProcedures.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-lg bg-amber-50 p-3">
+                    <p className="text-[10px] text-muted-foreground mb-1 uppercase">Prom. Folículos</p>
+                    <p className="text-xl font-bold text-amber-700">
+                      {proceduresReport.averageFollicles
+                        ? Math.round(proceduresReport.averageFollicles).toLocaleString()
+                        : '—'}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-emerald-50 p-3">
+                    <p className="text-[10px] text-muted-foreground mb-1 uppercase">Total Folículos</p>
+                    <p className="text-xl font-bold text-emerald-700">
+                      {proceduresReport.totalFollicles?.toLocaleString() ?? '—'}
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-muted-foreground">Sin datos</p>
-          )}
-        </CardContent>
-      </Card>
+
+                {proceduresReport.totalProcedures > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Métricas</p>
+                    <div className="h-[230px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={barData}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} />
+                          <Tooltip />
+                          <Bar dataKey="total" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-8 text-center">Sin datos</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

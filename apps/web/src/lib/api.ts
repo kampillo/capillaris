@@ -48,7 +48,10 @@ async function request<T>(
     const error = await response.json().catch(() => ({
       message: 'An unexpected error occurred',
     }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const msg = Array.isArray(error.message)
+      ? error.message.join(', ')
+      : error.message || `HTTP ${response.status}`;
+    throw new Error(msg);
   }
 
   if (response.status === 204) {

@@ -17,8 +17,6 @@ import {
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   PatientType,
@@ -27,6 +25,7 @@ import {
   Occupation,
   OriginChannel,
 } from '@capillaris/shared';
+import { User, MapPin, Tag, FileCheck } from 'lucide-react';
 
 const patientSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
@@ -101,6 +100,17 @@ interface PatientFormProps {
   submitLabel?: string;
 }
 
+function SectionHeader({ icon: Icon, title }: { icon: typeof User; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-5">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+        <Icon className="h-4 w-4 text-primary" />
+      </div>
+      <h3 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">{title}</h3>
+    </div>
+  );
+}
+
 export function PatientForm({
   defaultValues,
   onSubmit,
@@ -129,238 +139,240 @@ export function PatientForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Personal Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Información Personal</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="nombre">Nombre *</Label>
-            <Input id="nombre" {...register('nombre')} />
-            {errors.nombre && (
-              <p className="text-sm text-destructive">{errors.nombre.message}</p>
-            )}
-          </div>
+      <Card className="shadow-sm">
+        <CardContent className="pt-6">
+          <SectionHeader icon={User} title="Información Personal" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="nombre">Nombre <span className="text-destructive">*</span></Label>
+              <Input id="nombre" {...register('nombre')} className="h-11" placeholder="Nombre del paciente" />
+              {errors.nombre && (
+                <p className="text-xs text-destructive">{errors.nombre.message}</p>
+              )}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="apellido">Apellido *</Label>
-            <Input id="apellido" {...register('apellido')} />
-            {errors.apellido && (
-              <p className="text-sm text-destructive">{errors.apellido.message}</p>
-            )}
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="apellido">Apellido <span className="text-destructive">*</span></Label>
+              <Input id="apellido" {...register('apellido')} className="h-11" placeholder="Apellido del paciente" />
+              {errors.apellido && (
+                <p className="text-xs text-destructive">{errors.apellido.message}</p>
+              )}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" {...register('email')} />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" {...register('email')} className="h-11" placeholder="correo@ejemplo.com" />
+              {errors.email && (
+                <p className="text-xs text-destructive">{errors.email.message}</p>
+              )}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="celular">Celular</Label>
-            <Input id="celular" {...register('celular')} placeholder="+52 55 1234 5678" />
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="celular">Celular</Label>
+              <Input id="celular" {...register('celular')} className="h-11" placeholder="+52 55 1234 5678" />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
-            <Input
-              id="fechaNacimiento"
-              type="date"
-              {...register('fechaNacimiento')}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Género</Label>
-            <Select
-              value={watch('genero') || ''}
-              onValueChange={(val) => setValue('genero', val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(GENDER_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Estado Civil</Label>
-            <Select
-              value={watch('estadoCivil') || ''}
-              onValueChange={(val) => setValue('estadoCivil', val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(MARITAL_STATUS_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Ocupación</Label>
-            <Select
-              value={watch('ocupacion') || ''}
-              onValueChange={(val) => setValue('ocupacion', val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(OCCUPATION_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2 flex items-end gap-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                {...register('edadApproximada')}
-                className="rounded border-input"
+            <div className="space-y-1.5">
+              <Label htmlFor="fechaNacimiento">Fecha de Nacimiento</Label>
+              <Input
+                id="fechaNacimiento"
+                type="date"
+                {...register('fechaNacimiento')}
+                className="h-11"
               />
-              Edad aproximada
-            </label>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Género</Label>
+              <Select
+                value={watch('genero') || ''}
+                onValueChange={(val) => setValue('genero', val)}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(GENDER_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Estado Civil</Label>
+              <Select
+                value={watch('estadoCivil') || ''}
+                onValueChange={(val) => setValue('estadoCivil', val)}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(MARITAL_STATUS_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Ocupación</Label>
+              <Select
+                value={watch('ocupacion') || ''}
+                onValueChange={(val) => setValue('ocupacion', val)}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(OCCUPATION_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  {...register('edadApproximada')}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                Edad aproximada
+              </label>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Address */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Dirección</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="direccion">Dirección</Label>
-            <Input id="direccion" {...register('direccion')} />
-          </div>
+      <Card className="shadow-sm">
+        <CardContent className="pt-6">
+          <SectionHeader icon={MapPin} title="Dirección" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="direccion">Dirección</Label>
+              <Input id="direccion" {...register('direccion')} className="h-11" placeholder="Calle, número, colonia..." />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="ciudad">Ciudad</Label>
-            <Input id="ciudad" {...register('ciudad')} />
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ciudad">Ciudad</Label>
+              <Input id="ciudad" {...register('ciudad')} className="h-11" placeholder="Ciudad" />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="estado">Estado</Label>
-            <Input id="estado" {...register('estado')} />
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="estado">Estado</Label>
+              <Input id="estado" {...register('estado')} className="h-11" placeholder="Estado" />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="pais">País</Label>
-            <Input id="pais" {...register('pais')} />
+            <div className="space-y-1.5">
+              <Label htmlFor="pais">País</Label>
+              <Input id="pais" {...register('pais')} className="h-11" placeholder="País" />
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Classification */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Clasificación</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Tipo de Paciente</Label>
-            <Select
-              value={watch('tipoPaciente') || ''}
-              onValueChange={(val) => setValue('tipoPaciente', val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(PATIENT_TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <Card className="shadow-sm">
+        <CardContent className="pt-6">
+          <SectionHeader icon={Tag} title="Clasificación" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="space-y-1.5">
+              <Label>Tipo de Paciente</Label>
+              <Select
+                value={watch('tipoPaciente') || ''}
+                onValueChange={(val) => setValue('tipoPaciente', val)}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PATIENT_TYPE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label>Canal de Origen</Label>
-            <Select
-              value={watch('origenCanal') || ''}
-              onValueChange={(val) => setValue('origenCanal', val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar..." />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(ORIGIN_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-1.5">
+              <Label>Canal de Origen</Label>
+              <Select
+                value={watch('origenCanal') || ''}
+                onValueChange={(val) => setValue('origenCanal', val)}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ORIGIN_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="referidoPor">Referido Por</Label>
-            <Input id="referidoPor" {...register('referidoPor')} />
+            <div className="space-y-1.5">
+              <Label htmlFor="referidoPor">Referido Por</Label>
+              <Input id="referidoPor" {...register('referidoPor')} className="h-11" placeholder="Nombre de quien refiere" />
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Consent & Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Consentimiento y Notas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                {...register('consentDataProcessing')}
-                className="rounded border-input"
-              />
-              Consiente procesamiento de datos
-            </label>
+      <Card className="shadow-sm">
+        <CardContent className="pt-6">
+          <SectionHeader icon={FileCheck} title="Consentimiento y Notas" />
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-x-8 gap-y-3">
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  {...register('consentDataProcessing')}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                Consiente procesamiento de datos
+              </label>
 
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                {...register('consentMarketing')}
-                className="rounded border-input"
-              />
-              Consiente marketing
-            </label>
-          </div>
+              <label className="flex items-center gap-2.5 text-sm cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  {...register('consentMarketing')}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                Consiente marketing
+              </label>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notasInternas">Notas Internas</Label>
-            <Textarea
-              id="notasInternas"
-              {...register('notasInternas')}
-              placeholder="Notas internas sobre el paciente..."
-              rows={3}
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="notasInternas">Notas Internas</Label>
+              <Textarea
+                id="notasInternas"
+                {...register('notasInternas')}
+                placeholder="Notas internas sobre el paciente..."
+                rows={3}
+                className="resize-none"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isLoading}>
+      <div className="flex justify-end gap-3 pt-2">
+        <Button type="submit" className="h-11 px-8 font-medium" disabled={isLoading}>
           {isLoading ? 'Guardando...' : submitLabel}
         </Button>
       </div>

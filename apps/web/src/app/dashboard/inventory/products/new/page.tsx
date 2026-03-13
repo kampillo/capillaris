@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Package, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,8 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Select,
@@ -67,103 +65,117 @@ export default function NewProductPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" asChild>
           <Link href="/dashboard/inventory">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Nuevo Producto</h2>
-          <p className="text-muted-foreground">Registrar un nuevo producto en el inventario</p>
+          <h2 className="text-2xl font-bold tracking-tight">Nuevo Producto</h2>
+          <p className="text-sm text-muted-foreground">Registrar un nuevo producto en el inventario</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 max-w-2xl">
           {error && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
               {error}
             </div>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Información del Producto</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Nombre *</Label>
-                  <Input
-                    placeholder="Ej. Minoxidil 5%"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
+                  <Package className="h-4 w-4 text-blue-600" />
                 </div>
-                <div className="space-y-2">
-                  <Label>SKU</Label>
-                  <Input
-                    placeholder="Ej. MNX-005"
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                  />
-                </div>
+                <h3 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Información del Producto</h3>
               </div>
-              <div className="space-y-2">
-                <Label>Descripción</Label>
-                <Textarea
-                  placeholder="Descripción del producto..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Precio unitario</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={unitPrice}
-                    onChange={(e) => setUnitPrice(e.target.value)}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Nombre <span className="text-destructive">*</span></Label>
+                    <Input
+                      placeholder="Ej. Minoxidil 5%"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>SKU</Label>
+                    <Input
+                      placeholder="Ej. MNX-005"
+                      value={sku}
+                      onChange={(e) => setSku(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Descripción</Label>
+                  <Textarea
+                    placeholder="Descripción del producto..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={2}
+                    className="resize-none"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Contenido</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Ej. 60"
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Unidad</Label>
-                  <Input
-                    placeholder="Ej. ml, unidades"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                  />
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Precio unitario</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={unitPrice}
+                      onChange={(e) => setUnitPrice(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Contenido</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Ej. 60"
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Unidad</Label>
+                    <Input
+                      placeholder="Ej. ml, unidades"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuración</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+                  <Settings2 className="h-4 w-4 text-emerald-600" />
+                </div>
+                <h3 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">Configuración</h3>
+              </div>
               <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Es medicamento</Label>
                   <Select value={isMedicine} onValueChange={setIsMedicine}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -172,10 +184,10 @@ export default function NewProductPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Requiere prescripción</Label>
                   <Select value={requiresPrescription} onValueChange={setRequiresPrescription}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -184,24 +196,25 @@ export default function NewProductPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Alerta stock mínimo</Label>
                   <Input
                     type="number"
                     min="0"
                     value={minStockAlert}
                     onChange={(e) => setMinStockAlert(e.target.value)}
+                    className="h-11"
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex gap-3">
-            <Button type="submit" disabled={createMutation.isPending}>
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" className="h-11 px-8 font-medium" disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creando...' : 'Crear Producto'}
             </Button>
-            <Button type="button" variant="outline" asChild>
+            <Button type="button" variant="outline" className="h-11" asChild>
               <Link href="/dashboard/inventory">Cancelar</Link>
             </Button>
           </div>

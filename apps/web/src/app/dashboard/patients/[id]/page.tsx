@@ -8,28 +8,26 @@ import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { usePatient } from '@/hooks/use-patients';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-const PATIENT_TYPE_BADGES: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  lead: { label: 'Lead', variant: 'outline' },
-  registered: { label: 'Registrado', variant: 'secondary' },
-  evaluation: { label: 'Evaluación', variant: 'default' },
-  active: { label: 'Activo', variant: 'default' },
-  inactive: { label: 'Inactivo', variant: 'destructive' },
-  archived: { label: 'Archivado', variant: 'secondary' },
+const PATIENT_TYPE_BADGES: Record<string, { label: string; className: string }> = {
+  lead: { label: 'Lead', className: 'bg-slate-50 text-slate-600 border-slate-200' },
+  registered: { label: 'Registrado', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  evaluation: { label: 'Evaluación', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  active: { label: 'Activo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  inactive: { label: 'Inactivo', className: 'bg-red-50 text-red-600 border-red-200' },
+  archived: { label: 'Archivado', className: 'bg-gray-50 text-gray-500 border-gray-200' },
 };
 
 function InfoItem({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div>
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-medium">{value || '—'}</dd>
+    <div className="space-y-0.5">
+      <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</dt>
+      <dd className="text-sm">{value || '—'}</dd>
     </div>
   );
 }
@@ -43,6 +41,13 @@ function formatDate(date?: string | null) {
   }
 }
 
+const quickActions = [
+  { icon: ClipboardList, label: 'Historia Clínica', path: 'history', color: 'text-blue-600', bg: 'bg-blue-50' },
+  { icon: Stethoscope, label: 'Consultas', path: 'consultations', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { icon: Scissors, label: 'Procedimientos', path: 'procedures', color: 'text-violet-600', bg: 'bg-violet-50' },
+  { icon: FileText, label: 'Prescripciones', path: 'prescriptions', color: 'text-amber-600', bg: 'bg-amber-50' },
+];
+
 export default function PatientDetailPage({
   params,
 }: {
@@ -53,17 +58,17 @@ export default function PatientDetailPage({
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Cargando paciente...</p>
+      <div className="flex items-center justify-center py-16">
+        <p className="text-sm text-muted-foreground">Cargando paciente...</p>
       </div>
     );
   }
 
   if (error || !patient) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <p className="text-destructive">Paciente no encontrado</p>
-        <Button variant="outline" onClick={() => router.push('/dashboard/patients')}>
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <p className="text-sm text-destructive">Paciente no encontrado</p>
+        <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/patients')}>
           Volver a Pacientes
         </Button>
       </div>
@@ -76,25 +81,29 @@ export default function PatientDetailPage({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" asChild>
             <Link href="/dashboard/patients">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold tracking-tight">
+              <h2 className="text-2xl font-bold tracking-tight">
                 {patient.nombre} {patient.apellido}
               </h2>
-              {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
+              {badge && (
+                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${badge.className}`}>
+                  {badge.label}
+                </span>
+              )}
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Registrado el {formatDate(patient.createdAt)}
             </p>
           </div>
         </div>
-        <Button asChild>
+        <Button className="h-10 shadow-sm" asChild>
           <Link href={`/dashboard/patients/${patient.id}/edit`}>
             <Edit className="mr-2 h-4 w-4" />
             Editar
@@ -103,41 +112,27 @@ export default function PatientDetailPage({
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Button variant="outline" className="h-auto py-3 flex flex-col gap-1" asChild>
-          <Link href={`/dashboard/patients/${patient.id}/history`}>
-            <ClipboardList className="h-5 w-5" />
-            <span className="text-xs">Historia Clínica</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {quickActions.map((action) => (
+          <Link key={action.path} href={`/dashboard/patients/${patient.id}/${action.path}`}>
+            <Card className="hover:shadow-md transition-all cursor-pointer group shadow-sm">
+              <CardContent className="p-4 flex flex-col items-center gap-2 text-center">
+                <div className={`rounded-xl p-2.5 ${action.bg} group-hover:scale-110 transition-transform`}>
+                  <action.icon className={`h-5 w-5 ${action.color}`} />
+                </div>
+                <span className="text-xs font-medium">{action.label}</span>
+              </CardContent>
+            </Card>
           </Link>
-        </Button>
-        <Button variant="outline" className="h-auto py-3 flex flex-col gap-1" asChild>
-          <Link href={`/dashboard/patients/${patient.id}/consultations`}>
-            <Stethoscope className="h-5 w-5" />
-            <span className="text-xs">Consultas</span>
-          </Link>
-        </Button>
-        <Button variant="outline" className="h-auto py-3 flex flex-col gap-1" asChild>
-          <Link href={`/dashboard/patients/${patient.id}/procedures`}>
-            <Scissors className="h-5 w-5" />
-            <span className="text-xs">Procedimientos</span>
-          </Link>
-        </Button>
-        <Button variant="outline" className="h-auto py-3 flex flex-col gap-1" asChild>
-          <Link href={`/dashboard/patients/${patient.id}/prescriptions`}>
-            <FileText className="h-5 w-5" />
-            <span className="text-xs">Prescripciones</span>
-          </Link>
-        </Button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información Personal</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Información Personal</h3>
               <dl className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <InfoItem label="Nombre" value={patient.nombre} />
                 <InfoItem label="Apellido" value={patient.apellido} />
@@ -151,11 +146,9 @@ export default function PatientDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Dirección</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Dirección</h3>
               <dl className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <InfoItem label="Dirección" value={patient.direccion} />
                 <InfoItem label="Ciudad" value={patient.ciudad} />
@@ -165,32 +158,20 @@ export default function PatientDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Clasificación</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Clasificación</h3>
               <dl className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <InfoItem label="Canal de Origen" value={patient.origenCanal} />
                 <InfoItem label="Referido Por" value={patient.referidoPor} />
-                <div>
-                  <dt className="text-sm text-muted-foreground">Consentimiento Datos</dt>
-                  <dd className="text-sm font-medium">
-                    {patient.consentDataProcessing ? 'Sí' : 'No'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">Consentimiento Marketing</dt>
-                  <dd className="text-sm font-medium">
-                    {patient.consentMarketing ? 'Sí' : 'No'}
-                  </dd>
-                </div>
+                <InfoItem label="Consentimiento Datos" value={patient.consentDataProcessing ? 'Sí' : 'No'} />
+                <InfoItem label="Consentimiento Marketing" value={patient.consentMarketing ? 'Sí' : 'No'} />
               </dl>
               {patient.notasInternas && (
                 <>
                   <Separator className="my-4" />
-                  <div>
-                    <dt className="text-sm text-muted-foreground mb-1">Notas Internas</dt>
+                  <div className="space-y-1">
+                    <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notas Internas</dt>
                     <dd className="text-sm whitespace-pre-wrap">{patient.notasInternas}</dd>
                   </div>
                 </>
@@ -201,22 +182,20 @@ export default function PatientDetailPage({
 
         {/* Sidebar - Recent Activity */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Últimas Citas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="shadow-sm">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Últimas Citas</h3>
+              </div>
               {patient.appointments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sin citas registradas</p>
+                <p className="text-xs text-muted-foreground py-2">Sin citas registradas</p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-2.5">
                   {patient.appointments.map((apt: any) => (
-                    <li key={apt.id} className="text-sm">
-                      <p className="font-medium">{apt.motivo || 'Cita'}</p>
-                      <p className="text-muted-foreground">
+                    <li key={apt.id} className="rounded-lg border p-2.5">
+                      <p className="text-sm font-medium">{apt.motivo || 'Cita'}</p>
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(apt.startDatetime)}
                       </p>
                     </li>
@@ -226,25 +205,23 @@ export default function PatientDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Prescripciones
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="shadow-sm">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Prescripciones</h3>
+              </div>
               {patient.prescriptions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sin prescripciones</p>
+                <p className="text-xs text-muted-foreground py-2">Sin prescripciones</p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-2.5">
                   {patient.prescriptions.map((rx: any) => (
-                    <li key={rx.id} className="text-sm">
-                      <p className="font-medium">
-                        <Badge variant="outline" className="mr-2">{rx.status}</Badge>
+                    <li key={rx.id} className="rounded-lg border p-2.5">
+                      <p className="text-sm font-medium">
+                        <Badge variant="outline" className="mr-2 text-[10px]">{rx.status}</Badge>
                         Prescripción
                       </p>
-                      <p className="text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(rx.createdAt)}
                       </p>
                     </li>
@@ -254,22 +231,20 @@ export default function PatientDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Stethoscope className="h-4 w-4" />
-                Consultas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="shadow-sm">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Stethoscope className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Consultas</h3>
+              </div>
               {patient.medicalConsultations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sin consultas</p>
+                <p className="text-xs text-muted-foreground py-2">Sin consultas</p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-2.5">
                   {patient.medicalConsultations.map((c: any) => (
-                    <li key={c.id} className="text-sm">
-                      <p className="font-medium">Consulta médica</p>
-                      <p className="text-muted-foreground">
+                    <li key={c.id} className="rounded-lg border p-2.5">
+                      <p className="text-sm font-medium">Consulta médica</p>
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(c.consultationDate)}
                       </p>
                     </li>
@@ -279,22 +254,20 @@ export default function PatientDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Scissors className="h-4 w-4" />
-                Procedimientos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          <Card className="shadow-sm">
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Scissors className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Procedimientos</h3>
+              </div>
               {patient.procedureReports.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sin procedimientos</p>
+                <p className="text-xs text-muted-foreground py-2">Sin procedimientos</p>
               ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-2.5">
                   {patient.procedureReports.map((p: any) => (
-                    <li key={p.id} className="text-sm">
-                      <p className="font-medium">{p.procedureType || 'Procedimiento'}</p>
-                      <p className="text-muted-foreground">
+                    <li key={p.id} className="rounded-lg border p-2.5">
+                      <p className="text-sm font-medium">{p.procedureType || 'Procedimiento'}</p>
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(p.procedureDate)}
                       </p>
                     </li>
