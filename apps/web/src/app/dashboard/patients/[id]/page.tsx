@@ -194,7 +194,7 @@ export default function PatientDetailPage({
                 <ul className="space-y-2.5">
                   {patient.appointments.map((apt: any) => (
                     <li key={apt.id} className="rounded-lg border p-2.5">
-                      <p className="text-sm font-medium">{apt.motivo || 'Cita'}</p>
+                      <p className="text-sm font-medium">{apt.title || 'Cita'}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(apt.startDatetime)}
                       </p>

@@ -272,6 +272,7 @@ export default function AppointmentsPage() {
                 <SelectItem value="completed">Completada</SelectItem>
                 <SelectItem value="cancelled">Cancelada</SelectItem>
                 <SelectItem value="no_show">No asistió</SelectItem>
+                <SelectItem value="rescheduled">Reprogramada</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-1 bg-muted rounded-lg p-0.5">
