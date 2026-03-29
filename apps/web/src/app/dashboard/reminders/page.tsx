@@ -50,9 +50,8 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
 
 const TYPE_LABELS: Record<string, string> = {
   appointment: 'Cita',
-  prescription: 'Prescripción',
-  followup: 'Seguimiento',
-  general: 'General',
+  prescription_refill: 'Recarga de prescripción',
+  follow_up: 'Seguimiento',
 };
 
 function formatDateTime(iso: string) {
@@ -74,7 +73,7 @@ export default function RemindersPage() {
   const [patientSearch, setPatientSearch] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [selectedPatientName, setSelectedPatientName] = useState('');
-  const [reminderType, setReminderType] = useState('general');
+  const [reminderType, setReminderType] = useState('appointment');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('09:00');
   const [formError, setFormError] = useState('');
@@ -344,10 +343,9 @@ export default function RemindersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="general">General</SelectItem>
                   <SelectItem value="appointment">Cita</SelectItem>
-                  <SelectItem value="prescription">Prescripción</SelectItem>
-                  <SelectItem value="followup">Seguimiento</SelectItem>
+                  <SelectItem value="prescription_refill">Recarga de prescripción</SelectItem>
+                  <SelectItem value="follow_up">Seguimiento</SelectItem>
                 </SelectContent>
               </Select>
             </div>
