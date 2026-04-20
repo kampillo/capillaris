@@ -12,141 +12,164 @@ import {
   BarChart3,
   Bell,
   Settings,
+  Search,
   X,
   LogOut,
-  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
+import { usePendingReminders } from '@/hooks/use-reminders';
+import { Avatar } from '@/components/clinic/avatar';
+import { CapillarisLogo } from './capillaris-logo';
 
-const mainNav = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Pacientes', href: '/dashboard/patients', icon: Users },
-  { name: 'Citas', href: '/dashboard/appointments', icon: Calendar },
-  { name: 'Prescripciones', href: '/dashboard/prescriptions', icon: Pill },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+type NavGroup = {
+  section: string;
+  items: NavItem[];
+};
+
+const NAV: NavGroup[] = [
+  {
+    section: 'Principal',
+    items: [
+      { href: '/dashboard', label: 'Inicio', icon: Home },
+      { href: '/dashboard/patients', label: 'Pacientes', icon: Users },
+      { href: '/dashboard/appointments', label: 'Agenda', icon: Calendar },
+      { href: '/dashboard/prescriptions', label: 'Prescripciones', icon: Pill },
+    ],
+  },
+  {
+    section: 'Gestión',
+    items: [
+      { href: '/dashboard/inventory', label: 'Inventario', icon: Package },
+      { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3 },
+    ],
+  },
+  {
+    section: 'Sistema',
+    items: [
+      { href: '/dashboard/reminders', label: 'Recordatorios', icon: Bell },
+      { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
+    ],
+  },
 ];
-
-const manageNav = [
-  { name: 'Inventario', href: '/dashboard/inventory', icon: Package },
-  { name: 'Reportes', href: '/dashboard/reports', icon: BarChart3 },
-  { name: 'Recordatorios', href: '/dashboard/reminders', icon: Bell },
-  { name: 'Configuración', href: '/dashboard/settings', icon: Settings },
-];
-
-function NavItem({ item, onClick }: { item: typeof mainNav[0]; onClick?: () => void }) {
-  const pathname = usePathname();
-  const isActive =
-    pathname === item.href ||
-    (item.href !== '/dashboard' && pathname.startsWith(item.href));
-
-  return (
-    <li>
-      <Link
-        href={item.href}
-        onClick={onClick}
-        className={cn(
-          'group flex items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
-          isActive
-            ? 'bg-[hsl(var(--sidebar-active))] text-[hsl(var(--sidebar-active-foreground))] shadow-md shadow-blue-500/20'
-            : 'text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover))] hover:text-white',
-        )}
-      >
-        <item.icon
-          className={cn(
-            'h-[18px] w-[18px] shrink-0 transition-colors',
-            isActive ? 'text-white' : 'text-[hsl(var(--sidebar-foreground))] group-hover:text-white',
-          )}
-        />
-        {item.name}
-      </Link>
-    </li>
-  );
-}
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
-  const { user, logout } = useAuthStore();
+  const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuthStore();
+  const { data: pendingReminders } = usePendingReminders();
+  const pendingCount = pendingReminders?.length ?? 0;
+
+  const isActive = (href: string) =>
+    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
 
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  const initials = user
-    ? `${user.nombre.charAt(0)}${user.apellido.charAt(0)}`.toUpperCase()
-    : '';
-
   return (
-    <div className="flex h-full flex-col bg-[hsl(var(--sidebar))]">
+    <div
+      className="flex h-full w-full flex-col bg-sidebar text-sidebar-fg"
+      style={{
+        backgroundImage:
+          'radial-gradient(circle at 20% 0%, hsl(var(--sidebar-active-border) / 0.12) 0%, transparent 50%)',
+      }}
+    >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-5">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--sidebar-active))] shadow-lg shadow-blue-500/30">
-            <span className="text-base font-bold text-white">C</span>
-          </div>
-          <span className="text-lg font-bold text-white tracking-tight">Capillaris</span>
+      <div className="flex items-center justify-between px-5 pb-4 pt-5">
+        <Link href="/dashboard" onClick={onClose}>
+          <CapillarisLogo />
         </Link>
         {onClose && (
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
+            type="button"
             onClick={onClose}
-            className="lg:hidden text-[hsl(var(--sidebar-foreground))] hover:text-white hover:bg-[hsl(var(--sidebar-hover))]"
+            className="rounded p-1.5 text-sidebar-fg transition hover:bg-white/5 lg:hidden"
+            aria-label="Cerrar menú"
           >
             <X className="h-5 w-5" />
-          </Button>
+          </button>
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-6 px-3 py-4 overflow-y-auto">
-        {/* Main */}
-        <div>
-          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--sidebar-foreground))]/50">
-            Principal
-          </p>
-          <ul className="space-y-1">
-            {mainNav.map((item) => (
-              <NavItem key={item.href} item={item} onClick={onClose} />
-            ))}
-          </ul>
-        </div>
+      {/* Search shortcut */}
+      <div className="px-3.5 pb-3">
+        <button
+          type="button"
+          className="flex w-full items-center gap-2.5 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-sidebar-fg transition hover:bg-white/10"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="flex-1 text-left">Buscar paciente…</span>
+          <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-sidebar-fg-muted">
+            ⌘K
+          </span>
+        </button>
+      </div>
 
-        {/* Manage */}
-        <div>
-          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--sidebar-foreground))]/50">
-            Gestión
-          </p>
-          <ul className="space-y-1">
-            {manageNav.map((item) => (
-              <NavItem key={item.href} item={item} onClick={onClose} />
-            ))}
-          </ul>
-        </div>
+      {/* Nav groups */}
+      <nav className="flex-1 overflow-y-auto px-2.5 pb-3 pt-1">
+        {NAV.map((group) => (
+          <div key={group.section} className="mb-4">
+            <div className="px-3.5 pb-2 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-fg-muted">
+              {group.section}
+            </div>
+            {group.items.map((item) => {
+              const active = isActive(item.href);
+              const Icon = item.icon;
+              const showDot = item.href === '/dashboard/reminders' && pendingCount > 0;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className={cn(
+                    'mb-0.5 flex items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-sm transition-all',
+                    active
+                      ? 'border-sidebar-active bg-white/[0.08] pl-2.5 font-medium text-white'
+                      : 'border-transparent text-sidebar-fg hover:bg-white/[0.04] hover:text-white',
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1">{item.label}</span>
+                  {showDot && (
+                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber px-1 text-[10px] font-semibold tabular-nums text-white">
+                      {pendingCount > 9 ? '9+' : pendingCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
-      {/* User section */}
+      {/* User footer */}
       {user && (
         <div className="border-t border-white/10 p-3">
-          <div className="flex items-center gap-3 rounded-lg px-3 py-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10">
-              <span className="text-xs font-bold text-white">{initials}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium text-white">
+          <div className="flex items-center gap-2.5 rounded-md px-2.5 py-2">
+            <Avatar name={`${user.nombre} ${user.apellido}`} size={34} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[13px] font-medium text-white">
                 {user.nombre} {user.apellido}
-              </p>
-              <p className="truncate text-xs text-[hsl(var(--sidebar-foreground))]/70">
+              </div>
+              <div className="truncate text-[11px] text-sidebar-fg-muted">
                 {user.email}
-              </p>
+              </div>
             </div>
             <button
+              type="button"
               onClick={handleLogout}
-              className="shrink-0 rounded-md p-1.5 text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover))] hover:text-white transition-colors"
-              title="Cerrar sesión"
+              className="rounded p-1.5 text-sidebar-fg transition hover:bg-white/5"
+              aria-label="Cerrar sesión"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -167,10 +190,10 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity"
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden"
         onClick={onClose}
       />
-      <aside className="fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col lg:hidden animate-in slide-in-from-left duration-200">
+      <aside className="animate-slide-in fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col lg:hidden">
         <SidebarContent onClose={onClose} />
       </aside>
     </>
@@ -180,7 +203,7 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
 // Desktop sidebar
 export function Sidebar() {
   return (
-    <aside className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-[272px] lg:flex-col">
+    <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col lg:flex">
       <SidebarContent />
     </aside>
   );

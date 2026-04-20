@@ -3,29 +3,18 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Download,
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -36,26 +25,87 @@ import {
 } from '@/components/ui/dialog';
 import { usePatients, useDeletePatient } from '@/hooks/use-patients';
 import type { Patient } from '@/hooks/use-patients';
+import { Avatar } from '@/components/clinic/avatar';
 
-const PATIENT_TYPE_BADGES: Record<string, { label: string; className: string }> = {
-  lead: { label: 'Lead', className: 'bg-slate-50 text-slate-600 border-slate-200' },
-  registered: { label: 'Registrado', className: 'bg-blue-50 text-blue-700 border-blue-200' },
-  evaluation: { label: 'Evaluación', className: 'bg-amber-50 text-amber-700 border-amber-200' },
-  active: { label: 'Activo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  inactive: { label: 'Inactivo', className: 'bg-red-50 text-red-600 border-red-200' },
-  archived: { label: 'Archivado', className: 'bg-gray-50 text-gray-500 border-gray-200' },
+const PATIENT_TYPE: Record<
+  string,
+  { label: string; color: string; bg: string; border: string }
+> = {
+  lead: {
+    label: 'Lead',
+    color: 'hsl(var(--accent-lilac))',
+    bg: 'hsl(var(--accent-lilac-soft))',
+    border: 'hsl(var(--accent-lilac) / 0.25)',
+  },
+  registered: {
+    label: 'Registrado',
+    color: 'hsl(var(--accent-info))',
+    bg: 'hsl(var(--accent-info-soft))',
+    border: 'hsl(var(--accent-info) / 0.25)',
+  },
+  evaluation: {
+    label: 'Evaluación',
+    color: 'hsl(var(--accent-amber))',
+    bg: 'hsl(var(--accent-amber-soft))',
+    border: 'hsl(var(--accent-amber) / 0.25)',
+  },
+  active: {
+    label: 'Activo',
+    color: 'hsl(var(--brand-primary))',
+    bg: 'hsl(var(--brand-primary-soft))',
+    border: 'hsl(var(--brand-primary) / 0.25)',
+  },
+  inactive: {
+    label: 'Inactivo',
+    color: 'hsl(var(--text-secondary))',
+    bg: 'hsl(var(--surface-2))',
+    border: 'hsl(var(--border))',
+  },
+  archived: {
+    label: 'Archivado',
+    color: 'hsl(var(--text-tertiary))',
+    bg: 'hsl(var(--surface-2))',
+    border: 'hsl(var(--border))',
+  },
 };
+
+const CHANNEL_LABELS: Record<string, string> = {
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  whatsapp: 'WhatsApp',
+  web: 'Web',
+  referido: 'Referido',
+  google: 'Google',
+  otro: 'Otro',
+};
+
+const TABS: Array<{ value: string; label: string }> = [
+  { value: 'all', label: 'Todos' },
+  { value: 'active', label: 'Activos' },
+  { value: 'evaluation', label: 'Evaluación' },
+  { value: 'registered', label: 'Registrados' },
+  { value: 'lead', label: 'Leads' },
+  { value: 'inactive', label: 'Inactivos' },
+];
+
+function fmtDateShort(iso?: string) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('es-MX', {
+    day: '2-digit',
+    month: 'short',
+  });
+}
 
 export default function PatientsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [tipoPaciente, setTipoPaciente] = useState('');
+  const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Patient | null>(null);
 
   const { data, isLoading, error } = usePatients({
     query: searchQuery || undefined,
-    tipoPaciente: tipoPaciente || undefined,
+    tipoPaciente: filter === 'all' ? undefined : filter,
     page,
     pageSize: 20,
   });
@@ -67,8 +117,8 @@ export default function PatientsPage() {
     setPage(1);
   };
 
-  const handleFilterChange = (value: string) => {
-    setTipoPaciente(value === 'all' ? '' : value);
+  const handleFilter = (value: string) => {
+    setFilter(value);
     setPage(1);
   };
 
@@ -82,146 +132,190 @@ export default function PatientsPage() {
   const meta = data?.meta;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-5">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Pacientes</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {meta ? `${meta.total} pacientes registrados` : 'Gestión de pacientes del sistema'}
+          <h2 className="cap-h2 mb-1">Pacientes</h2>
+          <p className="text-[13px] text-text-secondary">
+            {meta ? `${meta.total} pacientes registrados` : 'Cargando...'}
           </p>
         </div>
-        <Button className="h-10 font-medium shadow-sm" asChild>
-          <Link href="/dashboard/patients/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Paciente
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar
+          </Button>
+          <Button size="sm" className="gap-1.5" asChild>
+            <Link href="/dashboard/patients/new">
+              <Plus className="h-3.5 w-3.5" /> Nuevo paciente
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* Search & Filters */}
-      <Card className="shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre, email o teléfono..."
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="pl-9 h-11"
-              />
-            </div>
-            <Select value={tipoPaciente || 'all'} onValueChange={handleFilterChange}>
-              <SelectTrigger className="w-full sm:w-[200px] h-11">
-                <SelectValue placeholder="Tipo de paciente" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los tipos</SelectItem>
-                <SelectItem value="lead">Lead</SelectItem>
-                <SelectItem value="registered">Registrado</SelectItem>
-                <SelectItem value="evaluation">Evaluación</SelectItem>
-                <SelectItem value="active">Activo</SelectItem>
-                <SelectItem value="inactive">Inactivo</SelectItem>
-                <SelectItem value="archived">Archivado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card className="shadow-sm">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-muted-foreground">Cargando pacientes...</p>
-            </div>
-          ) : error ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-destructive">Error al cargar pacientes</p>
-            </div>
-          ) : patients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                <Users className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground">No se encontraron pacientes</p>
-              {searchQuery && (
-                <Button variant="ghost" size="sm" onClick={() => handleSearch('')}>
-                  Limpiar búsqueda
-                </Button>
+      {/* Tabs */}
+      <div className="-mb-px flex gap-0.5 overflow-x-auto border-b border-border">
+        {TABS.map((t) => {
+          const active = filter === t.value;
+          return (
+            <button
+              key={t.value}
+              onClick={() => handleFilter(t.value)}
+              className={cn(
+                '-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-[13px] transition-colors',
+                active
+                  ? 'border-brand font-medium text-foreground'
+                  : 'border-transparent text-text-secondary hover:text-foreground',
               )}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search row */}
+      <div className="flex flex-wrap gap-2.5">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-tertiary" />
+          <Input
+            placeholder="Buscar por nombre, email o teléfono…"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="h-10 pl-9"
+          />
+        </div>
+      </div>
+
+      {/* Table card */}
+      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <p className="text-sm text-text-secondary">Cargando pacientes...</p>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center py-16">
+            <p className="text-sm text-destructive">Error al cargar pacientes</p>
+          </div>
+        ) : patients.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2">
+              <Users className="h-6 w-6 text-text-tertiary" />
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Nombre</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Email</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Celular</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Tipo</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Origen</TableHead>
-                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {patients.map((patient) => {
-                  const badge = PATIENT_TYPE_BADGES[patient.tipoPaciente || 'lead'];
-                  return (
-                    <TableRow
-                      key={patient.id}
-                      className="cursor-pointer hover:bg-accent/50 transition-colors"
-                      onClick={() => router.push(`/dashboard/patients/${patient.id}`)}
+            <p className="text-sm text-text-secondary">
+              Sin resultados.
+              {searchQuery && (
+                <button
+                  onClick={() => handleSearch('')}
+                  className="ml-1.5 text-brand-dark underline underline-offset-2 hover:text-brand"
+                >
+                  Limpiar búsqueda
+                </button>
+              )}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="border-b border-border bg-surface-2">
+                  {[
+                    'Paciente',
+                    'Contacto',
+                    'Estado',
+                    'Origen',
+                    'Última visita',
+                    '',
+                  ].map((h, i) => (
+                    <th
+                      key={i}
+                      className="cap-eyebrow px-4 py-3 text-left"
                     >
-                      <TableCell className="font-medium">
-                        {patient.nombre} {patient.apellido}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {patient.email || '—'}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {patient.celular || '—'}
-                      </TableCell>
-                      <TableCell>
-                        {badge && (
-                          <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${badge.className}`}>
-                            {badge.label}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground capitalize">
-                        {patient.origenCanal || '—'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="sm" className="h-8 text-xs" asChild>
-                            <Link href={`/dashboard/patients/${patient.id}/edit`}>
-                              Editar
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-xs text-destructive hover:text-destructive"
-                            onClick={() => setDeleteTarget(patient)}
-                          >
-                            Eliminar
-                          </Button>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {patients.map((p) => {
+                  const type = PATIENT_TYPE[p.tipoPaciente || 'lead'];
+                  return (
+                    <tr
+                      key={p.id}
+                      onClick={() =>
+                        router.push(`/dashboard/patients/${p.id}`)
+                      }
+                      className="cursor-pointer border-b border-border transition-colors last:border-b-0 hover:bg-surface-2"
+                    >
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={`${p.nombre} ${p.apellido}`} size={32} />
+                          <div className="min-w-0">
+                            <div className="font-medium text-foreground">
+                              {p.nombre} {p.apellido}
+                            </div>
+                            <div className="truncate text-[11px] text-text-tertiary">
+                              {p.email || '—'}
+                            </div>
+                          </div>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                      <td className="px-4 py-3.5 text-text-secondary">
+                        <div className="cap-mono text-xs">
+                          {p.celular || '—'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                          style={{
+                            background: type.bg,
+                            color: type.color,
+                            borderColor: type.border,
+                          }}
+                        >
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ background: type.color }}
+                          />
+                          {type.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-text-secondary">
+                        {p.origenCanal
+                          ? CHANNEL_LABELS[p.origenCanal] ?? p.origenCanal
+                          : '—'}
+                      </td>
+                      <td className="cap-mono px-4 py-3.5 text-xs text-text-secondary">
+                        {fmtDateShort(p.updatedAt)}
+                      </td>
+                      <td
+                        className="px-4 py-3.5 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex justify-end">
+                          <Link
+                            href={`/dashboard/patients/${p.id}/edit`}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:bg-surface-3 hover:text-foreground"
+                            aria-label="Acciones"
+                          >
+                            <MoreHorizontal className="h-[15px] w-[15px]" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Pagination */}
         {meta && meta.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <p className="text-xs text-muted-foreground">
-              Página {meta.page} de {meta.totalPages} ({meta.total} resultados)
+          <div className="flex items-center justify-between border-t border-border px-4 py-3">
+            <p className="text-[11px] text-text-tertiary">
+              Página {meta.page} de {meta.totalPages} · {meta.total} resultados
             </p>
             <div className="flex gap-2">
               <Button
@@ -231,7 +325,7 @@ export default function PatientsPage() {
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
+                <ChevronLeft className="mr-1 h-4 w-4" />
                 Anterior
               </Button>
               <Button
@@ -242,22 +336,24 @@ export default function PatientsPage() {
                 onClick={() => setPage((p) => p + 1)}
               >
                 Siguiente
-                <ChevronRight className="h-4 w-4 ml-1" />
+                <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           </div>
         )}
-      </Card>
+      </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete confirmation */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Eliminar Paciente</DialogTitle>
+            <DialogTitle>Eliminar paciente</DialogTitle>
             <DialogDescription>
               ¿Estás seguro de que deseas eliminar a{' '}
-              <strong>{deleteTarget?.nombre} {deleteTarget?.apellido}</strong>?
-              Esta acción se puede revertir.
+              <strong>
+                {deleteTarget?.nombre} {deleteTarget?.apellido}
+              </strong>
+              ? Esta acción se puede revertir.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">

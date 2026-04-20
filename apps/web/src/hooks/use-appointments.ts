@@ -13,6 +13,7 @@ export interface Appointment {
   durationMinutes?: number;
   status: string;
   cancellationReason?: string;
+  googleCalendarEventId?: string;
   confirmedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -33,13 +34,14 @@ export interface CreateAppointmentData {
 
 export type UpdateAppointmentData = Partial<CreateAppointmentData>;
 
-export function useAppointments(page = 1, pageSize = 20) {
+export function useAppointments(page = 1, pageSize = 20, timeMin?: string, timeMax?: string) {
+  const params: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
+  if (timeMin) params.timeMin = timeMin;
+  if (timeMax) params.timeMax = timeMax;
+
   return useQuery<PaginatedResponse<Appointment>>({
-    queryKey: ['appointments', page, pageSize],
-    queryFn: () =>
-      api.get('/appointments', {
-        params: { page: String(page), pageSize: String(pageSize) },
-      }),
+    queryKey: ['appointments', page, pageSize, timeMin, timeMax],
+    queryFn: () => api.get('/appointments', { params }),
   });
 }
 

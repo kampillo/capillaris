@@ -33,9 +33,14 @@ export class AppointmentsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all appointments (paginated)' })
-  findAll(@Query('page') page?: number, @Query('pageSize') pageSize?: number) {
-    return this.appointmentsService.findAll(page, pageSize);
+  @ApiOperation({ summary: 'Get all appointments (paginated, optional date range)' })
+  findAll(
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('timeMin') timeMin?: string,
+    @Query('timeMax') timeMax?: string,
+  ) {
+    return this.appointmentsService.findAll(page, pageSize, timeMin, timeMax);
   }
 
   @Get(':id')
@@ -56,7 +61,10 @@ export class AppointmentsController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an appointment' })
-  remove(@Param('id') id: string) {
-    return this.appointmentsService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.appointmentsService.remove(id, userId);
   }
 }

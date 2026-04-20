@@ -31,19 +31,21 @@ export default function DashboardLayout({
 
   if (!ready || !isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Cargando...</p>
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-text-secondary">Cargando...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
       <MobileSidebar open={mobileOpen} onClose={closeMobile} />
-      <div className="lg:pl-[272px]">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <main className="p-4 sm:p-6 lg:p-8 max-w-[1600px]">{children}</main>
+        <main className="mx-auto w-full max-w-[1480px] px-4 pb-12 pt-6 sm:px-6 lg:px-7">
+          {children}
+        </main>
       </div>
     </div>
   );

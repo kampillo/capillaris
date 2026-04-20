@@ -2,79 +2,112 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================
+   Capillaris — Design Tokens
+   Sistema de diseño clínico para trasplante
+   y medicina capilar.
+   =========================================== */
+
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 224 30% 14%;
+    /* ---- Brand (forest green clinical) ---- */
+    --brand-primary: 164 49% 33%;         /* #2C7E69 */
+    --brand-primary-dark: 164 49% 24%;    /* #1F5B4C */
+    --brand-primary-darker: 164 50% 15%;  /* #133B31 */
+    --brand-primary-soft: 150 25% 93%;    /* #E8F1ED */
+    --brand-primary-softer: 140 20% 97%;  /* #F3F8F5 */
 
+    /* ---- Surfaces (warm neutrals) ---- */
+    --background: 40 20% 98%;       /* #FAF9F6 — app bg */
+    --surface: 0 0% 100%;           /* #FFFFFF — cards */
+    --surface-2: 42 18% 95%;        /* #F5F3EE — subtle fill */
+    --surface-3: 42 15% 91%;        /* #EDEBE4 — hover fill */
+
+    /* ---- Text ---- */
+    --foreground: 160 15% 12%;      /* #1A2420 */
+    --text-secondary: 154 8% 39%;   /* #5B6B65 */
+    --text-tertiary: 142 5% 57%;    /* #8A968F */
+    --text-inverse: 40 20% 98%;
+
+    /* ---- Borders ---- */
+    --border: 42 16% 88%;           /* #E6E3DB */
+    --border-strong: 42 15% 80%;    /* #D4D0C5 */
+
+    /* ---- Semantic accents ---- */
+    --accent-amber: 28 52% 47%;         /* #B8763A */
+    --accent-amber-soft: 35 55% 91%;    /* #F5EBDC */
+    --accent-danger: 0 48% 50%;         /* #B84545 */
+    --accent-danger-soft: 0 50% 92%;    /* #F5E0E0 */
+    --accent-info: 210 32% 42%;         /* #4A6B8F */
+    --accent-info-soft: 216 25% 91%;    /* #E2E8F0 */
+    --accent-lilac: 256 23% 52%;        /* #7A6B9F */
+    --accent-lilac-soft: 260 30% 92%;   /* #EBE6F2 */
+
+    /* ---- Sidebar (dark forest) ---- */
+    --sidebar-bg: 164 50% 15%;          /* #133B31 */
+    --sidebar-fg: 150 14% 76%;          /* #B8C9C0 */
+    --sidebar-fg-muted: 154 12% 53%;    /* #7B9389 */
+    --sidebar-active-border: 158 42% 50%; /* #4EB093 */
+
+    /* ---- shadcn/ui compatibility mappings ---- */
     --card: 0 0% 100%;
-    --card-foreground: 224 30% 14%;
-
+    --card-foreground: 160 15% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 224 30% 14%;
-
-    --primary: 221 83% 53%;
+    --popover-foreground: 160 15% 12%;
+    --primary: 164 49% 33%;
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 224 30% 14%;
-
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
-
-    --accent: 220 14% 96%;
-    --accent-foreground: 224 30% 14%;
-
-    --destructive: 0 72% 51%;
+    --secondary: 42 18% 95%;
+    --secondary-foreground: 160 15% 12%;
+    --muted: 42 18% 95%;
+    --muted-foreground: 154 8% 39%;
+    --accent: 150 25% 93%;
+    --accent-foreground: 164 49% 24%;
+    --destructive: 0 48% 50%;
     --destructive-foreground: 0 0% 100%;
+    --input: 42 15% 80%;
+    --ring: 164 49% 33%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 221 83% 53%;
+    /* ---- Radii ---- */
+    --radius: 0.5rem;              /* 8px — default */
+    --radius-xs: 0.25rem;          /* 4 */
+    --radius-sm: 0.375rem;         /* 6 */
+    --radius-md: 0.5rem;           /* 8 */
+    --radius-lg: 0.625rem;         /* 10 */
+    --radius-xl: 0.875rem;         /* 14 */
+    --radius-2xl: 1.25rem;         /* 20 */
 
-    --radius: 0.625rem;
-
-    --sidebar: 224 30% 14%;
-    --sidebar-foreground: 220 20% 80%;
-    --sidebar-active: 221 83% 53%;
-    --sidebar-active-foreground: 0 0% 100%;
-    --sidebar-hover: 224 25% 20%;
+    /* ---- Shadows ---- */
+    --shadow-xs: 0 1px 2px rgb(26 36 32 / 0.04);
+    --shadow-sm: 0 1px 2px rgb(26 36 32 / 0.04), 0 1px 3px rgb(26 36 32 / 0.03);
+    --shadow-md: 0 1px 2px rgb(26 36 32 / 0.04), 0 4px 12px rgb(26 36 32 / 0.05);
+    --shadow-lg: 0 4px 24px rgb(26 36 32 / 0.08), 0 1px 3px rgb(26 36 32 / 0.04);
   }
 
   .dark {
-    --background: 224 30% 8%;
-    --foreground: 220 20% 94%;
+    --background: 160 20% 8%;
+    --surface: 160 18% 11%;
+    --surface-2: 160 14% 14%;
+    --surface-3: 160 12% 18%;
+    --foreground: 40 15% 92%;
+    --text-secondary: 150 8% 68%;
+    --text-tertiary: 142 5% 52%;
+    --border: 160 12% 20%;
+    --border-strong: 160 10% 28%;
 
-    --card: 224 25% 12%;
-    --card-foreground: 220 20% 94%;
-
-    --popover: 224 25% 12%;
-    --popover-foreground: 220 20% 94%;
-
-    --primary: 221 83% 58%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 224 20% 16%;
-    --secondary-foreground: 220 20% 94%;
-
-    --muted: 224 20% 16%;
-    --muted-foreground: 220 12% 58%;
-
-    --accent: 224 20% 16%;
-    --accent-foreground: 220 20% 94%;
-
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 224 20% 18%;
-    --input: 224 20% 18%;
-    --ring: 221 83% 58%;
-
-    --sidebar: 224 30% 6%;
-    --sidebar-foreground: 220 15% 65%;
-    --sidebar-active: 221 83% 58%;
-    --sidebar-active-foreground: 0 0% 100%;
-    --sidebar-hover: 224 25% 12%;
+    --card: 160 18% 11%;
+    --card-foreground: 40 15% 92%;
+    --popover: 160 18% 11%;
+    --popover-foreground: 40 15% 92%;
+    --primary: 158 42% 50%;
+    --primary-foreground: 160 50% 10%;
+    --secondary: 160 14% 14%;
+    --secondary-foreground: 40 15% 92%;
+    --muted: 160 14% 14%;
+    --muted-foreground: 150 8% 68%;
+    --accent: 164 40% 20%;
+    --accent-foreground: 150 25% 93%;
+    --input: 160 10% 28%;
+    --ring: 158 42% 50%;
   }
 }
 
@@ -82,16 +115,95 @@
   * {
     @apply border-border;
   }
+
+  html {
+    font-feature-settings: "cv11", "ss01";
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  ::selection {
+    background: hsl(var(--brand-primary-soft));
+    color: hsl(var(--brand-primary-dark));
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border-strong));
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--text-tertiary));
   }
 }
 
-@layer utilities {
-  .glass {
-    @apply bg-white/80 backdrop-blur-md;
+@layer components {
+  /* ---- Typographic helpers ---- */
+  .cap-display {
+    font-family: var(--font-instrument-serif), "Times New Roman", serif;
+    font-size: 3rem;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-weight: 400;
   }
-  .dark .glass {
-    @apply bg-gray-900/80 backdrop-blur-md;
+
+  .cap-h1 {
+    font-family: var(--font-instrument-serif), "Times New Roman", serif;
+    font-size: 2.375rem;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    font-weight: 400;
+  }
+
+  .cap-h2 {
+    font-family: var(--font-instrument-serif), "Times New Roman", serif;
+    font-size: 1.75rem;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+  }
+
+  .cap-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: hsl(var(--text-tertiary));
+  }
+
+  .cap-mono {
+    font-family: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cap-kpi-number {
+    font-size: 2rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  /* ---- Clinical placeholder pattern ---- */
+  .cap-placeholder-pattern {
+    background-color: hsl(var(--brand-primary-softer));
+    background-image: repeating-linear-gradient(
+      135deg,
+      transparent 0 12px,
+      hsl(var(--brand-primary) / 0.06) 12px 13px
+    );
   }
 }

@@ -42,6 +42,7 @@ model User {
   procedureReportDoctors     ProcedureReportDoctor[]
   auditLogs                  AuditLog[]
   remindersCreated           Reminder[]             @relation("ReminderCreatedBy")
+  googleToken                GoogleToken?
 
   @@index([email])
   @@index([isActive])
@@ -774,4 +775,22 @@ model IntegrationSyncLog {
   @@index([status])
   @@index([createdAt])
   @@map("integration_sync_log")
+}
+
+// ============================================================
+// GOOGLE CALENDAR TOKENS
+// ============================================================
+
+model GoogleToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @unique @map("user_id") @db.Uuid
+  accessToken  String    @map("access_token") @db.Text
+  refreshToken String?   @map("refresh_token") @db.Text
+  expiresAt    DateTime? @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("google_tokens")
 }

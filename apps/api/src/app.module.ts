@@ -5,6 +5,7 @@ import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import storageConfig from './config/storage.config';
+import googleConfig from './config/google.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -25,12 +26,13 @@ import { RemindersModule } from './modules/reminders/reminders.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ImagesModule } from './modules/images/images.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, storageConfig],
+      load: [appConfig, databaseConfig, jwtConfig, storageConfig, googleConfig],
     }),
     PrismaModule,
     AuthModule,
@@ -50,6 +52,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
     NotificationsModule,
     ImagesModule,
     CatalogModule,
+    GoogleCalendarModule,
   ],
   providers: [
     // Global JWT guard - all routes protected by default, use @Public() to opt out
