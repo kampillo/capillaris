@@ -39,6 +39,6 @@ export class UpdateMicropigmentationDto {
   @ApiPropertyOptional({ description: 'Array of hair type UUIDs' })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   hairTypeIds?: string[];
 }

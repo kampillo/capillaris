@@ -18,8 +18,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { usePatient } from '@/hooks/use-patients';
+import { useConsultationsByPatient } from '@/hooks/use-clinical';
 import { Avatar } from '@/components/clinic/avatar';
 import { ScalpMap } from '@/components/clinic/scalp-map';
+import { variantsToSeverity } from '@/components/clinic/scalp-zones';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -103,6 +105,7 @@ export default function PatientDetailPage({
 }) {
   const router = useRouter();
   const { data: patient, isLoading, error } = usePatient(params.id);
+  const { data: consultations } = useConsultationsByPatient(params.id);
 
   if (isLoading) {
     return (
@@ -143,6 +146,15 @@ export default function PatientDetailPage({
     { label: 'Procedimientos', value: patient.procedureReports?.length ?? 0 },
     { label: 'Prescripciones', value: patient.prescriptions?.length ?? 0 },
   ];
+
+  // Mapa capilar — derivado de la última consulta (si existe)
+  const latestConsultation = consultations?.[0];
+  const donorZoneNames =
+    latestConsultation?.donorZones?.map((dz) => dz.donorZone.name) ?? [];
+  const variantNames =
+    latestConsultation?.variants?.map((v) => v.variant.name) ?? [];
+  const severity = variantsToSeverity(variantNames);
+  const hasClinicalData = donorZoneNames.length > 0 || severity > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -319,16 +331,63 @@ export default function PatientDetailPage({
           <section className="rounded-xl border border-border bg-surface p-5 shadow-xs">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Mapa capilar</h3>
-              <span className="cap-eyebrow">Evaluación</span>
+              {latestConsultation && (
+                <span className="cap-eyebrow">
+                  {format(
+                    new Date(latestConsultation.consultationDate),
+                    'dd MMM yy',
+                    { locale: es },
+                  )}
+                </span>
+              )}
             </div>
             <div className="flex items-center justify-center py-2">
-              <div className="w-full max-w-[200px]">
-                <ScalpMap severity={0} />
+              <div className="w-full max-w-[220px]">
+                <ScalpMap
+                  severity={severity}
+                  highlightedZoneNames={donorZoneNames}
+                />
               </div>
             </div>
-            <p className="mt-1 text-center text-[11px] text-text-tertiary">
-              Sin grado registrado · pendiente de consulta
-            </p>
+            {hasClinicalData ? (
+              <div className="mt-3 space-y-2.5 border-t border-border pt-3">
+                {donorZoneNames.length > 0 && (
+                  <div>
+                    <div className="cap-eyebrow mb-1.5">Zonas donantes</div>
+                    <div className="flex flex-wrap gap-1">
+                      {donorZoneNames.map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center gap-1 rounded-full border border-brand/25 bg-brand-soft px-2 py-0.5 text-[10px] font-medium text-brand-dark"
+                        >
+                          <span className="h-1 w-1 rounded-full bg-brand" />
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {variantNames.length > 0 && (
+                  <div>
+                    <div className="cap-eyebrow mb-1.5">Variantes</div>
+                    <div className="flex flex-wrap gap-1">
+                      {variantNames.map((name) => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center rounded-full border border-lilac/25 bg-lilac-soft px-2 py-0.5 text-[10px] font-medium text-lilac"
+                        >
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="mt-1 text-center text-[11px] text-text-tertiary">
+                Sin consultas registradas
+              </p>
+            )}
           </section>
           <SidebarCard
             icon={Calendar}

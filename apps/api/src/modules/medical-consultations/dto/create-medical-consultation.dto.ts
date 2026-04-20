@@ -78,12 +78,12 @@ export class CreateMedicalConsultationDto {
   @ApiPropertyOptional({ description: 'Array of donor zone UUIDs' })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   donorZoneIds?: string[];
 
   @ApiPropertyOptional({ description: 'Array of variant UUIDs' })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   variantIds?: string[];
 }

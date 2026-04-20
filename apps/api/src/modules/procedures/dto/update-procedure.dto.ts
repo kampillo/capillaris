@@ -115,12 +115,12 @@ export class UpdateProcedureDto {
   @ApiPropertyOptional({ description: 'Array of doctor UUIDs' })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   doctorIds?: string[];
 
   @ApiPropertyOptional({ description: 'Array of hair type UUIDs' })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsUUID(undefined, { each: true })
   hairTypeIds?: string[];
 }
