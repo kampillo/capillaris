@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Search,
   Plus,
@@ -98,10 +98,17 @@ function fmtDateShort(iso?: string) {
 
 export default function PatientsPage() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get('query') ?? '';
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Patient | null>(null);
+
+  useEffect(() => {
+    setSearchQuery(urlQuery);
+    setPage(1);
+  }, [urlQuery]);
 
   const { data, isLoading, error } = usePatients({
     query: searchQuery || undefined,
