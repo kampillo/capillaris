@@ -25,6 +25,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScalpZonePicker } from '@/components/clinic/scalp-zone-picker';
+import { ScalpMap } from '@/components/clinic/scalp-map';
+import { variantsToSeverity } from '@/components/clinic/scalp-zones';
 import {
   useConsultationsByPatient,
   useCreateConsultation,
@@ -66,6 +68,25 @@ const VALORACION_LABELS: Record<string, string> = {
   [DonorZoneAssessment.AMPLIA]: 'Amplia',
 };
 
+const DIAGNOSTICO_TEMPLATES = [
+  'Alopecia androgénica grado II',
+  'Alopecia androgénica grado III',
+  'Alopecia androgénica grado IV',
+  'Alopecia areata',
+  'Alopecia difusa',
+  'Efluvio telógeno',
+  'Sin alopecia aparente',
+];
+
+const ESTRATEGIA_TEMPLATES = [
+  'Se sugiere FUE con 2000–2500 folículos',
+  'Se sugiere FUE con 2500–3000 folículos',
+  'Se sugiere FUE con 3000–3500 folículos',
+  'Requiere segunda sesión para densidad',
+  'Candidato a PRP + medicación',
+  'No candidato quirúrgico',
+];
+
 function SectionHeader({
   icon: Icon,
   title,
@@ -92,11 +113,19 @@ function ChoicePill({
   active,
   onClick,
   children,
+  tone = 'brand',
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  tone?: 'brand' | 'lilac' | 'amber';
 }) {
+  const activeClasses =
+    tone === 'lilac'
+      ? 'border-lilac bg-lilac-soft text-lilac'
+      : tone === 'amber'
+        ? 'border-amber bg-amber-soft text-amber'
+        : 'border-brand bg-brand-soft text-brand-dark';
   return (
     <button
       type="button"
@@ -105,7 +134,7 @@ function ChoicePill({
       className={cn(
         'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
         active
-          ? 'border-brand bg-brand-soft text-brand-dark'
+          ? activeClasses
           : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
       )}
     >
@@ -113,6 +142,31 @@ function ChoicePill({
     </button>
   );
 }
+
+function TemplateChip({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] text-text-secondary transition-colors hover:bg-surface-3 hover:text-foreground"
+    >
+      {children}
+    </button>
+  );
+}
+
+function appendTemplate(current: string, template: string) {
+  if (!current.trim()) return template;
+  return current + '\n' + template;
+}
+
+// ── Consultation card (read-only) ──────────────────────────
 
 function ConsultationCard({
   consultation,
@@ -133,7 +187,7 @@ function ConsultationCard({
       v: TEXTURA_LABELS[consultation.textura] || consultation.textura,
     },
     consultation.valoracionZonaDonante && {
-      k: 'Zona donante',
+      k: 'Valoración donante',
       v:
         VALORACION_LABELS[consultation.valoracionZonaDonante] ||
         consultation.valoracionZonaDonante,
@@ -147,6 +201,13 @@ function ConsultationCard({
       v: consultation.grasa ? 'Sí' : 'No',
     },
   ].filter(Boolean) as Array<{ k: string; v: string }>;
+
+  const donorZoneNames =
+    consultation.donorZones?.map((dz) => dz.donorZone.name) ?? [];
+  const variantNames =
+    consultation.variants?.map((v) => v.variant.name) ?? [];
+  const severity = variantsToSeverity(variantNames);
+  const hasMapData = donorZoneNames.length > 0 || severity > 0;
 
   return (
     <article className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs">
@@ -169,49 +230,66 @@ function ConsultationCard({
       </div>
 
       <div className="flex flex-col gap-5 p-6">
-        {stats.length > 0 && (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-md border border-border bg-surface-2 p-4 md:grid-cols-3 lg:grid-cols-6">
-            {stats.map((s, i) => (
-              <div key={i}>
-                <div className="cap-eyebrow mb-1">{s.k}</div>
-                <div className="text-sm font-medium capitalize">{s.v}</div>
+        {/* Visual summary: mini scalp map + stats */}
+        <div className="grid gap-5 md:grid-cols-[140px_1fr]">
+          {hasMapData ? (
+            <div className="flex justify-center md:justify-start">
+              <ScalpMap
+                severity={severity}
+                highlightedZoneNames={donorZoneNames}
+                className="max-w-[140px]"
+              />
+            </div>
+          ) : (
+            <div />
+          )}
+          <div className="flex flex-col gap-3">
+            {stats.length > 0 && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-md border border-border bg-surface-2 p-4 md:grid-cols-3">
+                {stats.map((s, i) => (
+                  <div key={i}>
+                    <div className="cap-eyebrow mb-1">{s.k}</div>
+                    <div className="text-sm font-medium">{s.v}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {consultation.donorZones && consultation.donorZones.length > 0 && (
-          <div>
-            <div className="cap-eyebrow mb-2">Zonas donantes</div>
-            <div className="flex flex-wrap gap-1.5">
-              {consultation.donorZones.map((dz) => (
-                <span
-                  key={dz.donorZone.id || dz.donorZone.name}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-brand/25 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand-dark"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                  {dz.donorZone.name}
-                </span>
-              ))}
+            <div className="flex flex-col gap-2">
+              {donorZoneNames.length > 0 && (
+                <div>
+                  <div className="cap-eyebrow mb-1.5">Zonas donantes</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {donorZoneNames.map((name) => (
+                      <span
+                        key={name}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-brand/25 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand-dark"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {variantNames.length > 0 && (
+                <div>
+                  <div className="cap-eyebrow mb-1.5">Variantes</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {variantNames.map((name) => (
+                      <span
+                        key={name}
+                        className="inline-flex items-center rounded-full border border-lilac/25 bg-lilac-soft px-2 py-0.5 text-[11px] font-medium text-lilac"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        )}
-
-        {consultation.variants && consultation.variants.length > 0 && (
-          <div>
-            <div className="cap-eyebrow mb-2">Variantes</div>
-            <div className="flex flex-wrap gap-1.5">
-              {consultation.variants.map((v) => (
-                <span
-                  key={v.variant.id || v.variant.name}
-                  className="inline-flex items-center rounded-full border border-lilac/25 bg-lilac-soft px-2 py-0.5 text-[11px] font-medium text-lilac"
-                >
-                  {v.variant.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        </div>
 
         {consultation.diagnostico && (
           <div className="border-t border-border pt-4">
@@ -255,6 +333,8 @@ function ConsultationCard({
   );
 }
 
+// ── Form ───────────────────────────────────────────────────
+
 function ConsultationForm({
   patientId,
   onSuccess,
@@ -275,8 +355,8 @@ function ConsultationForm({
     grosor: '',
     color: '',
     textura: '',
-    caspa: false,
-    grasa: false,
+    caspa: undefined as boolean | undefined,
+    grasa: undefined as boolean | undefined,
     valoracionZonaDonante: '',
     diagnostico: '',
     estrategiaQuirurgica: '',
@@ -286,8 +366,10 @@ function ConsultationForm({
     variantIds: [] as string[],
   });
 
-  const set = (key: string, value: any) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const set = <K extends keyof typeof form>(
+    key: K,
+    value: (typeof form)[K],
+  ) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const toggleArray = (key: 'donorZoneIds' | 'variantIds', id: string) => {
     setForm((prev) => ({
@@ -295,6 +377,13 @@ function ConsultationForm({
       [key]: prev[key].includes(id)
         ? prev[key].filter((v) => v !== id)
         : [...prev[key], id],
+    }));
+  };
+
+  const toggleBool = (key: 'caspa' | 'grasa', value: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: prev[key] === value ? undefined : value,
     }));
   };
 
@@ -319,6 +408,10 @@ function ConsultationForm({
       variantIds: form.variantIds.length > 0 ? form.variantIds : undefined,
     };
 
+    Object.keys(payload).forEach((k) => {
+      if (payload[k] === undefined) delete payload[k];
+    });
+
     try {
       await createMutation.mutateAsync(payload);
       onSuccess();
@@ -329,147 +422,135 @@ function ConsultationForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {/* Doctor + date */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
-        <SectionHeader icon={Stethoscope} title="Datos de la consulta" required />
-        <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>
-              Doctor <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={form.doctorId}
-              onValueChange={(v) => set('doctorId', v)}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="Seleccionar doctor..." />
-              </SelectTrigger>
-              <SelectContent>
-                {doctors.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    Dr. {d.nombre} {d.apellido}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>
-              Fecha de consulta <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              type="date"
-              value={form.consultationDate}
-              onChange={(e) => set('consultationDate', e.target.value)}
-              className="h-11"
-            />
-          </div>
+      {/* Compact header strip: doctor + fecha */}
+      <section className="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-surface px-5 py-4 shadow-xs">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
+          <Stethoscope className="h-4 w-4" />
+        </div>
+        <div className="min-w-[180px] flex-1 space-y-1">
+          <Label className="text-[11px] text-text-secondary">
+            Doctor <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={form.doctorId}
+            onValueChange={(v) => set('doctorId', v)}
+          >
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Seleccionar doctor..." />
+            </SelectTrigger>
+            <SelectContent>
+              {doctors.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  Dr. {d.nombre} {d.apellido}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="min-w-[160px] space-y-1">
+          <Label className="text-[11px] text-text-secondary">
+            Fecha <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            type="date"
+            value={form.consultationDate}
+            onChange={(e) => set('consultationDate', e.target.value)}
+            className="h-10"
+          />
         </div>
       </section>
 
-      {/* Scalp evaluation */}
+      {/* Evaluación capilar */}
       <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
         <SectionHeader icon={Eye} title="Evaluación capilar" />
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <div className="space-y-2.5">
-            <div>
-              <Label className="cap-eyebrow mb-2 block">Grosor</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(GROSOR_LABELS).map(([v, l]) => (
-                  <ChoicePill
-                    key={v}
-                    active={form.grosor === v}
-                    onClick={() =>
-                      set('grosor', form.grosor === v ? '' : v)
-                    }
-                  >
-                    {l}
-                  </ChoicePill>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="cap-eyebrow mb-2 block">Color</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(COLOR_LABELS).map(([v, l]) => (
-                  <ChoicePill
-                    key={v}
-                    active={form.color === v}
-                    onClick={() => set('color', form.color === v ? '' : v)}
-                  >
-                    {l}
-                  </ChoicePill>
-                ))}
-              </div>
+        <div className="grid gap-4">
+          <div>
+            <Label className="cap-eyebrow mb-2 block">Grosor</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(GROSOR_LABELS).map(([v, l]) => (
+                <ChoicePill
+                  key={v}
+                  active={form.grosor === v}
+                  onClick={() => set('grosor', form.grosor === v ? '' : v)}
+                >
+                  {l}
+                </ChoicePill>
+              ))}
             </div>
           </div>
-          <div className="space-y-2.5">
-            <div>
-              <Label className="cap-eyebrow mb-2 block">Textura</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(TEXTURA_LABELS).map(([v, l]) => (
-                  <ChoicePill
-                    key={v}
-                    active={form.textura === v}
-                    onClick={() =>
-                      set('textura', form.textura === v ? '' : v)
-                    }
-                  >
-                    {l}
-                  </ChoicePill>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="cap-eyebrow mb-2 block">
-                Valoración zona donante
-              </Label>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(VALORACION_LABELS).map(([v, l]) => (
-                  <ChoicePill
-                    key={v}
-                    active={form.valoracionZonaDonante === v}
-                    onClick={() =>
-                      set(
-                        'valoracionZonaDonante',
-                        form.valoracionZonaDonante === v ? '' : v,
-                      )
-                    }
-                  >
-                    {l}
-                  </ChoicePill>
-                ))}
-              </div>
+          <div>
+            <Label className="cap-eyebrow mb-2 block">Color</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(COLOR_LABELS).map(([v, l]) => (
+                <ChoicePill
+                  key={v}
+                  active={form.color === v}
+                  onClick={() => set('color', form.color === v ? '' : v)}
+                >
+                  {l}
+                </ChoicePill>
+              ))}
             </div>
           </div>
-        </div>
+          <div>
+            <Label className="cap-eyebrow mb-2 block">Textura</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(TEXTURA_LABELS).map(([v, l]) => (
+                <ChoicePill
+                  key={v}
+                  active={form.textura === v}
+                  onClick={() => set('textura', form.textura === v ? '' : v)}
+                >
+                  {l}
+                </ChoicePill>
+              ))}
+            </div>
+          </div>
 
-        <div className="mt-5 flex gap-5 border-t border-border pt-4">
-          <label className="flex cursor-pointer select-none items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.caspa}
-              onChange={(e) => set('caspa', e.target.checked)}
-              className="h-4 w-4 rounded border-input accent-brand"
-            />
-            Presenta caspa
-          </label>
-          <label className="flex cursor-pointer select-none items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.grasa}
-              onChange={(e) => set('grasa', e.target.checked)}
-              className="h-4 w-4 rounded border-input accent-brand"
-            />
-            Presenta grasa
-          </label>
+          {/* Condiciones: caspa + grasa as Sí/No */}
+          <div className="grid grid-cols-1 gap-4 border-t border-border pt-4 sm:grid-cols-2">
+            <div>
+              <Label className="cap-eyebrow mb-2 block">Caspa</Label>
+              <div className="flex gap-1.5">
+                <ChoicePill
+                  active={form.caspa === true}
+                  onClick={() => toggleBool('caspa', true)}
+                >
+                  Sí
+                </ChoicePill>
+                <ChoicePill
+                  active={form.caspa === false}
+                  onClick={() => toggleBool('caspa', false)}
+                >
+                  No
+                </ChoicePill>
+              </div>
+            </div>
+            <div>
+              <Label className="cap-eyebrow mb-2 block">Grasa</Label>
+              <div className="flex gap-1.5">
+                <ChoicePill
+                  active={form.grasa === true}
+                  onClick={() => toggleBool('grasa', true)}
+                >
+                  Sí
+                </ChoicePill>
+                <ChoicePill
+                  active={form.grasa === false}
+                  onClick={() => toggleBool('grasa', false)}
+                >
+                  No
+                </ChoicePill>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Donor zones — interactive scalp map */}
+      {/* Zonas donantes (+ valoración integrada) */}
       <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
         <SectionHeader icon={Scissors} title="Zonas donantes" />
-        <p className="mb-4 -mt-2 text-xs text-text-tertiary">
+        <p className="-mt-2 mb-4 text-xs text-text-tertiary">
           Haz clic en el mapa para marcar las zonas del cuero cabelludo con
           disponibilidad de folículos para extracción.
         </p>
@@ -478,39 +559,55 @@ function ConsultationForm({
           value={form.donorZoneIds}
           onChange={(ids) => set('donorZoneIds', ids)}
         />
-      </section>
-
-      {/* Variants */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
-        <SectionHeader icon={Eye} title="Variantes (Norwood / Ludwig)" />
-        <div className="flex flex-wrap gap-1.5">
-          {variants.map((v) => {
-            const active = form.variantIds.includes(v.id);
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => toggleArray('variantIds', v.id)}
-                aria-pressed={active}
-                className={cn(
-                  'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                  active
-                    ? 'border-lilac bg-lilac-soft text-lilac'
-                    : 'border-border bg-surface text-text-secondary hover:bg-surface-2 hover:text-foreground',
-                )}
+        <div className="mt-5 border-t border-border pt-4">
+          <Label className="cap-eyebrow mb-2 block">
+            Valoración de la zona donante
+          </Label>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(VALORACION_LABELS).map(([v, l]) => (
+              <ChoicePill
+                key={v}
+                active={form.valoracionZonaDonante === v}
+                onClick={() =>
+                  set(
+                    'valoracionZonaDonante',
+                    form.valoracionZonaDonante === v ? '' : v,
+                  )
+                }
               >
-                {v.name}
-              </button>
-            );
-          })}
+                {l}
+              </ChoicePill>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Diagnosis & strategy */}
+      {/* Diagnóstico y estrategia (incluye variantes) */}
       <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
         <SectionHeader icon={MessageSquare} title="Diagnóstico y estrategia" />
-        <div className="grid gap-4">
-          <div className="space-y-1.5">
+        <div className="grid gap-5">
+          <div>
+            <Label className="cap-eyebrow mb-2 block">
+              Variantes (Norwood / Ludwig)
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {variants.map((v) => {
+                const active = form.variantIds.includes(v.id);
+                return (
+                  <ChoicePill
+                    key={v.id}
+                    tone="lilac"
+                    active={active}
+                    onClick={() => toggleArray('variantIds', v.id)}
+                  >
+                    {v.name}
+                  </ChoicePill>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label>Diagnóstico</Label>
             <Textarea
               value={form.diagnostico}
@@ -519,8 +616,21 @@ function ConsultationForm({
               placeholder="Diagnóstico del paciente..."
               className="resize-none"
             />
+            <div className="flex flex-wrap gap-1.5">
+              {DIAGNOSTICO_TEMPLATES.map((t) => (
+                <TemplateChip
+                  key={t}
+                  onClick={() =>
+                    set('diagnostico', appendTemplate(form.diagnostico, t))
+                  }
+                >
+                  {t}
+                </TemplateChip>
+              ))}
+            </div>
           </div>
-          <div className="space-y-1.5">
+
+          <div className="space-y-2">
             <Label>Estrategia quirúrgica</Label>
             <Textarea
               value={form.estrategiaQuirurgica}
@@ -529,8 +639,24 @@ function ConsultationForm({
               placeholder="Plan quirúrgico propuesto..."
               className="resize-none"
             />
+            <div className="flex flex-wrap gap-1.5">
+              {ESTRATEGIA_TEMPLATES.map((t) => (
+                <TemplateChip
+                  key={t}
+                  onClick={() =>
+                    set(
+                      'estrategiaQuirurgica',
+                      appendTemplate(form.estrategiaQuirurgica, t),
+                    )
+                  }
+                >
+                  {t}
+                </TemplateChip>
+              ))}
+            </div>
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Fecha sugerida de trasplante</Label>
               <Input
@@ -543,6 +669,7 @@ function ConsultationForm({
               />
             </div>
           </div>
+
           <div className="space-y-1.5">
             <Label>Comentarios</Label>
             <Textarea
@@ -642,7 +769,11 @@ export default function PatientConsultationsPage({
           <p className="text-sm text-text-secondary">
             No hay consultas registradas
           </p>
-          <Button size="sm" className="mt-2 gap-1.5" onClick={() => setShowForm(true)}>
+          <Button
+            size="sm"
+            className="mt-2 gap-1.5"
+            onClick={() => setShowForm(true)}
+          >
             <Plus className="h-3.5 w-3.5" /> Crear consulta
           </Button>
         </div>

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, AlertCircle } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { PatientForm } from '@/components/patients/patient-form';
 import type { PatientFormValues } from '@/components/patients/patient-form';
 import { useCreatePatient } from '@/hooks/use-patients';
@@ -49,15 +49,6 @@ export default function NewPatientPage() {
         </p>
       </div>
 
-      {/* Consent callout */}
-      <div className="flex items-start gap-2.5 rounded-md bg-brand-softer p-3 text-xs text-brand-darker">
-        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>
-          Al crear el paciente se solicitarán los consentimientos (datos
-          personales, marketing, imágenes clínicas).
-        </span>
-      </div>
-
       {createMutation.isError && (
         <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
           {createMutation.error?.message || 'Error al crear el paciente'}
@@ -66,6 +57,7 @@ export default function NewPatientPage() {
 
       <PatientForm
         onSubmit={handleSubmit}
+        onCancel={() => router.push('/dashboard/patients')}
         isLoading={createMutation.isPending}
         submitLabel="Crear paciente"
       />
