@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, UserCheck, UserX, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,11 +27,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   useUsers,
   useCreateUser,
+  useUpdateUser,
   useDeleteUser,
   type User,
 } from '@/hooks/use-users';
+import { useRoles } from '@/hooks/use-roles';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-MX', {
@@ -44,6 +53,7 @@ function formatDate(iso: string) {
 export default function UsersManagementPage() {
   const [showNew, setShowNew] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [editTarget, setEditTarget] = useState<User | null>(null);
 
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -51,16 +61,53 @@ export default function UsersManagementPage() {
   const [password, setPassword] = useState('');
   const [celular, setCelular] = useState('');
   const [cedula, setCedula] = useState('');
+  const [roleId, setRoleId] = useState('');
   const [formError, setFormError] = useState('');
 
+  const [editNombre, setEditNombre] = useState('');
+  const [editApellido, setEditApellido] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editCelular, setEditCelular] = useState('');
+  const [editCedula, setEditCedula] = useState('');
+  const [editRoleId, setEditRoleId] = useState('');
+  const [editError, setEditError] = useState('');
+
   const { data: users, isLoading, error } = useUsers();
+  const { data: roles } = useRoles();
   const createMutation = useCreateUser();
+  const updateMutation = useUpdateUser();
   const deleteMutation = useDeleteUser();
+
+  useEffect(() => {
+    if (!editTarget) return;
+    setEditNombre(editTarget.nombre);
+    setEditApellido(editTarget.apellido);
+    setEditEmail(editTarget.email);
+    setEditCelular(editTarget.celular ?? '');
+    setEditCedula(editTarget.cedulaProfesional ?? '');
+    setEditRoleId(editTarget.roles[0]?.id ?? '');
+    setEditError('');
+  }, [editTarget]);
+
+  const resetForm = () => {
+    setNombre('');
+    setApellido('');
+    setEmail('');
+    setPassword('');
+    setCelular('');
+    setCedula('');
+    setRoleId('');
+    setFormError('');
+  };
 
   const handleCreate = async () => {
     setFormError('');
     if (!nombre.trim() || !apellido.trim() || !email.trim() || !password) {
       setFormError('Nombre, apellido, email y contraseña son requeridos');
+      return;
+    }
+    if (!roleId) {
+      setFormError('Debes seleccionar un rol');
       return;
     }
     try {
@@ -71,16 +118,41 @@ export default function UsersManagementPage() {
         password,
         celular: celular.trim() || undefined,
         cedulaProfesional: cedula.trim() || undefined,
+        roleId,
       });
       setShowNew(false);
-      setNombre('');
-      setApellido('');
-      setEmail('');
-      setPassword('');
-      setCelular('');
-      setCedula('');
+      resetForm();
     } catch (err: any) {
       setFormError(err?.message || 'Error al crear usuario');
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTarget) return;
+    setEditError('');
+    if (!editNombre.trim() || !editApellido.trim() || !editEmail.trim()) {
+      setEditError('Nombre, apellido y email son requeridos');
+      return;
+    }
+    if (!editRoleId) {
+      setEditError('Debes seleccionar un rol');
+      return;
+    }
+    try {
+      await updateMutation.mutateAsync({
+        id: editTarget.id,
+        data: {
+          nombre: editNombre.trim(),
+          apellido: editApellido.trim(),
+          email: editEmail.trim(),
+          celular: editCelular.trim() || undefined,
+          cedulaProfesional: editCedula.trim() || undefined,
+          roleId: editRoleId,
+        },
+      });
+      setEditTarget(null);
+    } catch (err: any) {
+      setEditError(err?.message || 'Error al actualizar usuario');
     }
   };
 
@@ -127,7 +199,7 @@ export default function UsersManagementPage() {
                   <TableHead className="text-xs font-semibold uppercase tracking-wider">Nombre</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider">Email</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider">Cédula</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Roles</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Rol</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider">Estado</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider">Creado</TableHead>
                   <TableHead className="text-right text-xs font-semibold uppercase tracking-wider">Acciones</TableHead>
@@ -144,13 +216,13 @@ export default function UsersManagementPage() {
                       {user.cedulaProfesional || '—'}
                     </TableCell>
                     <TableCell>
-                      {user.roles?.length
-                        ? user.roles.map((r) => (
-                            <Badge key={r.role.id} variant="secondary" className="mr-1 text-[10px]">
-                              {r.role.name}
-                            </Badge>
-                          ))
-                        : <span className="text-xs text-muted-foreground">—</span>}
+                      {user.roles.length > 0 ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {user.roles[0].displayName}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {user.isActive ? (
@@ -170,6 +242,14 @@ export default function UsersManagementPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => setEditTarget(user)}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="h-8 text-xs text-destructive hover:text-destructive"
                         onClick={() => setDeleteTarget(user)}
                       >
@@ -185,7 +265,13 @@ export default function UsersManagementPage() {
       </Card>
 
       {/* New User Dialog */}
-      <Dialog open={showNew} onOpenChange={setShowNew}>
+      <Dialog
+        open={showNew}
+        onOpenChange={(open) => {
+          setShowNew(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Nuevo Usuario</DialogTitle>
@@ -214,6 +300,21 @@ export default function UsersManagementPage() {
               <Label>Contraseña <span className="text-destructive">*</span></Label>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className="h-11" />
             </div>
+            <div className="space-y-1.5">
+              <Label>Rol <span className="text-destructive">*</span></Label>
+              <Select value={roleId} onValueChange={setRoleId}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Selecciona un rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles?.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Celular</Label>
@@ -229,6 +330,70 @@ export default function UsersManagementPage() {
             <Button variant="outline" onClick={() => setShowNew(false)}>Cancelar</Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creando...' : 'Crear Usuario'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogDescription>
+              {editTarget?.nombre} {editTarget?.apellido}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {editError && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                {editError}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Nombre <span className="text-destructive">*</span></Label>
+                <Input value={editNombre} onChange={(e) => setEditNombre(e.target.value)} className="h-11" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Apellido <span className="text-destructive">*</span></Label>
+                <Input value={editApellido} onChange={(e) => setEditApellido(e.target.value)} className="h-11" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email <span className="text-destructive">*</span></Label>
+              <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="h-11" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Rol <span className="text-destructive">*</span></Label>
+              <Select value={editRoleId} onValueChange={setEditRoleId}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Selecciona un rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles?.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Celular</Label>
+                <Input value={editCelular} onChange={(e) => setEditCelular(e.target.value)} placeholder="+52 55 1234 5678" className="h-11" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cédula profesional</Label>
+                <Input value={editCedula} onChange={(e) => setEditCedula(e.target.value)} className="h-11" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setEditTarget(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogFooter>
         </DialogContent>

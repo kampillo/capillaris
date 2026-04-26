@@ -11,6 +11,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { RolesModule } from './modules/roles/roles.module';
 import { PatientsModule } from './modules/patients/patients.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
@@ -37,6 +38,7 @@ import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.
     PrismaModule,
     AuthModule,
     UsersModule,
+    RolesModule,
     PatientsModule,
     AppointmentsModule,
     PrescriptionsModule,

@@ -6,6 +6,7 @@ import {
   MinLength,
   IsBoolean,
   IsDateString,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -49,4 +50,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ example: 'a1b2c3d4-...', description: 'UUID del rol a asignar' })
+  @IsOptional()
+  @IsUUID()
+  roleId?: string;
 }

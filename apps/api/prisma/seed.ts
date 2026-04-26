@@ -131,61 +131,6 @@ async function main() {
 
   console.log(`Created admin user: admin@capillaris.com / admin123`);
 
-  // 7b. Create a doctor user
-  const doctorPasswordHash = await bcrypt.hash('doctor123', 10);
-  const doctorUser = await prisma.user.upsert({
-    where: { email: 'doctor@capillaris.com' },
-    update: {},
-    create: {
-      nombre: 'Carlos',
-      apellido: 'Mendoza',
-      email: 'doctor@capillaris.com',
-      passwordHash: doctorPasswordHash,
-      isActive: true,
-    },
-  });
-
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: doctorUser.id, roleId: doctorRole.id } },
-    update: {},
-    create: { userId: doctorUser.id, roleId: doctorRole.id },
-  });
-
-  console.log(`Created doctor user: doctor@capillaris.com / doctor123`);
-
-  // 8. Seed catalog data - Donor Zones
-  const donorZones = ['Occipital', 'Parietal Derecho', 'Parietal Izquierdo', 'Temporal Derecho', 'Temporal Izquierdo'];
-  for (const name of donorZones) {
-    await prisma.donorZone.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
-  console.log(`Created ${donorZones.length} donor zones`);
-
-  // 9. Seed catalog data - Variants
-  const variants = ['Androgenética', 'Areata', 'Cicatricial', 'Difusa', 'Frontal', 'Universal', 'Otra'];
-  for (const name of variants) {
-    await prisma.variant.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
-  console.log(`Created ${variants.length} variants`);
-
-  // 10. Seed catalog data - Hair Types
-  const hairTypes = ['Liso', 'Ondulado', 'Rizado', 'Crespo', 'Afro'];
-  for (const name of hairTypes) {
-    await prisma.hairType.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
-  console.log(`Created ${hairTypes.length} hair types`);
-
   console.log('Seed completed successfully!');
 }
 
