@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Search, Bell, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import {
   Card,
@@ -353,11 +354,10 @@ export default function RemindersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Fecha <span className="text-destructive">*</span></Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  className="h-11"
+                  onChange={setScheduledDate}
+                  fromDate={new Date()}
                 />
               </div>
               <div className="space-y-1.5">

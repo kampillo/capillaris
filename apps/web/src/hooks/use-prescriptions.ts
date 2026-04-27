@@ -4,6 +4,7 @@ import type { PaginatedResponse } from './use-patients';
 
 export interface PrescriptionItem {
   id: string;
+  productId?: string;
   medicineName: string;
   dosage?: string;
   frequency?: string;
@@ -12,6 +13,12 @@ export interface PrescriptionItem {
   instructions?: string;
   requiresRefill: boolean;
   dispensed: boolean;
+  product?: {
+    id: string;
+    name: string;
+    unit?: string;
+    content?: number;
+  };
 }
 
 export interface Prescription {
@@ -30,6 +37,7 @@ export interface Prescription {
 }
 
 export interface CreatePrescriptionItemData {
+  productId?: string;
   medicineName: string;
   dosage?: string;
   frequency?: string;

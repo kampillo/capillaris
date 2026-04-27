@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -538,11 +539,9 @@ function ProcedureForm({
             <Label>
               Fecha <span className="text-destructive">*</span>
             </Label>
-            <Input
-              type="date"
+            <DatePicker
               value={form.procedureDate}
-              onChange={(e) => set('procedureDate', e.target.value)}
-              className="h-11"
+              onChange={(v) => set('procedureDate', v)}
             />
           </div>
           <div className="space-y-1.5">

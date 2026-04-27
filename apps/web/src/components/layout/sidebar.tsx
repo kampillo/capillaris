@@ -7,7 +7,6 @@ import {
   Home,
   Users,
   Calendar,
-  Pill,
   Package,
   BarChart3,
   Bell,
@@ -40,7 +39,6 @@ const NAV: NavGroup[] = [
       { href: '/dashboard', label: 'Inicio', icon: Home },
       { href: '/dashboard/patients', label: 'Pacientes', icon: Users },
       { href: '/dashboard/appointments', label: 'Agenda', icon: Calendar },
-      { href: '/dashboard/prescriptions', label: 'Prescripciones', icon: Pill },
     ],
   },
   {
@@ -193,9 +191,6 @@ function SidebarSearch({ onNavigate }: { onNavigate?: () => void }) {
           placeholder="Buscar paciente…"
           className="flex-1 bg-transparent text-sm text-sidebar-fg outline-none placeholder:text-sidebar-fg-muted"
         />
-        <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-sidebar-fg-muted">
-          ⌘K
-        </span>
       </div>
     </form>
   );
@@ -226,7 +221,7 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
 // Desktop sidebar
 export function Sidebar() {
   return (
-    <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col lg:flex">
+    <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col lg:flex print:hidden">
       <SidebarContent />
     </aside>
   );

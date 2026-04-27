@@ -71,4 +71,15 @@ export class CreateProductDto {
   @IsInt()
   @Min(0)
   minStockAlert?: number;
+
+  @ApiPropertyOptional({ example: 10, description: 'Stock inicial; si > 0 genera un movimiento de entrada' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  initialStock?: number;
+
+  @ApiPropertyOptional({ example: 'compra', description: 'Razón del movimiento de stock inicial' })
+  @IsOptional()
+  @IsString()
+  initialStockReason?: string;
 }

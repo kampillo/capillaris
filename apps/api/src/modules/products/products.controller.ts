@@ -34,8 +34,14 @@ export class ProductsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all products (paginated)' })
-  findAll(@Query('page') page?: number, @Query('pageSize') pageSize?: number) {
-    return this.productsService.findAll(page, pageSize);
+  findAll(
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('isMedicine') isMedicine?: string,
+  ) {
+    const filter =
+      isMedicine === 'true' ? true : isMedicine === 'false' ? false : undefined;
+    return this.productsService.findAll(page, pageSize, filter);
   }
 
   @Get(':id')

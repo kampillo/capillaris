@@ -120,4 +120,28 @@ export class InventoryService {
       },
     };
   }
+
+  async getAllMovements(page = 1, pageSize = 20) {
+    const skip = (page - 1) * pageSize;
+
+    const [data, total] = await Promise.all([
+      this.prisma.stockMovement.findMany({
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: { product: true },
+      }),
+      this.prisma.stockMovement.count(),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    };
+  }
 }

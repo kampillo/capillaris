@@ -8,23 +8,50 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateProductDto, userId?: string) {
-    return this.prisma.product.create({
-      data: {
-        ...dto,
-        createdBy: userId,
-      } as any,
-      include: {
-        category: true,
-        stockBalance: true,
-      },
+    const { initialStock, initialStockReason, ...productData } = dto;
+
+    return this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          ...productData,
+          createdBy: userId,
+        } as any,
+      });
+
+      if (initialStock && initialStock > 0) {
+        await tx.stockMovement.create({
+          data: {
+            productId: product.id,
+            movementType: 'entrada',
+            reason: initialStockReason || 'compra',
+            quantity: initialStock,
+            notes: 'Stock inicial',
+            createdBy: userId,
+          },
+        });
+        await tx.stockBalance.create({
+          data: { productId: product.id, currentQuantity: initialStock },
+        });
+      } else {
+        await tx.stockBalance.create({
+          data: { productId: product.id, currentQuantity: 0 },
+        });
+      }
+
+      return tx.product.findUniqueOrThrow({
+        where: { id: product.id },
+        include: { category: true, stockBalance: true },
+      });
     });
   }
 
-  async findAll(page = 1, pageSize = 20) {
+  async findAll(page = 1, pageSize = 20, isMedicine?: boolean) {
     const skip = (page - 1) * pageSize;
+    const where = isMedicine !== undefined ? { isMedicine } : {};
 
     const [data, total] = await Promise.all([
       this.prisma.product.findMany({
+        where,
         skip,
         take: pageSize,
         orderBy: { name: 'asc' },
@@ -33,7 +60,7 @@ export class ProductsService {
           stockBalance: true,
         },
       }),
-      this.prisma.product.count(),
+      this.prisma.product.count({ where }),
     ]);
 
     return {

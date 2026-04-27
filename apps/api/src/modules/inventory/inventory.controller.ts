@@ -44,6 +44,15 @@ export class InventoryController {
     return this.inventoryService.createMovement(dto, userId);
   }
 
+  @Get('movements')
+  @ApiOperation({ summary: 'Get all stock movements (paginated)' })
+  getAllMovements(
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+  ) {
+    return this.inventoryService.getAllMovements(page, pageSize);
+  }
+
   @Get('movements/:productId')
   @ApiOperation({ summary: 'Get stock movements for a product' })
   getMovements(

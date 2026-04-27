@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -451,11 +452,11 @@ function ConsultationForm({
           <Label className="text-[11px] text-text-secondary">
             Fecha <span className="text-destructive">*</span>
           </Label>
-          <Input
-            type="date"
+          <DatePicker
             value={form.consultationDate}
-            onChange={(e) => set('consultationDate', e.target.value)}
+            onChange={(v) => set('consultationDate', v)}
             className="h-10"
+            toDate={new Date()}
           />
         </div>
       </section>
@@ -659,13 +660,10 @@ function ConsultationForm({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Fecha sugerida de trasplante</Label>
-              <Input
-                type="date"
+              <DatePicker
                 value={form.fechaSugeridaTransplante}
-                onChange={(e) =>
-                  set('fechaSugeridaTransplante', e.target.value)
-                }
-                className="h-11"
+                onChange={(v) => set('fechaSugeridaTransplante', v)}
+                fromDate={new Date()}
               />
             </div>
           </div>

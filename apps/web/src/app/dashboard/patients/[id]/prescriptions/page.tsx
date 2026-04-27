@@ -62,7 +62,7 @@ export default function PatientPrescriptionsPage({
           </div>
         </div>
         <Button className="h-10 font-medium shadow-sm" asChild>
-          <Link href="/dashboard/prescriptions/new">
+          <Link href={`/dashboard/patients/${params.id}/prescriptions/new`}>
             <Plus className="mr-2 h-4 w-4" />
             Nueva Prescripción
           </Link>
@@ -82,7 +82,9 @@ export default function PatientPrescriptionsPage({
               </div>
               <p className="text-sm text-muted-foreground">No hay prescripciones para este paciente</p>
               <Button className="h-10 font-medium mt-2" asChild>
-                <Link href="/dashboard/prescriptions/new">Crear prescripción</Link>
+                <Link href={`/dashboard/patients/${params.id}/prescriptions/new`}>
+                  Crear prescripción
+                </Link>
               </Button>
             </div>
           ) : (
@@ -94,6 +96,7 @@ export default function PatientPrescriptionsPage({
                   <TableHead className="text-xs font-semibold uppercase tracking-wider">Medicamentos</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider">Estado</TableHead>
                   <TableHead className="text-xs font-semibold uppercase tracking-wider">Notas</TableHead>
+                  <TableHead className="text-right text-xs font-semibold uppercase tracking-wider">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -129,6 +132,11 @@ export default function PatientPrescriptionsPage({
                       </TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">
                         {rx.notas || '—'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" className="h-8 text-xs" asChild>
+                          <Link href={`/dashboard/prescriptions/${rx.id}`}>Ver</Link>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );

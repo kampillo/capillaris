@@ -131,6 +131,39 @@ async function main() {
 
   console.log(`Created admin user: admin@capillaris.com / admin123`);
 
+  // 8. Seed catalog data - Donor Zones
+  const donorZones = ['Occipital', 'Parietal Derecho', 'Parietal Izquierdo', 'Temporal Derecho', 'Temporal Izquierdo'];
+  for (const name of donorZones) {
+    await prisma.donorZone.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+  console.log(`Created ${donorZones.length} donor zones`);
+
+  // 9. Seed catalog data - Variants
+  const variants = ['Androgenética', 'Areata', 'Cicatricial', 'Difusa', 'Frontal', 'Universal', 'Otra'];
+  for (const name of variants) {
+    await prisma.variant.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+  console.log(`Created ${variants.length} variants`);
+
+  // 10. Seed catalog data - Hair Types
+  const hairTypes = ['Liso', 'Ondulado', 'Rizado', 'Crespo', 'Afro'];
+  for (const name of hairTypes) {
+    await prisma.hairType.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+  console.log(`Created ${hairTypes.length} hair types`);
+
   console.log('Seed completed successfully!');
 }
 

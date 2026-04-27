@@ -11,7 +11,7 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('patients')
-  @ApiOperation({ summary: 'Get patients report' })
+  @ApiOperation({ summary: 'Patients report (KPIs + monthly series)' })
   getPatientsReport(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -20,7 +20,7 @@ export class ReportsController {
   }
 
   @Get('procedures')
-  @ApiOperation({ summary: 'Get procedures report' })
+  @ApiOperation({ summary: 'Procedures report (KPIs + by doctor)' })
   getProceduresReport(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -28,8 +28,53 @@ export class ReportsController {
     return this.reportsService.getProceduresReport(startDate, endDate);
   }
 
+  @Get('appointments')
+  @ApiOperation({ summary: 'Appointments report (status distribution + rates)' })
+  getAppointmentsReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.reportsService.getAppointmentsReport(startDate, endDate);
+  }
+
+  @Get('prescriptions')
+  @ApiOperation({ summary: 'Prescriptions report (issued + active)' })
+  getPrescriptionsReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.reportsService.getPrescriptionsReport(startDate, endDate);
+  }
+
+  @Get('inventory')
+  @ApiOperation({ summary: 'Inventory report (low stock + top moved)' })
+  getInventoryReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.reportsService.getInventoryReport(startDate, endDate);
+  }
+
+  @Get('sources')
+  @ApiOperation({ summary: 'Patient sources / channels (marketing)' })
+  getSourcesReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.reportsService.getSourcesReport(startDate, endDate);
+  }
+
+  @Get('clinical')
+  @ApiOperation({ summary: 'Clinical insights (variants + donor zones)' })
+  getClinicalReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.reportsService.getClinicalReport(startDate, endDate);
+  }
+
   @Get('sales')
-  @ApiOperation({ summary: 'Get sales report' })
+  @ApiOperation({ summary: 'Sales report (legacy)' })
   getSalesReport(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,

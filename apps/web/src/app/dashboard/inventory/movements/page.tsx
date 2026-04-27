@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowDownToLine, ArrowUpFromLine, Settings2, Package } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
+  ArrowLeft,
+  Package,
+  ArrowDown,
+  ArrowUp,
+  Sliders,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -21,7 +24,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -35,210 +37,229 @@ import {
 } from '@/components/ui/table';
 import {
   useProducts,
-  useCreateStockMovement,
+  useAllMovements,
+  type StockMovement,
 } from '@/hooks/use-inventory';
-import { useInventoryBalances } from '@/hooks/use-inventory';
+import { StockMovementForm } from '@/components/inventory/stock-movement-form';
+
+const REASON_LABELS: Record<string, string> = {
+  compra: 'Compra',
+  prescripcion: 'Prescripción',
+  procedimiento: 'Procedimiento',
+  ajuste_manual: 'Ajuste manual',
+  merma: 'Merma',
+  devolucion: 'Devolución',
+};
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('es-MX', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function MovementBadge({ m }: { m: StockMovement }) {
+  if (m.movementType === 'entrada') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+        <ArrowDown className="h-3 w-3" /> +{m.quantity}
+      </span>
+    );
+  }
+  if (m.movementType === 'salida') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">
+        <ArrowUp className="h-3 w-3" /> -{m.quantity}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-600">
+      <Sliders className="h-3 w-3" /> {m.quantity}
+    </span>
+  );
+}
 
 export default function StockMovementsPage() {
+  const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
-  const [productId, setProductId] = useState('');
-  const [movementType, setMovementType] = useState('entrada');
-  const [reason, setReason] = useState('compra');
-  const [quantity, setQuantity] = useState('');
-  const [notes, setNotes] = useState('');
-  const [error, setError] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
 
-  const { data: inventoryData, isLoading } = useInventoryBalances(1, 100);
-  const { data: productsData } = useProducts(1, 100);
-  const createMovement = useCreateStockMovement();
+  const { data: movementsData, isLoading } = useAllMovements(page, 30);
+  const { data: productsData } = useProducts(1, 200);
 
-  const balances = inventoryData?.data || [];
+  const movements = movementsData?.data || [];
+  const meta = movementsData?.meta;
   const products = productsData?.data || [];
-
-  const handleSubmit = async () => {
-    setError('');
-    if (!productId || !quantity) {
-      setError('Producto y cantidad son requeridos');
-      return;
-    }
-    try {
-      await createMovement.mutateAsync({
-        productId,
-        movementType,
-        reason,
-        quantity: parseInt(quantity),
-        notes: notes || undefined,
-      });
-      setShowNew(false);
-      setProductId('');
-      setQuantity('');
-      setNotes('');
-    } catch (err: any) {
-      setError(err?.message || 'Error al registrar movimiento');
-    }
-  };
+  const selectedProduct = products.find((p) => p.id === selectedProductId);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" asChild>
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" asChild>
             <Link href="/dashboard/inventory">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Movimientos de Stock</h2>
-            <p className="text-sm text-muted-foreground">Registro de entradas, salidas y ajustes</p>
+            <h2 className="text-2xl font-bold tracking-tight">
+              Movimientos de Stock
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Historial completo de entradas, salidas y ajustes
+            </p>
           </div>
         </div>
-        <Button className="h-10 font-medium shadow-sm" onClick={() => setShowNew(true)}>
+        <Button
+          className="h-10 font-medium shadow-sm"
+          onClick={() => {
+            setSelectedProductId('');
+            setShowNew(true);
+          }}
+        >
           Nuevo Movimiento
         </Button>
       </div>
 
-      {/* Current Balances */}
       <Card className="shadow-sm">
-        <CardContent className="pt-5 pb-0">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Stock Actual</h3>
-        </CardContent>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-muted-foreground">Cargando...</p>
+              <p className="text-sm text-muted-foreground">Cargando…</p>
             </div>
-          ) : balances.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
+          ) : movements.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                 <Package className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">No hay datos de inventario</p>
+              <p className="text-sm text-muted-foreground">
+                No hay movimientos registrados
+              </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Producto</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">SKU</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Stock Actual</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Alerta Mínimo</TableHead>
-                  <TableHead className="text-xs font-semibold uppercase tracking-wider">Estado</TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                    Fecha
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                    Producto
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                    Movimiento
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                    Razón
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold uppercase tracking-wider">
+                    Notas
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {balances.map((b) => {
-                  const isLow = b.currentQuantity <= (b.product?.minStockAlert ?? 5);
-                  return (
-                    <TableRow key={b.id} className="hover:bg-accent/50 transition-colors">
-                      <TableCell className="font-medium">{b.product?.name ?? '—'}</TableCell>
-                      <TableCell className="text-muted-foreground">{b.product?.sku ?? '—'}</TableCell>
-                      <TableCell className={isLow ? 'text-destructive font-medium' : ''}>
-                        {b.currentQuantity}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{b.product?.minStockAlert ?? 5}</TableCell>
-                      <TableCell>
-                        {isLow ? (
-                          <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium bg-red-50 text-red-600 border-red-200">
-                            Bajo
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                            OK
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {movements.map((m) => (
+                  <TableRow key={m.id} className="hover:bg-accent/50 transition-colors">
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDateTime(m.createdAt)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {m.product?.id ? (
+                        <Link
+                          href={`/dashboard/inventory/products/${m.product.id}`}
+                          className="hover:underline"
+                        >
+                          {m.product.name}
+                        </Link>
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <MovementBadge m={m} />
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {REASON_LABELS[m.reason] ?? m.reason}
+                    </TableCell>
+                    <TableCell className="max-w-[280px] truncate text-sm text-muted-foreground">
+                      {m.notes || '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}
         </CardContent>
+
+        {meta && meta.totalPages > 1 && (
+          <div className="flex items-center justify-between border-t px-4 py-3">
+            <p className="text-xs text-muted-foreground">
+              Página {meta.page} de {meta.totalPages} ({meta.total} movimientos)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" /> Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={page >= meta.totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Siguiente <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* New Movement Dialog */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={cn('sm:max-w-md')}>
           <DialogHeader>
-            <DialogTitle>Nuevo Movimiento de Stock</DialogTitle>
+            <DialogTitle>Nuevo movimiento de stock</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {error && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
             <div className="space-y-1.5">
-              <Label>Producto <span className="text-destructive">*</span></Label>
-              <Select value={productId} onValueChange={setProductId}>
+              <label className="text-sm font-medium">
+                Producto <span className="text-destructive">*</span>
+              </label>
+              <Select
+                value={selectedProductId}
+                onValueChange={setSelectedProductId}
+              >
                 <SelectTrigger className="h-11">
                   <SelectValue placeholder="Seleccionar producto" />
                 </SelectTrigger>
                 <SelectContent>
                   {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Tipo</Label>
-                <Select value={movementType} onValueChange={setMovementType}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="entrada">Entrada</SelectItem>
-                    <SelectItem value="salida">Salida</SelectItem>
-                    <SelectItem value="ajuste">Ajuste</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Razón</Label>
-                <Select value={reason} onValueChange={setReason}>
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="compra">Compra</SelectItem>
-                    <SelectItem value="prescripcion">Prescripción</SelectItem>
-                    <SelectItem value="procedimiento">Procedimiento</SelectItem>
-                    <SelectItem value="ajuste_manual">Ajuste manual</SelectItem>
-                    <SelectItem value="merma">Merma</SelectItem>
-                    <SelectItem value="devolucion">Devolución</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Cantidad <span className="text-destructive">*</span></Label>
-              <Input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="Cantidad"
-                className="h-11"
+            {selectedProductId && (
+              <StockMovementForm
+                productId={selectedProductId}
+                productName={selectedProduct?.name}
+                onCancel={() => setShowNew(false)}
+                onDone={() => setShowNew(false)}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Notas</Label>
-              <Input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Notas opcionales..."
-                className="h-11"
-              />
-            </div>
+            )}
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowNew(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={createMovement.isPending}>
-              {createMovement.isPending ? 'Registrando...' : 'Registrar'}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -5,509 +5,724 @@ import {
   Users,
   Activity,
   CalendarRange,
-  Download,
   TrendingUp,
   Scissors,
   Target,
   UserPlus,
+  Calendar,
+  AlertTriangle,
+  Pill,
+  Stethoscope,
+  Sparkles,
+  Boxes,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Segmented } from '@/components/clinic/segmented';
-import { usePatientsReport, useProceduresReport } from '@/hooks/use-dashboard';
 import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
   PieChart,
   Pie,
   Cell,
   Tooltip,
   ResponsiveContainer,
+  CartesianGrid,
 } from 'recharts';
-
-// ── Type → semantic token mapping ──────────────────────────
-
-const TYPE_META: Record<
-  string,
-  { label: string; color: string; bg: string }
-> = {
-  active: {
-    label: 'Activo',
-    color: 'hsl(var(--brand-primary))',
-    bg: 'hsl(var(--brand-primary-soft))',
-  },
-  evaluation: {
-    label: 'Evaluación',
-    color: 'hsl(var(--accent-amber))',
-    bg: 'hsl(var(--accent-amber-soft))',
-  },
-  registered: {
-    label: 'Registrado',
-    color: 'hsl(var(--accent-info))',
-    bg: 'hsl(var(--accent-info-soft))',
-  },
-  lead: {
-    label: 'Lead',
-    color: 'hsl(var(--accent-lilac))',
-    bg: 'hsl(var(--accent-lilac-soft))',
-  },
-  inactive: {
-    label: 'Inactivo',
-    color: 'hsl(var(--text-secondary))',
-    bg: 'hsl(var(--surface-2))',
-  },
-  archived: {
-    label: 'Archivado',
-    color: 'hsl(var(--text-tertiary))',
-    bg: 'hsl(var(--surface-2))',
-  },
-  '': {
-    label: 'Sin tipo',
-    color: 'hsl(var(--text-tertiary))',
-    bg: 'hsl(var(--surface-2))',
-  },
-};
-
-function typeMeta(t: string) {
-  return TYPE_META[t] || TYPE_META[''];
-}
-
-// ── Date range presets ─────────────────────────────────────
+import { Label } from '@/components/ui/label';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Segmented } from '@/components/clinic/segmented';
+import { KpiCard } from '@/components/reports/kpi-card';
+import { ChartCard } from '@/components/reports/chart-card';
+import {
+  usePatientsReport,
+  useProceduresReport,
+  useAppointmentsReport,
+  usePrescriptionsReport,
+  useInventoryReport,
+  useSourcesReport,
+  useClinicalReport,
+} from '@/hooks/use-dashboard';
 
 type Preset = 'month' | '30d' | 'quarter' | 'year' | 'custom';
 
-function presetRange(preset: Preset): { start: string; end: string } {
-  const today = new Date();
-  const endDate = today.toISOString().split('T')[0];
-  if (preset === 'month') {
-    const start = new Date(today.getFullYear(), today.getMonth(), 1);
-    return { start: start.toISOString().split('T')[0], end: endDate };
-  }
-  if (preset === '30d') {
-    const start = new Date(today);
-    start.setDate(start.getDate() - 30);
-    return { start: start.toISOString().split('T')[0], end: endDate };
-  }
-  if (preset === 'quarter') {
-    const start = new Date(today);
-    start.setMonth(start.getMonth() - 3);
-    return { start: start.toISOString().split('T')[0], end: endDate };
-  }
-  if (preset === 'year') {
-    const start = new Date(today.getFullYear(), 0, 1);
-    return { start: start.toISOString().split('T')[0], end: endDate };
-  }
-  // custom fallback — shouldn't be called
-  return { start: endDate, end: endDate };
+function startOfMonth() {
+  const d = new Date();
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split('T')[0];
 }
-
+function daysAgo(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split('T')[0];
+}
+function startOfQuarter() {
+  const d = new Date();
+  const q = Math.floor(d.getMonth() / 3);
+  d.setMonth(q * 3, 1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split('T')[0];
+}
+function startOfYear() {
+  const d = new Date();
+  d.setMonth(0, 1);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split('T')[0];
+}
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
 function formatRange(start: string, end: string) {
+  if (!start || !end) return '';
   const s = new Date(start);
   const e = new Date(end);
-  const days =
-    Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
-  return `Del ${fmt(s)} al ${fmt(e)} · ${days} día${days === 1 ? '' : 's'}`;
+  return `${s.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} → ${e.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
-// ── KPI card (reusable inline) ─────────────────────────────
+const PATIENT_TYPE_LABELS: Record<string, string> = {
+  lead: 'Lead',
+  registered: 'Registrado',
+  evaluation: 'Evaluación',
+  active: 'Activo',
+  inactive: 'Inactivo',
+  archived: 'Archivado',
+};
 
-function KpiCard({
-  label,
-  value,
-  delta,
-  icon: Icon,
-  hue,
-  loading,
-}: {
-  label: string;
-  value: string | number;
-  delta?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  hue: string;
-  loading?: boolean;
-}) {
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-surface p-5 shadow-xs">
-      <div className="mb-4 flex items-start justify-between">
-        <div
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md"
-          style={{
-            background: `color-mix(in oklab, ${hue} 12%, hsl(var(--surface)))`,
-            color: hue,
-          }}
-        >
-          <Icon className="h-[18px] w-[18px]" />
-        </div>
-      </div>
-      <div className="mb-1.5 text-xs text-text-secondary">{label}</div>
-      {loading ? (
-        <div className="mb-2 h-8 w-20 animate-pulse rounded bg-surface-2" />
-      ) : (
-        <div className="cap-kpi-number mb-2">{value}</div>
-      )}
-      {delta && <div className="text-[11px] text-text-tertiary">{delta}</div>}
-    </div>
-  );
-}
+const CHANNEL_LABELS: Record<string, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  whatsapp: 'WhatsApp',
+  web: 'Sitio web',
+  google: 'Google',
+  referido: 'Referido',
+  otro: 'Otro',
+  sin_canal: 'Sin canal',
+};
 
-// ── Loading skeleton for chart cards ───────────────────────
+const STATUS_LABELS: Record<string, string> = {
+  scheduled: 'Programada',
+  confirmed: 'Confirmada',
+  completed: 'Completada',
+  cancelled: 'Cancelada',
+  no_show: 'No asistió',
+  rescheduled: 'Reprogramada',
+};
 
-function SkeletonCard({ height = 260 }: { height?: number }) {
-  return (
-    <div
-      className="animate-pulse rounded-md bg-surface-2"
-      style={{ height }}
-    />
-  );
-}
+const STATUS_COLORS: Record<string, string> = {
+  scheduled: '#6b7280',
+  confirmed: '#3b82f6',
+  completed: '#10b981',
+  cancelled: '#ef4444',
+  no_show: '#f59e0b',
+  rescheduled: '#a855f7',
+};
 
-// ── Page ───────────────────────────────────────────────────
+const PIE_PALETTE = ['#2C7E69', '#7A6B9F', '#4A6B8F', '#B8763A', '#B84545', '#10b981', '#a855f7', '#6b7280'];
 
 export default function ReportsPage() {
   const [preset, setPreset] = useState<Preset>('month');
-  const initialRange = presetRange('month');
-  const [startDate, setStartDate] = useState(initialRange.start);
-  const [endDate, setEndDate] = useState(initialRange.end);
+  const [startDate, setStartDate] = useState(startOfMonth());
+  const [endDate, setEndDate] = useState(todayISO());
 
-  // Sync dates when preset changes (except for 'custom')
   useEffect(() => {
     if (preset === 'custom') return;
-    const r = presetRange(preset);
-    setStartDate(r.start);
-    setEndDate(r.end);
+    const today = todayISO();
+    setEndDate(today);
+    if (preset === 'month') setStartDate(startOfMonth());
+    else if (preset === '30d') setStartDate(daysAgo(30));
+    else if (preset === 'quarter') setStartDate(startOfQuarter());
+    else if (preset === 'year') setStartDate(startOfYear());
   }, [preset]);
 
-  const { data: patientsReport, isLoading: loadingPatients } =
-    usePatientsReport(startDate, endDate);
-  const { data: proceduresReport, isLoading: loadingProcedures } =
-    useProceduresReport(startDate, endDate);
+  const { data: patientsRpt } = usePatientsReport(startDate, endDate);
+  const { data: proceduresRpt } = useProceduresReport(startDate, endDate);
+  const { data: appointmentsRpt } = useAppointmentsReport(startDate, endDate);
+  const { data: prescriptionsRpt } = usePrescriptionsReport(startDate, endDate);
+  const { data: inventoryRpt } = useInventoryReport(startDate, endDate);
+  const { data: sourcesRpt } = useSourcesReport(startDate, endDate);
+  const { data: clinicalRpt } = useClinicalReport(startDate, endDate);
 
-  const pieData = useMemo(
+  // Pie data: patient types
+  const patientTypeData = useMemo(
     () =>
-      (patientsReport?.byType || [])
-        .filter((t) => t.count > 0)
-        .map((t) => ({
-          type: t.type,
-          name: typeMeta(t.type).label,
-          value: t.count,
-          color: typeMeta(t.type).color,
-        })),
-    [patientsReport],
+      (patientsRpt?.byType ?? []).map((t) => ({
+        name: PATIENT_TYPE_LABELS[t.type] ?? t.type,
+        value: t.count,
+      })),
+    [patientsRpt],
   );
 
-  const totalByType = pieData.reduce((s, d) => s + d.value, 0);
+  // Bar data: appointments by status
+  const appointmentsBarData = useMemo(() => {
+    const bs = appointmentsRpt?.byStatus ?? {};
+    return Object.entries(bs)
+      .filter(([, v]) => v > 0)
+      .map(([status, value]) => ({
+        name: STATUS_LABELS[status] ?? status,
+        value: value as number,
+        color: STATUS_COLORS[status] ?? '#6b7280',
+      }));
+  }, [appointmentsRpt]);
+
+  // Pie data: channels
+  const channelsData = useMemo(
+    () =>
+      (sourcesRpt?.byChannel ?? []).map((c) => ({
+        name: CHANNEL_LABELS[c.channel] ?? c.channel,
+        value: c.count,
+      })),
+    [sourcesRpt],
+  );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="cap-h2 mb-1">Reportes</h2>
-          <p className="text-[13px] text-text-secondary">
-            Análisis del sistema por periodo
+          <h2 className="text-2xl font-bold tracking-tight">Reportes</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Indicadores operativos, marketing y clínicos
           </p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <Download className="h-3.5 w-3.5" /> Exportar
-        </Button>
       </div>
 
-      {/* Date range strip */}
-      <section className="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-surface px-5 py-4 shadow-xs">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
-          <CalendarRange className="h-4 w-4" />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-[11px] text-text-secondary">Periodo</Label>
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-4 rounded-lg border bg-card p-4 shadow-sm">
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Periodo</Label>
           <Segmented
             value={preset}
-            onChange={setPreset}
+            onChange={(v) => setPreset(v as Preset)}
             options={[
-              { value: 'month' as Preset, label: 'Este mes' },
-              { value: '30d' as Preset, label: '30 días' },
-              { value: 'quarter' as Preset, label: 'Trimestre' },
-              { value: 'year' as Preset, label: 'Este año' },
-              { value: 'custom' as Preset, label: 'Personalizado' },
+              { value: 'month', label: 'Este mes' },
+              { value: '30d', label: '30 días' },
+              { value: 'quarter', label: 'Trimestre' },
+              { value: 'year', label: 'Este año' },
+              { value: 'custom', label: 'Personalizado' },
             ]}
           />
         </div>
         {preset === 'custom' && (
           <>
             <div className="space-y-1">
-              <Label className="text-[11px] text-text-secondary">Desde</Label>
-              <Input
-                type="date"
+              <Label className="text-[11px] text-muted-foreground">Desde</Label>
+              <DatePicker
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-10 w-[150px]"
+                onChange={setStartDate}
+                className="h-10 w-[200px]"
+                toDate={endDate ? new Date(endDate) : undefined}
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-text-secondary">Hasta</Label>
-              <Input
-                type="date"
+              <Label className="text-[11px] text-muted-foreground">Hasta</Label>
+              <DatePicker
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-10 w-[150px]"
+                onChange={setEndDate}
+                className="h-10 w-[200px]"
+                fromDate={startDate ? new Date(startDate) : undefined}
               />
             </div>
           </>
         )}
-        <div className="ml-auto self-center text-xs text-text-tertiary">
+        <div className="ml-auto self-center text-xs text-muted-foreground">
           {formatRange(startDate, endDate)}
+        </div>
+      </div>
+
+      {/* ============================================================ */}
+      {/* OPERATIVO */}
+      {/* ============================================================ */}
+      <section className="space-y-4">
+        <SectionHeader
+          eyebrow="Operación"
+          title="Citas, prescripciones e inventario"
+          icon={Activity}
+        />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label="Citas en el periodo"
+            value={appointmentsRpt?.total ?? '—'}
+            delta={appointmentsRpt?.totalDelta ?? null}
+            icon={Calendar}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+          />
+          <KpiCard
+            label="No-show rate"
+            value={appointmentsRpt ? `${appointmentsRpt.noShowRate}%` : '—'}
+            deltaPolarity="negative"
+            hint={
+              appointmentsRpt
+                ? `${appointmentsRpt.byStatus.no_show ?? 0} de ${appointmentsRpt.byStatus.no_show + appointmentsRpt.byStatus.completed + appointmentsRpt.byStatus.cancelled} resueltas`
+                : undefined
+            }
+            icon={AlertTriangle}
+            iconColor="text-amber-600"
+            iconBg="bg-amber-50"
+          />
+          <KpiCard
+            label="Prescripciones emitidas"
+            value={prescriptionsRpt?.total ?? '—'}
+            delta={prescriptionsRpt?.totalDelta ?? null}
+            hint={
+              prescriptionsRpt
+                ? `${prescriptionsRpt.totalActive} activas en sistema`
+                : undefined
+            }
+            icon={Pill}
+            iconColor="text-violet-600"
+            iconBg="bg-violet-50"
+          />
+          <KpiCard
+            label="Productos con stock bajo"
+            value={inventoryRpt?.lowStockCount ?? '—'}
+            deltaPolarity="negative"
+            hint={
+              inventoryRpt
+                ? `${inventoryRpt.totalProducts} productos activos`
+                : undefined
+            }
+            icon={Boxes}
+            iconColor="text-red-600"
+            iconBg="bg-red-50"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <ChartCard
+            title="Citas por estado"
+            subtitle="Resultado de las citas en el periodo"
+          >
+            {appointmentsBarData.length === 0 ? (
+              <EmptyChart />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={appointmentsBarData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={11} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number) => [`${v}`, 'Citas']}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    {appointmentsBarData.map((entry, idx) => (
+                      <Cell key={idx} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+
+          <ChartCard
+            title="Top productos por movimientos"
+            subtitle="Productos con más entradas/salidas en el periodo"
+          >
+            {!inventoryRpt || inventoryRpt.topMovedProducts.length === 0 ? (
+              <EmptyChart text="Sin movimientos en el periodo" />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart
+                  data={inventoryRpt.topMovedProducts.map((p) => ({
+                    name: p.name.length > 22 ? p.name.slice(0, 20) + '…' : p.name,
+                    value: p.movements,
+                  }))}
+                  layout="vertical"
+                  margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                  <XAxis type="number" tickLine={false} axisLine={false} fontSize={11} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={11}
+                    width={120}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number) => [`${v}`, 'Movimientos']}
+                  />
+                  <Bar dataKey="value" fill="hsl(var(--brand-primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
         </div>
       </section>
 
-      {/* KPI grid (full-width, 4 cards) */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Total pacientes"
-          value={patientsReport?.totalPatients.toLocaleString() ?? '—'}
-          icon={Users}
-          hue="hsl(var(--brand-primary))"
-          loading={loadingPatients}
+      {/* ============================================================ */}
+      {/* MARKETING */}
+      {/* ============================================================ */}
+      <section className="space-y-4">
+        <SectionHeader
+          eyebrow="Marketing"
+          title="Captación y conversión de pacientes"
+          icon={TrendingUp}
         />
-        <KpiCard
-          label="Nuevos en periodo"
-          value={patientsReport?.newPatients.toLocaleString() ?? '—'}
-          delta="En el rango seleccionado"
-          icon={UserPlus}
-          hue="hsl(var(--accent-info))"
-          loading={loadingPatients}
-        />
-        <KpiCard
-          label="Procedimientos"
-          value={proceduresReport?.totalProcedures.toLocaleString() ?? '—'}
-          delta={
-            proceduresReport?.averageFollicles
-              ? `Prom. ${Math.round(proceduresReport.averageFollicles).toLocaleString()} folículos`
-              : undefined
-          }
-          icon={Scissors}
-          hue="hsl(var(--accent-amber))"
-          loading={loadingProcedures}
-        />
-        <KpiCard
-          label="Folículos totales"
-          value={
-            proceduresReport?.totalFollicles
-              ? proceduresReport.totalFollicles >= 1000
-                ? `${(proceduresReport.totalFollicles / 1000).toFixed(1)}k`
-                : proceduresReport.totalFollicles.toLocaleString()
-              : '—'
-          }
-          delta="Acumulado en periodo"
-          icon={Target}
-          hue="hsl(var(--accent-lilac))"
-          loading={loadingProcedures}
-        />
-      </div>
 
-      {/* Detailed cards grid */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Patients breakdown */}
-        <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs">
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
-                <Users className="h-4 w-4" />
-              </div>
-              <h3 className="cap-eyebrow">Distribución de pacientes</h3>
-            </div>
-            {totalByType > 0 && (
-              <span className="cap-mono text-xs text-text-tertiary">
-                {totalByType.toLocaleString()} totales
-              </span>
-            )}
-          </div>
-          <div className="p-6">
-            {loadingPatients ? (
-              <SkeletonCard height={220} />
-            ) : pieData.length === 0 ? (
-              <p className="py-10 text-center text-sm text-text-tertiary">
-                Sin datos en este periodo
-              </p>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-[180px_1fr] md:items-center">
-                <div className="h-[180px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={80}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {pieData.map((d) => (
-                          <Cell key={d.type} fill={d.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          background: 'hsl(var(--surface))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <ul className="space-y-2">
-                  {pieData.map((d) => {
-                    const pct =
-                      totalByType > 0
-                        ? (d.value / totalByType) * 100
-                        : 0;
-                    return (
-                      <li
-                        key={d.type}
-                        className="flex items-center gap-3"
-                      >
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ background: d.color }}
-                        />
-                        <span className="flex-1 text-sm font-medium">
-                          {d.name}
-                        </span>
-                        <span className="cap-mono text-sm text-text-secondary">
-                          {d.value.toLocaleString()}
-                        </span>
-                        <span className="cap-mono w-10 text-right text-xs text-text-tertiary">
-                          {pct.toFixed(0)}%
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-          </div>
-        </section>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label="Nuevos pacientes"
+            value={patientsRpt?.newPatients ?? '—'}
+            delta={patientsRpt?.newPatientsDelta ?? null}
+            hint="vs periodo anterior"
+            icon={UserPlus}
+            iconColor="text-emerald-600"
+            iconBg="bg-emerald-50"
+          />
+          <KpiCard
+            label="Conversión Lead → Activo"
+            value={sourcesRpt ? `${sourcesRpt.conversionRate}%` : '—'}
+            hint={
+              sourcesRpt
+                ? `${sourcesRpt.totalActive} de ${sourcesRpt.totalLeads + sourcesRpt.totalActive} convirtieron`
+                : undefined
+            }
+            icon={Target}
+            iconColor="text-violet-600"
+            iconBg="bg-violet-50"
+          />
+          <KpiCard
+            label="Pacientes acumulados"
+            value={patientsRpt?.totalPatients ?? '—'}
+            hint="Total histórico"
+            icon={Users}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+          />
+          <KpiCard
+            label="Canal principal"
+            value={
+              sourcesRpt?.byChannel?.[0]
+                ? CHANNEL_LABELS[sourcesRpt.byChannel[0].channel] ??
+                  sourcesRpt.byChannel[0].channel
+                : '—'
+            }
+            hint={
+              sourcesRpt?.byChannel?.[0]
+                ? `${sourcesRpt.byChannel[0].count} pacientes`
+                : undefined
+            }
+            icon={Sparkles}
+            iconColor="text-amber-600"
+            iconBg="bg-amber-50"
+          />
+        </div>
 
-        {/* Procedures metrics */}
-        <section className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs">
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
-                <Activity className="h-4 w-4" />
-              </div>
-              <h3 className="cap-eyebrow">Métricas de procedimientos</h3>
-            </div>
-          </div>
-          <div className="p-6">
-            {loadingProcedures ? (
-              <SkeletonCard height={220} />
-            ) : !proceduresReport ||
-              proceduresReport.totalProcedures === 0 ? (
-              <p className="py-10 text-center text-sm text-text-tertiary">
-                Sin procedimientos en este periodo
-              </p>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
+          <ChartCard
+            title="Nuevos pacientes por mes"
+            subtitle="Últimos 6 meses (independiente del filtro)"
+          >
+            {!patientsRpt || patientsRpt.monthlySeries.length === 0 ? (
+              <EmptyChart />
             ) : (
-              <div className="flex flex-col gap-4">
-                <MetricRow
-                  label="Total de procedimientos"
-                  value={proceduresReport.totalProcedures.toLocaleString()}
-                  tone="amber"
-                  icon={Scissors}
-                />
-                <MetricRow
-                  label="Promedio de folículos"
-                  value={
-                    proceduresReport.averageFollicles
-                      ? Math.round(
-                          proceduresReport.averageFollicles,
-                        ).toLocaleString()
-                      : '—'
-                  }
-                  tone="brand"
-                  icon={TrendingUp}
-                  suffix="por procedimiento"
-                />
-                <MetricRow
-                  label="Folículos acumulados"
-                  value={
-                    proceduresReport.totalFollicles?.toLocaleString() ?? '—'
-                  }
-                  tone="lilac"
-                  icon={Target}
-                  suffix="en el periodo"
-                />
-              </div>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart
+                  data={patientsRpt.monthlySeries}
+                  margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number) => [`${v}`, 'Pacientes']}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--brand-primary))" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             )}
-          </div>
-        </section>
+          </ChartCard>
+
+          <ChartCard
+            title="Canal de origen"
+            subtitle="De dónde llegan los pacientes"
+          >
+            {channelsData.length === 0 ? (
+              <EmptyChart text="Sin pacientes en el periodo" />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={channelsData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {channelsData.map((_, idx) => (
+                      <Cell key={idx} fill={PIE_PALETTE[idx % PIE_PALETTE.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+            <PieLegend
+              data={channelsData.map((d, i) => ({
+                ...d,
+                color: PIE_PALETTE[i % PIE_PALETTE.length],
+              }))}
+            />
+          </ChartCard>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* CLÍNICO */}
+      {/* ============================================================ */}
+      <section className="space-y-4">
+        <SectionHeader
+          eyebrow="Clínico"
+          title="Procedimientos, consultas y patología"
+          icon={Stethoscope}
+        />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label="Procedimientos"
+            value={proceduresRpt?.totalProcedures ?? '—'}
+            delta={proceduresRpt?.proceduresDelta ?? null}
+            icon={Scissors}
+            iconColor="text-emerald-600"
+            iconBg="bg-emerald-50"
+          />
+          <KpiCard
+            label="Folículos promedio"
+            value={
+              proceduresRpt?.averageFollicles
+                ? Math.round(proceduresRpt.averageFollicles).toLocaleString('es-MX')
+                : '—'
+            }
+            hint="Por procedimiento"
+            icon={Activity}
+            iconColor="text-violet-600"
+            iconBg="bg-violet-50"
+          />
+          <KpiCard
+            label="Folículos totales"
+            value={
+              proceduresRpt?.totalFollicles
+                ? proceduresRpt.totalFollicles.toLocaleString('es-MX')
+                : '—'
+            }
+            hint="Acumulado en el periodo"
+            icon={CalendarRange}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+          />
+          <KpiCard
+            label="Consultas médicas"
+            value={clinicalRpt?.consultations ?? '—'}
+            delta={clinicalRpt?.consultationsDelta ?? null}
+            icon={Stethoscope}
+            iconColor="text-amber-600"
+            iconBg="bg-amber-50"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ChartCard
+            title="Distribución de variantes"
+            subtitle="Diagnósticos en consultas del periodo"
+          >
+            {!clinicalRpt || clinicalRpt.variantsDistribution.length === 0 ? (
+              <EmptyChart text="Sin consultas en el periodo" />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={clinicalRpt.variantsDistribution.map((v) => ({
+                      name: v.name,
+                      value: v.count,
+                    }))}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {clinicalRpt.variantsDistribution.map((_, idx) => (
+                      <Cell key={idx} fill={PIE_PALETTE[idx % PIE_PALETTE.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+            {clinicalRpt && (
+              <PieLegend
+                data={clinicalRpt.variantsDistribution.map((d, i) => ({
+                  name: d.name,
+                  value: d.count,
+                  color: PIE_PALETTE[i % PIE_PALETTE.length],
+                }))}
+              />
+            )}
+          </ChartCard>
+
+          <ChartCard
+            title="Procedimientos por doctor"
+            subtitle="En el periodo seleccionado"
+            className="lg:col-span-2"
+          >
+            {!proceduresRpt || proceduresRpt.byDoctor.length === 0 ? (
+              <EmptyChart text="Sin procedimientos en el periodo" />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart
+                  data={proceduresRpt.byDoctor.map((d) => ({
+                    name: `Dr. ${d.name.split(' ')[0]}`,
+                    value: d.count,
+                  }))}
+                  margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v: number) => [`${v}`, 'Procedimientos']}
+                  />
+                  <Bar dataKey="value" fill="hsl(var(--brand-primary))" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <ChartCard
+            title="Zonas dadoras evaluadas"
+            subtitle="Top 8 zonas más identificadas en consultas"
+          >
+            {!clinicalRpt || clinicalRpt.topDonorZones.length === 0 ? (
+              <EmptyChart />
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(180, clinicalRpt.topDonorZones.length * 28)}>
+                <BarChart
+                  data={clinicalRpt.topDonorZones}
+                  layout="vertical"
+                  margin={{ top: 4, right: 16, left: 8, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
+                  <XAxis type="number" tickLine={false} axisLine={false} fontSize={11} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    fontSize={11}
+                    width={130}
+                  />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="count" fill="hsl(var(--accent-info))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+
+          <ChartCard
+            title="Tipos de paciente (acumulado)"
+            subtitle="Distribución global del CRM"
+          >
+            {patientTypeData.length === 0 ? (
+              <EmptyChart />
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={patientTypeData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {patientTypeData.map((_, idx) => (
+                      <Cell key={idx} fill={PIE_PALETTE[idx % PIE_PALETTE.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+            <PieLegend
+              data={patientTypeData.map((d, i) => ({
+                ...d,
+                color: PIE_PALETTE[i % PIE_PALETTE.length],
+              }))}
+            />
+          </ChartCard>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+const tooltipStyle = {
+  borderRadius: 8,
+  border: '1px solid hsl(var(--border))',
+  fontSize: 12,
+  padding: '6px 10px',
+};
+
+function SectionHeader({
+  eyebrow,
+  title,
+  icon: Icon,
+}: {
+  eyebrow: string;
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="flex items-end justify-between">
+      <div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {eyebrow}
+        </div>
+        <h3 className="mt-0.5 flex items-center gap-2 text-base font-semibold tracking-tight">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          {title}
+        </h3>
       </div>
     </div>
   );
 }
 
-// ── Metric row (for procedimientos) ────────────────────────
-
-function MetricRow({
-  label,
-  value,
-  suffix,
-  tone,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  suffix?: string;
-  tone: 'brand' | 'amber' | 'lilac' | 'info';
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  const toneMap = {
-    brand: {
-      color: 'hsl(var(--brand-primary))',
-      bg: 'hsl(var(--brand-primary-soft))',
-    },
-    amber: {
-      color: 'hsl(var(--accent-amber))',
-      bg: 'hsl(var(--accent-amber-soft))',
-    },
-    lilac: {
-      color: 'hsl(var(--accent-lilac))',
-      bg: 'hsl(var(--accent-lilac-soft))',
-    },
-    info: {
-      color: 'hsl(var(--accent-info))',
-      bg: 'hsl(var(--accent-info-soft))',
-    },
-  };
-  const t = toneMap[tone];
+function EmptyChart({ text = 'Sin datos en el periodo' }: { text?: string }) {
   return (
-    <div
-      className={cn(
-        'flex items-center gap-4 rounded-md border border-border p-4',
-      )}
-    >
-      <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
-        style={{ background: t.bg, color: t.color }}
-      >
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="flex-1">
-        <div className="text-xs text-text-secondary">{label}</div>
-        <div className="flex items-baseline gap-1.5">
+    <div className="flex h-[200px] items-center justify-center text-xs text-muted-foreground">
+      {text}
+    </div>
+  );
+}
+
+function PieLegend({
+  data,
+}: {
+  data: { name: string; value: number; color: string }[];
+}) {
+  if (data.length === 0) return null;
+  return (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-1 text-[11px]">
+      {data.map((d) => (
+        <div key={d.name} className="flex items-center gap-1.5">
           <span
-            className="cap-mono text-xl font-medium"
-            style={{ color: t.color }}
-          >
-            {value}
-          </span>
-          {suffix && (
-            <span className="text-[11px] text-text-tertiary">{suffix}</span>
-          )}
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: d.color }}
+          />
+          <span className="flex-1 truncate text-muted-foreground">{d.name}</span>
+          <span className="font-medium tabular-nums">{d.value}</span>
         </div>
-      </div>
+      ))}
     </div>
   );
 }

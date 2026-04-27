@@ -13,7 +13,6 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Inicio',
   '/dashboard/patients': 'Pacientes',
   '/dashboard/appointments': 'Agenda',
-  '/dashboard/prescriptions': 'Prescripciones',
   '/dashboard/inventory': 'Inventario',
   '/dashboard/reports': 'Reportes',
   '/dashboard/reminders': 'Recordatorios',
@@ -71,6 +70,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
       className={cn(
         'sticky top-0 z-30 border-b border-border',
         'bg-background/85 backdrop-blur-md',
+        'print:hidden',
       )}
     >
       <div className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-7">

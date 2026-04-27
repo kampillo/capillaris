@@ -7,6 +7,7 @@ import { ChevronLeft, Search, User, CalendarDays, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -242,12 +243,7 @@ export default function NewAppointmentPage() {
               <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-3">
                 <div className="space-y-1.5">
                   <Label>Fecha</Label>
-                  <Input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="h-11"
-                  />
+                  <DatePicker value={date} onChange={setDate} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Hora</Label>

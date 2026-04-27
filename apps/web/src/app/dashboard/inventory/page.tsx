@@ -2,13 +2,19 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, ChevronLeft, ChevronRight, AlertTriangle, Package, ArrowRightLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  Package,
+  ArrowRightLeft,
+  Pencil,
+  PackagePlus,
+  Eye,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -25,15 +31,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useProducts, useDeleteProduct, type Product } from '@/hooks/use-inventory';
-import { useLowStock } from '@/hooks/use-inventory';
+import {
+  useProducts,
+  useUpdateProduct,
+  useDeleteProduct,
+  useLowStock,
+  type Product,
+} from '@/hooks/use-inventory';
+import { ProductForm } from '@/components/inventory/product-form';
+import { StockMovementForm } from '@/components/inventory/stock-movement-form';
 
 export default function InventoryPage() {
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [editTarget, setEditTarget] = useState<Product | null>(null);
+  const [stockTarget, setStockTarget] = useState<Product | null>(null);
 
   const { data, isLoading, error } = useProducts(page, 20);
   const { data: lowStock } = useLowStock();
+  const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
 
   const handleDelete = async () => {
@@ -122,7 +138,14 @@ export default function InventoryPage() {
                   const isLow = stock <= product.minStockAlert;
                   return (
                     <TableRow key={product.id} className="hover:bg-accent/50 transition-colors">
-                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/dashboard/inventory/products/${product.id}`}
+                          className="hover:underline"
+                        >
+                          {product.name}
+                        </Link>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {product.sku || '—'}
                       </TableCell>
@@ -150,6 +173,35 @@ export default function InventoryPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => setStockTarget(product)}
+                          title="Agregar stock"
+                        >
+                          <PackagePlus className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => setEditTarget(product)}
+                          title="Editar"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          asChild
+                          title="Ver detalle"
+                        >
+                          <Link href={`/dashboard/inventory/products/${product.id}`}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -183,6 +235,52 @@ export default function InventoryPage() {
           </div>
         )}
       </Card>
+
+      {/* Edit Product Dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar producto</DialogTitle>
+            <DialogDescription>{editTarget?.name}</DialogDescription>
+          </DialogHeader>
+          {editTarget && (
+            <ProductForm
+              inline
+              defaultValues={editTarget}
+              isSubmitting={updateMutation.isPending}
+              submitLabel="Guardar cambios"
+              onCancel={() => setEditTarget(null)}
+              onSubmit={async (data) => {
+                await updateMutation.mutateAsync({ id: editTarget.id, data });
+                setEditTarget(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Stock Dialog */}
+      <Dialog open={!!stockTarget} onOpenChange={(open) => !open && setStockTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar stock</DialogTitle>
+            <DialogDescription>
+              Stock actual:{' '}
+              <strong>{stockTarget?.stockBalance?.currentQuantity ?? 0}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          {stockTarget && (
+            <StockMovementForm
+              productId={stockTarget.id}
+              productName={stockTarget.name}
+              defaultMovementType="entrada"
+              lockMovementType
+              onCancel={() => setStockTarget(null)}
+              onDone={() => setStockTarget(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

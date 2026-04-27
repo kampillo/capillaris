@@ -43,7 +43,7 @@ export default function DashboardLayout({
       <MobileSidebar open={mobileOpen} onClose={closeMobile} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <main className="mx-auto w-full max-w-[1480px] px-4 pb-12 pt-6 sm:px-6 lg:px-7">
+        <main className="mx-auto w-full max-w-[1480px] px-4 pb-12 pt-6 sm:px-6 lg:px-7 print:max-w-none print:p-0">
           {children}
         </main>
       </div>

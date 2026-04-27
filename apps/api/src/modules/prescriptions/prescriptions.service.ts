@@ -79,17 +79,27 @@ export class PrescriptionsService {
     await this.findOne(id);
     const { items, ...prescriptionData } = updatePrescriptionDto;
 
-    return this.prisma.prescription.update({
-      where: { id },
-      data: {
-        ...prescriptionData,
-        updatedBy: userId,
-      } as any,
-      include: {
-        items: true,
-        patient: true,
-        doctor: true,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      if (items !== undefined) {
+        await tx.prescriptionItem.deleteMany({ where: { prescriptionId: id } });
+        if (items.length > 0) {
+          await tx.prescriptionItem.createMany({
+            data: items.map((item) => ({ ...item, prescriptionId: id })),
+          });
+        }
+      }
+      return tx.prescription.update({
+        where: { id },
+        data: {
+          ...prescriptionData,
+          updatedBy: userId,
+        } as any,
+        include: {
+          items: { include: { product: true } },
+          patient: true,
+          doctor: true,
+        },
+      });
     });
   }
 

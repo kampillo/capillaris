@@ -55,6 +55,8 @@ export interface CreateProductData {
   isMedicine?: boolean;
   requiresPrescription?: boolean;
   minStockAlert?: number;
+  initialStock?: number;
+  initialStockReason?: string;
 }
 
 export interface CreateStockMovementData {
@@ -65,13 +67,35 @@ export interface CreateStockMovementData {
   notes?: string;
 }
 
-export function useProducts(page = 1, pageSize = 20) {
+export function useProducts(
+  page = 1,
+  pageSize = 20,
+  filters: { isMedicine?: boolean } = {},
+) {
+  const params: Record<string, string> = {
+    page: String(page),
+    pageSize: String(pageSize),
+  };
+  if (filters.isMedicine !== undefined) {
+    params.isMedicine = String(filters.isMedicine);
+  }
   return useQuery<PaginatedResponse<Product>>({
-    queryKey: ['products', page, pageSize],
-    queryFn: () =>
-      api.get('/products', {
-        params: { page: String(page), pageSize: String(pageSize) },
-      }),
+    queryKey: ['products', page, pageSize, filters],
+    queryFn: () => api.get('/products', { params }),
+  });
+}
+
+/** Convenience hook: fetches all medicines (active products with isMedicine=true). */
+export function useMedicines() {
+  return useQuery<Product[]>({
+    queryKey: ['products', 'medicines'],
+    queryFn: async () => {
+      const res = await api.get<PaginatedResponse<Product>>('/products', {
+        params: { page: '1', pageSize: '500', isMedicine: 'true' },
+      });
+      return res.data.filter((p) => p.isActive);
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -153,14 +177,25 @@ export function useStockMovements(productId: string, page = 1, pageSize = 20) {
   });
 }
 
+export function useAllMovements(page = 1, pageSize = 20) {
+  return useQuery<PaginatedResponse<StockMovement>>({
+    queryKey: ['inventory', 'movements', 'all', page, pageSize],
+    queryFn: () =>
+      api.get('/inventory/movements', {
+        params: { page: String(page), pageSize: String(pageSize) },
+      }),
+  });
+}
+
 export function useCreateStockMovement() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateStockMovementData) =>
       api.post<StockMovement>('/inventory/movements', data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['product', variables.productId] });
     },
   });
 }
