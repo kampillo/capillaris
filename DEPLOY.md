@@ -4,7 +4,7 @@ Stack:
 - **Frontend** (Next.js 14) → **Vercel**
 - **Backend** (NestJS 10) → **Railway**
 - **Database** (PostgreSQL) → **Neon** (already migrated)
-- **Object storage** (images) → **Cloudflare R2** (S3-compatible)
+- Object storage (S3/R2): **deshabilitado por ahora** — uploads de imágenes no funcionarán hasta configurar `S3_*`. El resto del sistema sí funciona.
 
 ---
 
@@ -14,7 +14,6 @@ Stack:
 |----------|----------------|
 | `JWT_SECRET` | `openssl rand -base64 48` |
 | `DATABASE_URL` | Neon dashboard → Connection string → Pooled |
-| `S3_*` | Cloudflare R2 → API tokens |
 | `GOOGLE_CLIENT_ID/SECRET` | Google Cloud Console (si usas Calendar) |
 
 ---
@@ -35,17 +34,13 @@ Stack:
    JWT_SECRET=<el secret generado>
    JWT_EXPIRATION=24h
    CORS_ORIGIN=https://capillaris-web.vercel.app
-   # Cloudflare R2
-   S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com
-   S3_ACCESS_KEY_ID=...
-   S3_SECRET_ACCESS_KEY=...
-   S3_BUCKET=capillaris
-   S3_REGION=auto
    # Google (opcional, si usan Calendar)
    GOOGLE_CLIENT_ID=
    GOOGLE_CLIENT_SECRET=
    GOOGLE_REDIRECT_URI=https://<railway-domain>/api/v1/google/callback
    ```
+
+   > Object storage (S3/R2) deshabilitado por ahora — agregar `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`, `S3_REGION` cuando se quieran habilitar uploads.
 
 5. Después del primer deploy, Railway expone una URL tipo `https://capillaris-api-production.up.railway.app`. Toma esa URL y úsala en Vercel (paso 2).
 
