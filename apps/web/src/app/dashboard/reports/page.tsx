@@ -304,7 +304,7 @@ export default function ReportsPage() {
                   <YAxis tickLine={false} axisLine={false} fontSize={11} />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(v: number) => [`${v}`, 'Citas']}
+                    formatter={(v) => [`${v}`, 'Citas']}
                   />
                   <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                     {appointmentsBarData.map((entry, idx) => (
@@ -344,7 +344,7 @@ export default function ReportsPage() {
                   />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(v: number) => [`${v}`, 'Movimientos']}
+                    formatter={(v) => [`${v}`, 'Movimientos']}
                   />
                   <Bar dataKey="value" fill="hsl(var(--brand-primary))" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -431,7 +431,7 @@ export default function ReportsPage() {
                   <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(v: number) => [`${v}`, 'Pacientes']}
+                    formatter={(v) => [`${v}`, 'Pacientes']}
                   />
                   <Bar dataKey="count" fill="hsl(var(--brand-primary))" radius={[6, 6, 0, 0]} />
                 </BarChart>
@@ -588,7 +588,7 @@ export default function ReportsPage() {
                   <YAxis tickLine={false} axisLine={false} fontSize={11} allowDecimals={false} />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(v: number) => [`${v}`, 'Procedimientos']}
+                    formatter={(v) => [`${v}`, 'Procedimientos']}
                   />
                   <Bar dataKey="value" fill="hsl(var(--brand-primary))" radius={[6, 6, 0, 0]} />
                 </BarChart>
