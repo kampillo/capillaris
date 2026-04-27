@@ -60,9 +60,10 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(port);
-  console.log(`Capillaris API running on http://localhost:${port}`);
-  console.log(`Swagger docs at http://localhost:${port}/api/docs`);
+  // Bind to 0.0.0.0 so the container is reachable from outside (Railway, etc.)
+  await app.listen(port, '0.0.0.0');
+  console.log(`Capillaris API running on port ${port}`);
+  console.log(`Swagger docs at /api/docs`);
 }
 
 bootstrap();
