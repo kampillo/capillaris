@@ -32,9 +32,17 @@ async function bootstrap() {
     new PrismaValidationFilter(),
   );
 
-  // CORS
+  // CORS — accepts comma-separated list. Vercel preview deploys (*.vercel.app)
+  // are allowed automatically.
+  const corsConfig = configService.get<string>('app.corsOrigin', 'http://localhost:3000');
+  const corsList = corsConfig.split(',').map((s) => s.trim()).filter(Boolean);
   app.enableCors({
-    origin: configService.get<string>('app.corsOrigin', 'http://localhost:3000'),
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (corsList.includes(origin)) return cb(null, true);
+      if (/\.vercel\.app$/.test(new URL(origin).hostname)) return cb(null, true);
+      return cb(new Error(`CORS blocked: ${origin}`));
+    },
     credentials: true,
   });
 

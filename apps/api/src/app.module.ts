@@ -12,6 +12,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { HealthModule } from './modules/health/health.module';
 import { PatientsModule } from './modules/patients/patients.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
@@ -36,6 +37,7 @@ import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.
       load: [appConfig, databaseConfig, jwtConfig, storageConfig, googleConfig],
     }),
     PrismaModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     RolesModule,
