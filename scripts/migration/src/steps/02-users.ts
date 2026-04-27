@@ -49,7 +49,9 @@ export async function runUsers(): Promise<void> {
         nombre: u.nombre,
         apellido: u.apellido || '',
         email: u.email,
-        passwordHash: u.password,
+        // PHP bcrypt uses $2y$ prefix; Node bcrypt v5 only matches $2a$/$2b$.
+        // Convert prefix (algorithm is identical, just renamed).
+        passwordHash: u.password.replace(/^\$2y\$/, '$2a$'),
         celular: u.celular || null,
         cedulaProfesional: u.ced_prof || null,
         fechaNacimiento: u.fecha_nacimiento || null,

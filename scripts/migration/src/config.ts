@@ -1,7 +1,14 @@
 import { config } from 'dotenv';
+import { existsSync } from 'fs';
 import { resolve } from 'path';
 
-config({ path: resolve(__dirname, '..', '.env.migration') });
+// Local overrides (gitignored) take precedence over the committed template.
+const baseDir = resolve(__dirname, '..');
+const localEnv = resolve(baseDir, '.env.migration.local');
+const templateEnv = resolve(baseDir, '.env.migration');
+
+if (existsSync(localEnv)) config({ path: localEnv });
+config({ path: templateEnv });
 
 export const mysqlConfig = {
   host: process.env.MYSQL_HOST || '127.0.0.1',
