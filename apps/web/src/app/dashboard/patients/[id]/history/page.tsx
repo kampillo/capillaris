@@ -959,8 +959,14 @@ export default function PatientHistoryPage({
     params.id,
   );
   const [showForm, setShowForm] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const latestHistory = histories?.[0];
+  const total = histories?.length ?? 0;
+  const selectedHistory =
+    (selectedId && histories?.find((h) => h.id === selectedId)) ||
+    histories?.[0];
+  const isLatestSelected =
+    !!selectedHistory && selectedHistory.id === histories?.[0]?.id;
 
   return (
     <div className="flex flex-col gap-5">
@@ -975,9 +981,11 @@ export default function PatientHistoryPage({
         <div>
           <h2 className="cap-h2 mb-1">Historia clínica</h2>
           <p className="text-[13px] text-text-secondary">
-            {latestHistory
-              ? 'Última historia registrada'
-              : 'Sin historia clínica'}
+            {total === 0
+              ? 'Sin historia clínica'
+              : total === 1
+                ? '1 historia registrada'
+                : `${total} historias registradas`}
           </p>
         </div>
         {!showForm && (
@@ -987,10 +995,63 @@ export default function PatientHistoryPage({
             onClick={() => setShowForm(true)}
           >
             <Plus className="h-3.5 w-3.5" />
-            {latestHistory ? 'Nueva historia' : 'Crear historia'}
+            {selectedHistory ? 'Nueva historia' : 'Crear historia'}
           </Button>
         )}
       </div>
+
+      {!showForm && histories && histories.length > 1 && (
+        <div className="rounded-xl border border-border bg-surface p-4 shadow-xs">
+          <div className="cap-eyebrow mb-2.5">Historias previas</div>
+          <div className="flex flex-wrap gap-1.5">
+            {histories.map((h, idx) => {
+              const active = h.id === selectedHistory?.id;
+              const isLatest = idx === 0;
+              return (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => setSelectedId(h.id)}
+                  aria-pressed={active}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors',
+                    active
+                      ? 'border-brand bg-brand-soft text-brand-dark'
+                      : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-foreground',
+                  )}
+                >
+                  {format(new Date(h.createdAt), "dd MMM yyyy", { locale: es })}
+                  {isLatest && (
+                    <span
+                      className={cn(
+                        'rounded-full px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide',
+                        active
+                          ? 'bg-brand text-white'
+                          : 'bg-surface-3 text-text-tertiary',
+                      )}
+                    >
+                      Actual
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!showForm && selectedHistory && !isLatestSelected && (
+        <div className="flex items-center justify-between rounded-md border border-amber/25 bg-amber-soft px-4 py-2.5 text-xs text-amber">
+          <span>Estás viendo una historia anterior (solo lectura).</span>
+          <button
+            type="button"
+            onClick={() => setSelectedId(null)}
+            className="font-medium underline-offset-2 hover:underline"
+          >
+            Ver la más reciente
+          </button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center rounded-xl border border-border bg-surface py-16 shadow-xs">
@@ -1002,8 +1063,8 @@ export default function PatientHistoryPage({
           onSuccess={() => setShowForm(false)}
           onCancel={() => setShowForm(false)}
         />
-      ) : latestHistory ? (
-        <HistoryView history={latestHistory} />
+      ) : selectedHistory ? (
+        <HistoryView history={selectedHistory} />
       ) : (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface py-16 shadow-xs">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2">
