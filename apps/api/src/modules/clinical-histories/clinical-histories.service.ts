@@ -122,6 +122,38 @@ export class ClinicalHistoriesService {
       data: {
         ...data,
         updatedBy: userId,
+        inheritRelatives: inheritRelatives
+          ? {
+              upsert: {
+                create: inheritRelatives,
+                update: inheritRelatives,
+              },
+            }
+          : undefined,
+        nonPathologicalPersonal: nonPathologicalPersonal
+          ? {
+              upsert: {
+                create: nonPathologicalPersonal,
+                update: nonPathologicalPersonal,
+              },
+            }
+          : undefined,
+        previousTreatment: previousTreatment
+          ? {
+              upsert: {
+                create: previousTreatment,
+                update: previousTreatment,
+              },
+            }
+          : undefined,
+        physicalExploration: physicalExploration
+          ? {
+              upsert: {
+                create: physicalExploration,
+                update: physicalExploration,
+              },
+            }
+          : undefined,
       } as any,
       include: {
         patient: true,

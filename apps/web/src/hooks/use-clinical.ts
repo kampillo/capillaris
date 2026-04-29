@@ -8,6 +8,7 @@ export interface ClinicalHistory {
   patientId: string;
   personalesPatologicos?: string;
   padecimientoActual?: string;
+  diagnostico?: string;
   tratamiento?: string;
   inheritRelatives?: {
     id: string;
@@ -63,6 +64,22 @@ export function useCreateClinicalHistory() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: any) => api.post<ClinicalHistory>('/clinical-histories', data),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['clinical-histories', 'patient', variables.patientId] });
+      qc.invalidateQueries({ queryKey: ['patient', variables.patientId] });
+    },
+  });
+}
+
+export function useUpdateClinicalHistory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      patientId: _patientId,
+      ...data
+    }: { id: string; patientId: string } & Record<string, any>) =>
+      api.put<ClinicalHistory>(`/clinical-histories/${id}`, data),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['clinical-histories', 'patient', variables.patientId] });
       qc.invalidateQueries({ queryKey: ['patient', variables.patientId] });

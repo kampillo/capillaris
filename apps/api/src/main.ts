@@ -34,7 +34,10 @@ async function bootstrap() {
 
   // CORS — accepts comma-separated list. Vercel preview deploys (*.vercel.app)
   // are allowed automatically.
-  const corsConfig = configService.get<string>('app.corsOrigin', 'http://localhost:3000');
+  const corsConfig = configService.get<string>(
+    'app.corsOrigin',
+    'http://localhost:3000,http://127.0.0.1:3000',
+  );
   const corsList = corsConfig.split(',').map((s) => s.trim()).filter(Boolean);
   app.enableCors({
     origin: (origin, cb) => {

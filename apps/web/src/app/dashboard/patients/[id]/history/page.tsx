@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   ChevronLeft,
   Plus,
+  Pencil,
   FileText,
   HeartPulse,
   Dna,
@@ -12,6 +13,9 @@ import {
   Stethoscope,
   ClipboardList,
   Activity,
+  Microscope,
+  Cigarette,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -21,8 +25,10 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   useClinicalHistoriesByPatient,
   useCreateClinicalHistory,
+  useUpdateClinicalHistory,
 } from '@/hooks/use-clinical';
 import type { ClinicalHistory } from '@/hooks/use-clinical';
+import { usePatient } from '@/hooks/use-patients';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -30,7 +36,7 @@ import { es } from 'date-fns/locale';
 
 const PADECIMIENTO_TEMPLATES = [
   'Caída de cabello progresiva',
-  'Alopecia frontotemporal',
+  'Revaloración',
   'Disminución de densidad capilar',
   'Consulta para valoración',
   'Pérdida de cabello post parto',
@@ -42,6 +48,17 @@ const PATOLOGICOS_TEMPLATES = [
   'Hipotiroidismo',
   'Alergia a penicilina',
   'Niega patologías previas',
+];
+
+const DIAGNOSTICO_TEMPLATES = [
+  'Alopecia Androgenética',
+  'Alopecia de Patrón Femenino',
+  'Alopecia Frontal Fibrosante',
+  'Alopecia Areata',
+  'Alopecia Cicatrizal',
+  'Alopecia Difusa',
+  'Efluvio Telógeno',
+  'Dermatitis Seborreica',
 ];
 
 const TRATAMIENTO_TEMPLATES = [
@@ -299,12 +316,48 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
         </Button>
       </div>
 
-      {history.padecimientoActual && (
+      {ir && (
         <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
-          <SectionHeader icon={ClipboardList} title="Motivo de consulta" />
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">
-            {history.padecimientoActual}
-          </p>
+          <SectionHeader icon={Dna} title="Antecedentes heredofamiliares" />
+          {ir.negados ? (
+            <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
+              Todos negados
+            </span>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              <BoolPill label="HTA" value={ir.hta} />
+              <BoolPill label="Diabetes mellitus" value={ir.dm} />
+              <BoolPill label="Cáncer" value={ir.ca} />
+              <BoolPill label="Respiratorios" value={ir.respiratorios} />
+            </div>
+          )}
+          {ir.otros && (
+            <p className="mt-2 text-xs text-text-secondary">
+              <span className="cap-eyebrow mr-1">Otros</span>
+              {ir.otros}
+            </p>
+          )}
+        </section>
+      )}
+
+      {np && (
+        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+          <SectionHeader
+            icon={Cigarette}
+            title="Antecedentes personales no patológicos"
+          />
+          <div className="flex flex-wrap gap-1.5">
+            <BoolPill label="Tabaquismo" value={np.tabaquismo} />
+            <BoolPill label="Alcoholismo" value={np.alcoholismo} />
+            <BoolPill label="Alergias" value={np.alergias} />
+            <BoolPill label="Actividad física" value={np.actFisica} />
+          </div>
+          {np.otros && (
+            <p className="mt-2 text-xs text-text-secondary">
+              <span className="cap-eyebrow mr-1">Otros</span>
+              {np.otros}
+            </p>
+          )}
         </section>
       )}
 
@@ -312,7 +365,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
         <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
           <SectionHeader
             icon={HeartPulse}
-            title="Antecedentes patológicos personales"
+            title="Antecedentes personales patológicos"
           />
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
             {history.personalesPatologicos}
@@ -320,81 +373,38 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
         </section>
       )}
 
-      {(ir || np || pt) && (
+      {pt && (
         <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
-          <SectionHeader icon={Dna} title="Antecedentes" />
-          <div className="flex flex-col gap-5">
-            {ir && (
-              <div>
-                <div className="cap-eyebrow mb-2">Heredofamiliares</div>
-                {ir.negados ? (
-                  <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
-                    Todos negados
-                  </span>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    <BoolPill label="HTA" value={ir.hta} />
-                    <BoolPill label="Diabetes mellitus" value={ir.dm} />
-                    <BoolPill label="Cáncer" value={ir.ca} />
-                    <BoolPill label="Respiratorios" value={ir.respiratorios} />
-                  </div>
-                )}
-                {ir.otros && (
-                  <p className="mt-2 text-xs text-text-secondary">
-                    <span className="cap-eyebrow mr-1">Otros</span>
-                    {ir.otros}
-                  </p>
-                )}
-              </div>
-            )}
+          <SectionHeader icon={History} title="Tratamientos previos" />
+          {pt.negados ? (
+            <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
+              Todos negados
+            </span>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              <BoolPill label="Minoxidil" value={pt.minoxidil} />
+              <BoolPill label="Finasteride" value={pt.finasteride} />
+              <BoolPill label="Dutasteride" value={pt.dutasteride} />
+              <BoolPill label="Bicalutamida" value={pt.bicalutamida} />
+              <BoolPill label="FUE" value={pt.fue} />
+              <BoolPill label="FUSS" value={pt.fuss} />
+            </div>
+          )}
+          {pt.otros && (
+            <p className="mt-2 text-xs text-text-secondary">
+              <span className="cap-eyebrow mr-1">Otros</span>
+              {pt.otros}
+            </p>
+          )}
+        </section>
+      )}
 
-            {np && (
-              <div className="border-t border-border pt-4">
-                <div className="cap-eyebrow mb-2">Hábitos</div>
-                <div className="flex flex-wrap gap-1.5">
-                  <BoolPill label="Tabaquismo" value={np.tabaquismo} />
-                  <BoolPill label="Alcoholismo" value={np.alcoholismo} />
-                  <BoolPill label="Alergias" value={np.alergias} />
-                  <BoolPill
-                    label="Actividad física"
-                    value={np.actFisica}
-                  />
-                </div>
-                {np.otros && (
-                  <p className="mt-2 text-xs text-text-secondary">
-                    <span className="cap-eyebrow mr-1">Otros</span>
-                    {np.otros}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {pt && (
-              <div className="border-t border-border pt-4">
-                <div className="cap-eyebrow mb-2">Tratamientos previos</div>
-                {pt.negados ? (
-                  <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
-                    Todos negados
-                  </span>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    <BoolPill label="Minoxidil" value={pt.minoxidil} />
-                    <BoolPill label="Finasteride" value={pt.finasteride} />
-                    <BoolPill label="Dutasteride" value={pt.dutasteride} />
-                    <BoolPill label="Bicalutamida" value={pt.bicalutamida} />
-                    <BoolPill label="FUE" value={pt.fue} />
-                    <BoolPill label="FUSS" value={pt.fuss} />
-                  </div>
-                )}
-                {pt.otros && (
-                  <p className="mt-2 text-xs text-text-secondary">
-                    <span className="cap-eyebrow mr-1">Otros</span>
-                    {pt.otros}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+      {history.padecimientoActual && (
+        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+          <SectionHeader icon={ClipboardList} title="Motivo de consulta" />
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">
+            {history.padecimientoActual}
+          </p>
         </section>
       )}
 
@@ -483,6 +493,15 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
         </section>
       )}
 
+      {history.diagnostico && (
+        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+          <SectionHeader icon={Microscope} title="Diagnóstico" />
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">
+            {history.diagnostico}
+          </p>
+        </section>
+      )}
+
       {history.tratamiento && (
         <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
           <SectionHeader icon={Pill} title="Plan de tratamiento" />
@@ -499,49 +518,63 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
 
 function HistoryForm({
   patientId,
+  existing,
   onSuccess,
   onCancel,
 }: {
   patientId: string;
+  existing?: ClinicalHistory;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
   const createMutation = useCreateClinicalHistory();
+  const updateMutation = useUpdateClinicalHistory();
+  const isEdit = !!existing;
+  const mutation = isEdit ? updateMutation : createMutation;
 
-  const [form, setForm] = useState({
-    padecimientoActual: '',
-    personalesPatologicos: '',
-    tratamiento: '',
-    // Heredofamiliares
-    ir_negados: false,
-    ir_hta: false,
-    ir_dm: false,
-    ir_ca: false,
-    ir_respiratorios: false,
-    ir_otros: '',
-    // Hábitos
-    np_tabaquismo: false,
-    np_alcoholismo: false,
-    np_alergias: false,
-    np_actFisica: false,
-    np_otros: '',
-    // Tratamientos previos
-    pt_negados: false,
-    pt_minoxidil: false,
-    pt_fue: false,
-    pt_finasteride: false,
-    pt_fuss: false,
-    pt_dutasteride: false,
-    pt_bicalutamida: false,
-    pt_otros: '',
-    // Exploración física
-    pe_fc: '',
-    pe_ta: '',
-    pe_fr: '',
-    pe_temperatura: '',
-    pe_peso: '',
-    pe_talla: '',
-    pe_description: '',
+  const [form, setForm] = useState(() => {
+    const ir = existing?.inheritRelatives;
+    const np = existing?.nonPathologicalPersonal;
+    const pt = existing?.previousTreatment;
+    const pe = existing?.physicalExploration;
+    const numStr = (v: number | undefined | null) =>
+      v == null ? '' : String(v);
+    return {
+      padecimientoActual: existing?.padecimientoActual ?? '',
+      personalesPatologicos: existing?.personalesPatologicos ?? '',
+      diagnostico: existing?.diagnostico ?? '',
+      tratamiento: existing?.tratamiento ?? '',
+      // Heredofamiliares
+      ir_negados: ir?.negados ?? false,
+      ir_hta: ir?.hta ?? false,
+      ir_dm: ir?.dm ?? false,
+      ir_ca: ir?.ca ?? false,
+      ir_respiratorios: ir?.respiratorios ?? false,
+      ir_otros: ir?.otros ?? '',
+      // Hábitos
+      np_tabaquismo: np?.tabaquismo ?? false,
+      np_alcoholismo: np?.alcoholismo ?? false,
+      np_alergias: np?.alergias ?? false,
+      np_actFisica: np?.actFisica ?? false,
+      np_otros: np?.otros ?? '',
+      // Tratamientos previos
+      pt_negados: pt?.negados ?? false,
+      pt_minoxidil: pt?.minoxidil ?? false,
+      pt_fue: pt?.fue ?? false,
+      pt_finasteride: pt?.finasteride ?? false,
+      pt_fuss: pt?.fuss ?? false,
+      pt_dutasteride: pt?.dutasteride ?? false,
+      pt_bicalutamida: pt?.bicalutamida ?? false,
+      pt_otros: pt?.otros ?? '',
+      // Exploración física
+      pe_fc: numStr(pe?.fc),
+      pe_ta: pe?.ta ?? '',
+      pe_fr: numStr(pe?.fr),
+      pe_temperatura: numStr(pe?.temperatura),
+      pe_peso: numStr(pe?.peso),
+      pe_talla: numStr(pe?.talla),
+      pe_description: pe?.description ?? '',
+    };
   });
 
   const set = (key: string, value: string | boolean) =>
@@ -592,6 +625,7 @@ function HistoryForm({
       patientId,
       padecimientoActual: form.padecimientoActual || undefined,
       personalesPatologicos: form.personalesPatologicos || undefined,
+      diagnostico: form.diagnostico || undefined,
       tratamiento: form.tratamiento || undefined,
       inheritRelatives: {
         negados: form.ir_negados,
@@ -643,49 +677,79 @@ function HistoryForm({
     }
 
     try {
-      await createMutation.mutateAsync(payload);
+      if (isEdit && existing) {
+        await updateMutation.mutateAsync({
+          id: existing.id,
+          patientId,
+          ...payload,
+        });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
       onSuccess();
     } catch {
-      // captured in createMutation.error
+      // captured in mutation.error
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {/* Motivo de consulta */}
+      {/* Antecedentes heredofamiliares */}
       <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
-        <SectionHeader icon={ClipboardList} title="Motivo de consulta" />
-        <div className="space-y-2">
-          <Textarea
-            value={form.padecimientoActual}
-            onChange={(e) => set('padecimientoActual', e.target.value)}
-            rows={3}
-            placeholder="Motivo principal de la consulta, padecimiento actual..."
-            className="resize-none"
-          />
+        <SectionHeader icon={Dna} title="Antecedentes heredofamiliares" />
+        <BoolListEditor
+          fields={INHERIT_FIELDS}
+          values={form}
+          onToggle={handleBoolChange}
+          negadosKey="ir_negados"
+          onNegadosAll={() => negadosAll('ir', INHERIT_FIELDS)}
+          otrosKey="ir_otros"
+          otrosPlaceholder="Otros antecedentes heredofamiliares..."
+        />
+      </section>
+
+      {/* Antecedentes personales no patológicos */}
+      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <SectionHeader
+          icon={Cigarette}
+          title="Antecedentes personales no patológicos"
+        />
+        <div className="space-y-3">
           <div className="flex flex-wrap gap-1.5">
-            {PADECIMIENTO_TEMPLATES.map((t) => (
-              <TemplateChip
-                key={t}
-                onClick={() =>
-                  set(
-                    'padecimientoActual',
-                    appendTemplate(form.padecimientoActual, t),
-                  )
-                }
-              >
-                {t}
-              </TemplateChip>
-            ))}
+            {HABITS_FIELDS.map((f) => {
+              const active = form[f.key as keyof typeof form] === true;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => handleBoolChange(f.key)}
+                  aria-pressed={active}
+                  className={cn(
+                    'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
+                    active
+                      ? 'border-brand bg-brand-soft text-brand-dark'
+                      : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
+                  )}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
           </div>
+          <Input
+            placeholder="Otros hábitos..."
+            value={form.np_otros}
+            onChange={(e) => set('np_otros', e.target.value)}
+            className="h-10"
+          />
         </div>
       </section>
 
-      {/* Antecedentes patológicos personales */}
+      {/* Antecedentes personales patológicos */}
       <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
         <SectionHeader
           icon={HeartPulse}
-          title="Antecedentes patológicos personales"
+          title="Antecedentes personales patológicos"
         />
         <div className="space-y-2">
           <Textarea
@@ -713,69 +777,45 @@ function HistoryForm({
         </div>
       </section>
 
-      {/* Antecedentes (unified) */}
+      {/* Tratamientos previos */}
       <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
-        <SectionHeader icon={Dna} title="Antecedentes" />
-        <div className="flex flex-col gap-5">
-          <div>
-            <Label className="cap-eyebrow mb-2 block">Heredofamiliares</Label>
-            <BoolListEditor
-              fields={INHERIT_FIELDS}
-              values={form}
-              onToggle={handleBoolChange}
-              negadosKey="ir_negados"
-              onNegadosAll={() => negadosAll('ir', INHERIT_FIELDS)}
-              otrosKey="ir_otros"
-              otrosPlaceholder="Otros antecedentes heredofamiliares..."
-            />
-          </div>
+        <SectionHeader icon={History} title="Tratamientos previos" />
+        <BoolListEditor
+          fields={PREVTREAT_FIELDS}
+          values={form}
+          onToggle={handleBoolChange}
+          negadosKey="pt_negados"
+          onNegadosAll={() => negadosAll('pt', PREVTREAT_FIELDS)}
+          otrosKey="pt_otros"
+          otrosPlaceholder="Otros tratamientos previos, dosis, tiempo..."
+        />
+      </section>
 
-          <div className="border-t border-border pt-4">
-            <Label className="cap-eyebrow mb-2 block">Hábitos</Label>
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-1.5">
-                {HABITS_FIELDS.map((f) => {
-                  const active = form[f.key as keyof typeof form] === true;
-                  return (
-                    <button
-                      key={f.key}
-                      type="button"
-                      onClick={() => handleBoolChange(f.key)}
-                      aria-pressed={active}
-                      className={cn(
-                        'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
-                        active
-                          ? 'border-brand bg-brand-soft text-brand-dark'
-                          : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <Input
-                placeholder="Otros hábitos..."
-                value={form.np_otros}
-                onChange={(e) => set('np_otros', e.target.value)}
-                className="h-10"
-              />
-            </div>
-          </div>
-
-          <div className="border-t border-border pt-4">
-            <Label className="cap-eyebrow mb-2 block">
-              Tratamientos previos
-            </Label>
-            <BoolListEditor
-              fields={PREVTREAT_FIELDS}
-              values={form}
-              onToggle={handleBoolChange}
-              negadosKey="pt_negados"
-              onNegadosAll={() => negadosAll('pt', PREVTREAT_FIELDS)}
-              otrosKey="pt_otros"
-              otrosPlaceholder="Otros tratamientos previos, dosis, tiempo..."
-            />
+      {/* Motivo de consulta */}
+      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <SectionHeader icon={ClipboardList} title="Motivo de consulta" />
+        <div className="space-y-2">
+          <Textarea
+            value={form.padecimientoActual}
+            onChange={(e) => set('padecimientoActual', e.target.value)}
+            rows={3}
+            placeholder="¿Por qué viene? Ej: caída de cabello progresiva, revaloración..."
+            className="resize-none"
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {PADECIMIENTO_TEMPLATES.map((t) => (
+              <TemplateChip
+                key={t}
+                onClick={() =>
+                  set(
+                    'padecimientoActual',
+                    appendTemplate(form.padecimientoActual, t),
+                  )
+                }
+              >
+                {t}
+              </TemplateChip>
+            ))}
           </div>
         </div>
       </section>
@@ -894,6 +934,32 @@ function HistoryForm({
         </div>
       </section>
 
+      {/* Diagnóstico */}
+      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <SectionHeader icon={Microscope} title="Diagnóstico" />
+        <div className="space-y-2">
+          <Textarea
+            value={form.diagnostico}
+            onChange={(e) => set('diagnostico', e.target.value)}
+            rows={3}
+            placeholder="Diagnóstico clínico (tipo de alopecia, comorbilidades dermatológicas...)"
+            className="resize-none"
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {DIAGNOSTICO_TEMPLATES.map((t) => (
+              <TemplateChip
+                key={t}
+                onClick={() =>
+                  set('diagnostico', appendTemplate(form.diagnostico, t))
+                }
+              >
+                {t}
+              </TemplateChip>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Plan de tratamiento */}
       <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
         <SectionHeader icon={Pill} title="Plan de tratamiento" />
@@ -920,10 +986,12 @@ function HistoryForm({
         </div>
       </section>
 
-      {createMutation.isError && (
+      {mutation.isError && (
         <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-          {createMutation.error?.message ||
-            'Error al crear historia clínica'}
+          {mutation.error?.message ||
+            (isEdit
+              ? 'Error al actualizar historia clínica'
+              : 'Error al crear historia clínica')}
         </div>
       )}
 
@@ -939,9 +1007,13 @@ function HistoryForm({
         <Button
           type="submit"
           className="h-11 px-8 font-medium"
-          disabled={createMutation.isPending}
+          disabled={mutation.isPending}
         >
-          {createMutation.isPending ? 'Guardando...' : 'Guardar historia'}
+          {mutation.isPending
+            ? 'Guardando...'
+            : isEdit
+              ? 'Guardar cambios'
+              : 'Guardar historia'}
         </Button>
       </div>
     </form>
@@ -958,7 +1030,8 @@ export default function PatientHistoryPage({
   const { data: histories, isLoading } = useClinicalHistoriesByPatient(
     params.id,
   );
-  const [showForm, setShowForm] = useState(false);
+  const { data: patient } = usePatient(params.id);
+  const [mode, setMode] = useState<'view' | 'create' | 'edit'>('view');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const total = histories?.length ?? 0;
@@ -967,6 +1040,11 @@ export default function PatientHistoryPage({
     histories?.[0];
   const isLatestSelected =
     !!selectedHistory && selectedHistory.id === histories?.[0]?.id;
+  const showForm = mode !== 'view';
+
+  const patientName = patient
+    ? `${patient.nombre} ${patient.apellido}`.trim()
+    : null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -978,8 +1056,11 @@ export default function PatientHistoryPage({
       </Link>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="cap-h2 mb-1">Historia clínica</h2>
+        <div className="min-w-0">
+          <div className="cap-eyebrow mb-1">Historia clínica</div>
+          <h2 className="cap-h2 mb-1 truncate">
+            {patientName ?? 'Cargando paciente...'}
+          </h2>
           <p className="text-[13px] text-text-secondary">
             {total === 0
               ? 'Sin historia clínica'
@@ -989,14 +1070,26 @@ export default function PatientHistoryPage({
           </p>
         </div>
         {!showForm && (
-          <Button
-            size="sm"
-            className="gap-1.5"
-            onClick={() => setShowForm(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {selectedHistory ? 'Nueva historia' : 'Crear historia'}
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectedHistory && isLatestSelected && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setMode('edit')}
+              >
+                <Pencil className="h-3.5 w-3.5" /> Editar
+              </Button>
+            )}
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setMode('create')}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {selectedHistory ? 'Nueva historia' : 'Crear historia'}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -1060,8 +1153,9 @@ export default function PatientHistoryPage({
       ) : showForm ? (
         <HistoryForm
           patientId={params.id}
-          onSuccess={() => setShowForm(false)}
-          onCancel={() => setShowForm(false)}
+          existing={mode === 'edit' ? selectedHistory : undefined}
+          onSuccess={() => setMode('view')}
+          onCancel={() => setMode('view')}
         />
       ) : selectedHistory ? (
         <HistoryView history={selectedHistory} />
@@ -1076,7 +1170,7 @@ export default function PatientHistoryPage({
           <Button
             size="sm"
             className="mt-2 gap-1.5"
-            onClick={() => setShowForm(true)}
+            onClick={() => setMode('create')}
           >
             <Plus className="h-3.5 w-3.5" /> Crear historia clínica
           </Button>

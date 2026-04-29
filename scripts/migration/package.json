@@ -9,7 +9,8 @@
     "mysql:down": "docker compose down -v",
     "migrate": "tsx src/index.ts",
     "validate": "tsx src/validate/index.ts",
-    "migrate:step": "tsx src/index.ts --step"
+    "migrate:step": "tsx src/index.ts --step",
+    "backfill:diagnostico": "tsx src/backfill-diagnostico.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

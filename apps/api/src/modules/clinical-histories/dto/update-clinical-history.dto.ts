@@ -22,6 +22,11 @@ export class UpdateClinicalHistoryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  diagnostico?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   tratamiento?: string;
 
   @ApiPropertyOptional({ type: InheritRelativesDto })
