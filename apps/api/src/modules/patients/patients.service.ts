@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -66,30 +67,54 @@ export class PatientsService {
     const { query, tipoPaciente, page = 1, pageSize = 20 } = searchDto;
     const skip = (page - 1) * pageSize;
 
-    const where: any = { deletedAt: null };
+    const tokens = (query ?? '').trim().split(/\s+/).filter(Boolean);
 
-    if (query) {
-      where.OR = [
-        { nombre: { contains: query, mode: 'insensitive' } },
-        { apellido: { contains: query, mode: 'insensitive' } },
-        { email: { contains: query, mode: 'insensitive' } },
-        { celular: { contains: query } },
+    const conditions: Prisma.Sql[] = [Prisma.sql`deleted_at IS NULL`];
+
+    for (const token of tokens) {
+      const textPattern = `%${token}%`;
+      const phoneDigits = token.replace(/\D/g, '');
+
+      const tokenConditions: Prisma.Sql[] = [
+        Prisma.sql`unaccent(nombre) ILIKE unaccent(${textPattern})`,
+        Prisma.sql`unaccent(apellido) ILIKE unaccent(${textPattern})`,
+        Prisma.sql`unaccent(coalesce(email, '')) ILIKE unaccent(${textPattern})`,
       ];
+
+      if (phoneDigits.length > 0) {
+        tokenConditions.push(
+          Prisma.sql`celular_normalized LIKE ${'%' + phoneDigits + '%'}`,
+        );
+      }
+
+      conditions.push(Prisma.sql`(${Prisma.join(tokenConditions, ' OR ')})`);
     }
 
     if (tipoPaciente) {
-      where.tipoPaciente = tipoPaciente;
+      conditions.push(Prisma.sql`tipo_paciente = ${tipoPaciente}`);
     }
 
-    const [data, total] = await Promise.all([
-      this.prisma.patient.findMany({
-        where,
-        skip,
-        take: pageSize,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.patient.count({ where }),
-    ]);
+    const whereClause = Prisma.join(conditions, ' AND ');
+
+    const idRows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM patients
+      WHERE ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ${pageSize} OFFSET ${skip}
+    `;
+
+    const totalRows = await this.prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*)::bigint AS count FROM patients
+      WHERE ${whereClause}
+    `;
+    const total = Number(totalRows[0]?.count ?? 0);
+
+    const ids = idRows.map((r) => r.id);
+    const unordered = ids.length
+      ? await this.prisma.patient.findMany({ where: { id: { in: ids } } })
+      : [];
+    const byId = new Map(unordered.map((p) => [p.id, p]));
+    const data = ids.map((id) => byId.get(id)).filter(Boolean);
 
     return {
       data,
