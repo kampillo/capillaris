@@ -42,6 +42,7 @@ import {
   useSourcesReport,
   useClinicalReport,
 } from '@/hooks/use-dashboard';
+import { useRequireRole } from '@/hooks/use-has-role';
 
 type Preset = 'month' | '30d' | 'quarter' | 'year' | 'custom';
 
@@ -120,6 +121,7 @@ const STATUS_COLORS: Record<string, string> = {
 const PIE_PALETTE = ['#2C7E69', '#7A6B9F', '#4A6B8F', '#B8763A', '#B84545', '#10b981', '#a855f7', '#6b7280'];
 
 export default function ReportsPage() {
+  const authorized = useRequireRole('admin', 'doctor', 'inventory_manager');
   const [preset, setPreset] = useState<Preset>('month');
   const [startDate, setStartDate] = useState(startOfMonth());
   const [endDate, setEndDate] = useState(todayISO());
@@ -173,6 +175,8 @@ export default function ReportsPage() {
       })),
     [sourcesRpt],
   );
+
+  if (!authorized) return null;
 
   return (
     <div className="space-y-8">

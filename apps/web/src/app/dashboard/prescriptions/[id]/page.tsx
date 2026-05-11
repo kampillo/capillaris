@@ -37,6 +37,7 @@ import {
   useUpdatePrescription,
   useDeletePrescription,
 } from '@/hooks/use-prescriptions';
+import { useHasRole } from '@/hooks/use-has-role';
 
 const STATUS_META: Record<
   string,
@@ -98,6 +99,7 @@ export default function PrescriptionDetailPage() {
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const canWrite = useHasRole('admin', 'doctor');
 
   if (isLoading) {
     return (
@@ -161,9 +163,11 @@ export default function PrescriptionDetailPage() {
             <Button variant="outline" onClick={() => window.print()}>
               <Printer className="mr-2 h-4 w-4" /> Imprimir
             </Button>
-            <Button variant="outline" onClick={() => setEditing(true)}>
-              <Pencil className="mr-2 h-4 w-4" /> Editar
-            </Button>
+            {canWrite && (
+              <Button variant="outline" onClick={() => setEditing(true)}>
+                <Pencil className="mr-2 h-4 w-4" /> Editar
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -344,20 +348,22 @@ export default function PrescriptionDetailPage() {
                 <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Estado
                 </h3>
-                <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+                <Popover open={canWrite && statusOpen} onOpenChange={(o) => canWrite && setStatusOpen(o)}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
+                      disabled={!canWrite}
                       className={cn(
                         'flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium transition-colors',
                         status.chip,
+                        !canWrite && 'cursor-default',
                       )}
                     >
                       <span className="flex items-center gap-2">
                         <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
                         {status.label}
                       </span>
-                      <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                      {canWrite && <ChevronDown className="h-3.5 w-3.5 opacity-60" />}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent align="end" className="w-56 p-1">
@@ -405,21 +411,23 @@ export default function PrescriptionDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm">
-              <CardContent className="space-y-2 pt-5">
-                <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Acciones
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar prescripción
-                </Button>
-              </CardContent>
-            </Card>
+            {canWrite && (
+              <Card className="shadow-sm">
+                <CardContent className="space-y-2 pt-5">
+                  <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Acciones
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar prescripción
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </aside>
         </div>
       )}

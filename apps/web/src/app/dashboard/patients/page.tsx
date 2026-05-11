@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { usePatients, useDeletePatient } from '@/hooks/use-patients';
 import type { Patient } from '@/hooks/use-patients';
+import { useHasRole } from '@/hooks/use-has-role';
 import { Avatar } from '@/components/clinic/avatar';
 
 const PATIENT_TYPE: Record<
@@ -104,6 +105,7 @@ export default function PatientsPage() {
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Patient | null>(null);
+  const canCreatePatient = useHasRole('admin', 'doctor', 'receptionist');
 
   useEffect(() => {
     setSearchQuery(urlQuery);
@@ -152,11 +154,13 @@ export default function PatientsPage() {
           <Button variant="outline" size="sm" className="gap-1.5">
             <Download className="h-3.5 w-3.5" /> Exportar
           </Button>
-          <Button size="sm" className="gap-1.5" asChild>
-            <Link href="/dashboard/patients/new">
-              <Plus className="h-3.5 w-3.5" /> Nuevo paciente
-            </Link>
-          </Button>
+          {canCreatePatient && (
+            <Button size="sm" className="gap-1.5" asChild>
+              <Link href="/dashboard/patients/new">
+                <Plus className="h-3.5 w-3.5" /> Nuevo paciente
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 

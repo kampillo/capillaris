@@ -40,12 +40,14 @@ import {
 } from '@/hooks/use-inventory';
 import { ProductForm } from '@/components/inventory/product-form';
 import { StockMovementForm } from '@/components/inventory/stock-movement-form';
+import { useHasRole } from '@/hooks/use-has-role';
 
 export default function InventoryPage() {
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [editTarget, setEditTarget] = useState<Product | null>(null);
   const [stockTarget, setStockTarget] = useState<Product | null>(null);
+  const canManageProducts = useHasRole('admin', 'inventory_manager');
 
   const { data, isLoading, error } = useProducts(page, 20);
   const { data: lowStock } = useLowStock();
@@ -78,12 +80,14 @@ export default function InventoryPage() {
               Movimientos
             </Link>
           </Button>
-          <Button className="h-10 font-medium shadow-sm" asChild>
-            <Link href="/dashboard/inventory/products/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Producto
-            </Link>
-          </Button>
+          {canManageProducts && (
+            <Button className="h-10 font-medium shadow-sm" asChild>
+              <Link href="/dashboard/inventory/products/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Producto
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -173,24 +177,28 @@ export default function InventoryPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => setStockTarget(product)}
-                          title="Agregar stock"
-                        >
-                          <PackagePlus className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => setEditTarget(product)}
-                          title="Editar"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        {canManageProducts && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-xs"
+                            onClick={() => setStockTarget(product)}
+                            title="Agregar stock"
+                          >
+                            <PackagePlus className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {canManageProducts && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-xs"
+                            onClick={() => setEditTarget(product)}
+                            title="Editar"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -202,14 +210,16 @@ export default function InventoryPage() {
                             <Eye className="h-3.5 w-3.5" />
                           </Link>
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-xs text-destructive hover:text-destructive"
-                          onClick={() => setDeleteTarget(product)}
-                        >
-                          Desactivar
-                        </Button>
+                        {canManageProducts && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-xs text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget(product)}
+                          >
+                            Desactivar
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

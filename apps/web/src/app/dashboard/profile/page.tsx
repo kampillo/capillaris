@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { User, Lock } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api';
+import { roleDisplayName } from '@/lib/roles';
 
 export default function ProfilePage() {
   const { user, login, token } = useAuthStore();
@@ -111,7 +112,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground">{user.email}</p>
                 <div className="flex gap-1 mt-1.5">
                   {user.roles?.map((r) => (
-                    <Badge key={r.role.name} variant="secondary" className="text-[10px]">{r.role.name}</Badge>
+                    <Badge key={r} variant="secondary" className="text-[10px]">{roleDisplayName(r)}</Badge>
                   ))}
                 </div>
               </div>

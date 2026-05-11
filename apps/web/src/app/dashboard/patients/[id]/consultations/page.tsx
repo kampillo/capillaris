@@ -36,6 +36,7 @@ import {
   useDoctors,
 } from '@/hooks/use-clinical';
 import type { MedicalConsultation } from '@/hooks/use-clinical';
+import { useHasRole } from '@/hooks/use-has-role';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -717,6 +718,7 @@ export default function PatientConsultationsPage({
     params.id,
   );
   const [showForm, setShowForm] = useState(false);
+  const canWrite = useHasRole('admin', 'doctor');
 
   return (
     <div className="flex flex-col gap-5">
@@ -736,7 +738,7 @@ export default function PatientConsultationsPage({
               : 'Cargando...'}
           </p>
         </div>
-        {!showForm && (
+        {!showForm && canWrite && (
           <Button size="sm" className="gap-1.5" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5" /> Nueva consulta
           </Button>
@@ -767,13 +769,15 @@ export default function PatientConsultationsPage({
           <p className="text-sm text-text-secondary">
             No hay consultas registradas
           </p>
-          <Button
-            size="sm"
-            className="mt-2 gap-1.5"
-            onClick={() => setShowForm(true)}
-          >
-            <Plus className="h-3.5 w-3.5" /> Crear consulta
-          </Button>
+          {canWrite && (
+            <Button
+              size="sm"
+              className="mt-2 gap-1.5"
+              onClick={() => setShowForm(true)}
+            >
+              <Plus className="h-3.5 w-3.5" /> Crear consulta
+            </Button>
+          )}
         </div>
       )}
     </div>

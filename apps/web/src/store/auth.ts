@@ -5,7 +5,7 @@ export interface AuthUser {
   nombre: string;
   apellido: string;
   email: string;
-  roles?: { role: { name: string } }[];
+  roles?: string[];
 }
 
 interface AuthState {

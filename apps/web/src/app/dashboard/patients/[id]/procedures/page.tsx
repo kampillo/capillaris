@@ -25,6 +25,7 @@ import {
   useHairTypes,
 } from '@/hooks/use-clinical';
 import type { ProcedureReport } from '@/hooks/use-clinical';
+import { useHasRole } from '@/hooks/use-has-role';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -865,6 +866,7 @@ export default function PatientProceduresPage({
 }) {
   const { data: procedures, isLoading } = useProceduresByPatient(params.id);
   const [showForm, setShowForm] = useState(false);
+  const canWrite = useHasRole('admin', 'doctor');
 
   return (
     <div className="flex flex-col gap-5">
@@ -884,7 +886,7 @@ export default function PatientProceduresPage({
               : 'Cargando...'}
           </p>
         </div>
-        {!showForm && (
+        {!showForm && canWrite && (
           <Button size="sm" className="gap-1.5" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5" /> Nuevo procedimiento
           </Button>
@@ -915,9 +917,11 @@ export default function PatientProceduresPage({
           <p className="text-sm text-text-secondary">
             No hay procedimientos registrados
           </p>
-          <Button size="sm" className="mt-2 gap-1.5" onClick={() => setShowForm(true)}>
-            <Plus className="h-3.5 w-3.5" /> Crear procedimiento
-          </Button>
+          {canWrite && (
+            <Button size="sm" className="mt-2 gap-1.5" onClick={() => setShowForm(true)}>
+              <Plus className="h-3.5 w-3.5" /> Crear procedimiento
+            </Button>
+          )}
         </div>
       )}
     </div>

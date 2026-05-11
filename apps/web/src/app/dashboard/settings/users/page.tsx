@@ -41,6 +41,7 @@ import {
   type User,
 } from '@/hooks/use-users';
 import { useRoles } from '@/hooks/use-roles';
+import { useRequireRole } from '@/hooks/use-has-role';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-MX', {
@@ -51,6 +52,7 @@ function formatDate(iso: string) {
 }
 
 export default function UsersManagementPage() {
+  const authorized = useRequireRole('admin');
   const [showNew, setShowNew] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [editTarget, setEditTarget] = useState<User | null>(null);
@@ -161,6 +163,8 @@ export default function UsersManagementPage() {
     await deleteMutation.mutateAsync(deleteTarget.id);
     setDeleteTarget(null);
   };
+
+  if (!authorized) return null;
 
   return (
     <div className="space-y-6">

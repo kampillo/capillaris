@@ -20,11 +20,13 @@ import { useAuthStore } from '@/store/auth';
 import { usePendingReminders } from '@/hooks/use-reminders';
 import { Avatar } from '@/components/clinic/avatar';
 import { CapillarisLogo } from './capillaris-logo';
+import type { RoleName } from '@/lib/roles';
 
 type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  roles?: RoleName[];
 };
 
 type NavGroup = {
@@ -45,14 +47,29 @@ const NAV: NavGroup[] = [
     section: 'Gestión',
     items: [
       { href: '/dashboard/inventory', label: 'Inventario', icon: Package },
-      { href: '/dashboard/reports', label: 'Reportes', icon: BarChart3 },
+      {
+        href: '/dashboard/reports',
+        label: 'Reportes',
+        icon: BarChart3,
+        roles: ['admin', 'doctor', 'inventory_manager'],
+      },
     ],
   },
   {
     section: 'Sistema',
     items: [
-      { href: '/dashboard/reminders', label: 'Recordatorios', icon: Bell },
-      { href: '/dashboard/settings', label: 'Configuración', icon: Settings },
+      {
+        href: '/dashboard/reminders',
+        label: 'Recordatorios',
+        icon: Bell,
+        roles: ['admin', 'doctor', 'receptionist'],
+      },
+      {
+        href: '/dashboard/settings',
+        label: 'Configuración',
+        icon: Settings,
+        roles: ['admin'],
+      },
     ],
   },
 ];
@@ -102,12 +119,17 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Nav groups */}
       <nav className="flex-1 overflow-y-auto px-2.5 pb-3 pt-1">
-        {NAV.map((group) => (
+        {NAV.map((group) => {
+          const visibleItems = group.items.filter(
+            (item) => !item.roles || item.roles.some((r) => user?.roles?.includes(r)),
+          );
+          if (visibleItems.length === 0) return null;
+          return (
           <div key={group.section} className="mb-4">
             <div className="px-3.5 pb-2 pt-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-fg-muted">
               {group.section}
             </div>
-            {group.items.map((item) => {
+            {visibleItems.map((item) => {
               const active = isActive(item.href);
               const Icon = item.icon;
               const showDot = item.href === '/dashboard/reminders' && pendingCount > 0;
@@ -134,7 +156,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* User footer */}

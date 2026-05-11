@@ -41,6 +41,7 @@ import {
   type GoogleCalendarEvent,
 } from '@/hooks/use-google-calendar';
 import { Segmented } from '@/components/clinic/segmented';
+import { useHasRole } from '@/hooks/use-has-role';
 
 // ── Constants ──────────────────────────────────────────────
 
@@ -566,6 +567,7 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Appointment | null>(null);
   const [view, setView] = useState<'table' | 'week' | 'month'>('week');
+  const canManageAppointments = useHasRole('admin', 'doctor', 'receptionist');
 
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
 
@@ -654,11 +656,13 @@ export default function AppointmentsPage() {
               : 'Cargando...'}
           </p>
         </div>
-        <Button size="sm" className="gap-1.5" asChild>
-          <Link href="/dashboard/appointments/new">
-            <Plus className="h-3.5 w-3.5" /> Nueva cita
-          </Link>
-        </Button>
+        {canManageAppointments && (
+          <Button size="sm" className="gap-1.5" asChild>
+            <Link href="/dashboard/appointments/new">
+              <Plus className="h-3.5 w-3.5" /> Nueva cita
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -825,34 +829,40 @@ export default function AppointmentsPage() {
                         {appt.title || '—'}
                       </td>
                       <td className="px-4 py-3.5">
-                        <Select
-                          value={appt.status}
-                          onValueChange={(v) => handleStatusChange(appt.id, v)}
-                        >
-                          <SelectTrigger className="h-8 w-[140px] border-0 bg-transparent p-0">
-                            <StatusPill status={appt.status} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="scheduled">Programada</SelectItem>
-                            <SelectItem value="confirmed">Confirmada</SelectItem>
-                            <SelectItem value="completed">Completada</SelectItem>
-                            <SelectItem value="cancelled">Cancelada</SelectItem>
-                            <SelectItem value="no_show">No asistió</SelectItem>
-                            <SelectItem value="rescheduled">
-                              Reprogramada
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {canManageAppointments ? (
+                          <Select
+                            value={appt.status}
+                            onValueChange={(v) => handleStatusChange(appt.id, v)}
+                          >
+                            <SelectTrigger className="h-8 w-[140px] border-0 bg-transparent p-0">
+                              <StatusPill status={appt.status} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="scheduled">Programada</SelectItem>
+                              <SelectItem value="confirmed">Confirmada</SelectItem>
+                              <SelectItem value="completed">Completada</SelectItem>
+                              <SelectItem value="cancelled">Cancelada</SelectItem>
+                              <SelectItem value="no_show">No asistió</SelectItem>
+                              <SelectItem value="rescheduled">
+                                Reprogramada
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <StatusPill status={appt.status} />
+                        )}
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-xs text-destructive hover:text-destructive"
-                          onClick={() => setDeleteTarget(appt)}
-                        >
-                          Eliminar
-                        </Button>
+                        {canManageAppointments && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-xs text-destructive hover:text-destructive"
+                            onClick={() => setDeleteTarget(appt)}
+                          >
+                            Eliminar
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}

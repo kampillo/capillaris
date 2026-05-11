@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { usePatient } from '@/hooks/use-patients';
 import { useConsultationsByPatient } from '@/hooks/use-clinical';
+import { useHasRole } from '@/hooks/use-has-role';
 import { Avatar } from '@/components/clinic/avatar';
 import { ScalpMap } from '@/components/clinic/scalp-map';
 import { variantsToSeverity } from '@/components/clinic/scalp-zones';
@@ -106,6 +107,8 @@ export default function PatientDetailPage({
   const router = useRouter();
   const { data: patient, isLoading, error } = usePatient(params.id);
   const { data: consultations } = useConsultationsByPatient(params.id);
+  const canEditPatient = useHasRole('admin', 'doctor', 'receptionist');
+  const canManageAppointments = useHasRole('admin', 'doctor', 'receptionist');
 
   if (isLoading) {
     return (
@@ -217,16 +220,20 @@ export default function PatientDetailPage({
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5" asChild>
-              <Link href={`/dashboard/patients/${patient.id}/edit`}>
-                <Edit className="h-3.5 w-3.5" /> Editar
-              </Link>
-            </Button>
-            <Button size="sm" className="gap-1.5" asChild>
-              <Link href="/dashboard/appointments/new">
-                <Calendar className="h-3.5 w-3.5" /> Agendar cita
-              </Link>
-            </Button>
+            {canEditPatient && (
+              <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                <Link href={`/dashboard/patients/${patient.id}/edit`}>
+                  <Edit className="h-3.5 w-3.5" /> Editar
+                </Link>
+              </Button>
+            )}
+            {canManageAppointments && (
+              <Button size="sm" className="gap-1.5" asChild>
+                <Link href="/dashboard/appointments/new">
+                  <Calendar className="h-3.5 w-3.5" /> Agendar cita
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
 

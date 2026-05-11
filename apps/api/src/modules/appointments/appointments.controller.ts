@@ -14,16 +14,19 @@ import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('appointments')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('appointments')
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Post()
+  @Roles('admin', 'doctor', 'receptionist')
   @ApiOperation({ summary: 'Create a new appointment' })
   create(
     @Body() createAppointmentDto: CreateAppointmentDto,
@@ -33,6 +36,7 @@ export class AppointmentsController {
   }
 
   @Get()
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager')
   @ApiOperation({ summary: 'Get all appointments (paginated, optional date range)' })
   findAll(
     @Query('page') page?: number,
@@ -44,12 +48,14 @@ export class AppointmentsController {
   }
 
   @Get(':id')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager')
   @ApiOperation({ summary: 'Get an appointment by ID' })
   findOne(@Param('id') id: string) {
     return this.appointmentsService.findOne(id);
   }
 
   @Put(':id')
+  @Roles('admin', 'doctor', 'receptionist')
   @ApiOperation({ summary: 'Update an appointment' })
   update(
     @Param('id') id: string,
@@ -60,6 +66,7 @@ export class AppointmentsController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'doctor', 'receptionist')
   @ApiOperation({ summary: 'Delete an appointment' })
   remove(
     @Param('id') id: string,

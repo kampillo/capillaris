@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/table';
 import { usePatient } from '@/hooks/use-patients';
 import { usePrescriptions } from '@/hooks/use-prescriptions';
+import { useHasRole } from '@/hooks/use-has-role';
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   draft: { label: 'Borrador', className: 'bg-gray-50 text-gray-600 border-gray-200' },
@@ -40,6 +41,7 @@ export default function PatientPrescriptionsPage({
 }) {
   const { data: patient } = usePatient(params.id);
   const { data, isLoading } = usePrescriptions(1, 100);
+  const canWrite = useHasRole('admin', 'doctor');
 
   const prescriptions = (data?.data || []).filter(
     (rx) => rx.patientId === params.id,
@@ -61,12 +63,14 @@ export default function PatientPrescriptionsPage({
             </p>
           </div>
         </div>
-        <Button className="h-10 font-medium shadow-sm" asChild>
-          <Link href={`/dashboard/patients/${params.id}/prescriptions/new`}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Prescripción
-          </Link>
-        </Button>
+        {canWrite && (
+          <Button className="h-10 font-medium shadow-sm" asChild>
+            <Link href={`/dashboard/patients/${params.id}/prescriptions/new`}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Prescripción
+            </Link>
+          </Button>
+        )}
       </div>
 
       <Card className="shadow-sm">
@@ -81,11 +85,13 @@ export default function PatientPrescriptionsPage({
                 <Pill className="h-6 w-6 text-muted-foreground" />
               </div>
               <p className="text-sm text-muted-foreground">No hay prescripciones para este paciente</p>
-              <Button className="h-10 font-medium mt-2" asChild>
-                <Link href={`/dashboard/patients/${params.id}/prescriptions/new`}>
-                  Crear prescripción
-                </Link>
-              </Button>
+              {canWrite && (
+                <Button className="h-10 font-medium mt-2" asChild>
+                  <Link href={`/dashboard/patients/${params.id}/prescriptions/new`}>
+                    Crear prescripción
+                  </Link>
+                </Button>
+              )}
             </div>
           ) : (
             <Table>

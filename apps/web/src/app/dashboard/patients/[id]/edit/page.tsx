@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PatientForm } from '@/components/patients/patient-form';
 import type { PatientFormValues } from '@/components/patients/patient-form';
 import { usePatient, useUpdatePatient } from '@/hooks/use-patients';
+import { useRequireRole } from '@/hooks/use-has-role';
 
 export default function EditPatientPage({
   params,
@@ -16,6 +17,8 @@ export default function EditPatientPage({
   const router = useRouter();
   const { data: patient, isLoading, error } = usePatient(params.id);
   const updateMutation = useUpdatePatient();
+  const authorized = useRequireRole('admin', 'doctor', 'receptionist');
+  if (!authorized) return null;
 
   const handleSubmit = async (data: PatientFormValues) => {
     const cleaned = Object.fromEntries(

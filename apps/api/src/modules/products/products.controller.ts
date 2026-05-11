@@ -14,16 +14,19 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('products')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
+  @Roles('admin', 'inventory_manager')
   @ApiOperation({ summary: 'Create a new product' })
   create(
     @Body() dto: CreateProductDto,
@@ -33,6 +36,7 @@ export class ProductsController {
   }
 
   @Get()
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager')
   @ApiOperation({ summary: 'Get all products (paginated)' })
   findAll(
     @Query('page') page?: number,
@@ -45,12 +49,14 @@ export class ProductsController {
   }
 
   @Get(':id')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager')
   @ApiOperation({ summary: 'Get a product by ID' })
   findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
 
   @Put(':id')
+  @Roles('admin', 'inventory_manager')
   @ApiOperation({ summary: 'Update a product' })
   update(
     @Param('id') id: string,
@@ -61,6 +67,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'inventory_manager')
   @ApiOperation({ summary: 'Deactivate a product' })
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);

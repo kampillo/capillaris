@@ -15,6 +15,7 @@ import {
   useGoogleCalendarConnect,
   useGoogleCalendarDisconnect,
 } from '@/hooks/use-google-calendar';
+import { useRequireRole } from '@/hooks/use-has-role';
 
 const settingsLinks = [
   {
@@ -28,6 +29,7 @@ const settingsLinks = [
 ];
 
 export default function SettingsPage() {
+  const authorized = useRequireRole('admin');
   const searchParams = useSearchParams();
   const googleConnected = searchParams.get('google') === 'connected';
   const { data: googleStatus, isLoading: statusLoading } = useGoogleCalendarStatus();
@@ -40,6 +42,8 @@ export default function SettingsPage() {
       window.history.replaceState({}, '', '/dashboard/settings');
     }
   }, [googleConnected]);
+
+  if (!authorized) return null;
 
   return (
     <div className="space-y-6">

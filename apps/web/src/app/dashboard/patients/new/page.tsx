@@ -6,10 +6,13 @@ import { ChevronLeft } from 'lucide-react';
 import { PatientForm } from '@/components/patients/patient-form';
 import type { PatientFormValues } from '@/components/patients/patient-form';
 import { useCreatePatient } from '@/hooks/use-patients';
+import { useRequireRole } from '@/hooks/use-has-role';
 
 export default function NewPatientPage() {
   const router = useRouter();
   const createMutation = useCreatePatient();
+  const authorized = useRequireRole('admin', 'doctor', 'receptionist');
+  if (!authorized) return null;
 
   const handleSubmit = async (data: PatientFormValues) => {
     const cleaned = Object.fromEntries(

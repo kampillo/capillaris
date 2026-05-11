@@ -29,6 +29,7 @@ import {
 } from '@/hooks/use-clinical';
 import type { ClinicalHistory } from '@/hooks/use-clinical';
 import { usePatient } from '@/hooks/use-patients';
+import { useHasRole } from '@/hooks/use-has-role';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -1033,6 +1034,7 @@ export default function PatientHistoryPage({
   const { data: patient } = usePatient(params.id);
   const [mode, setMode] = useState<'view' | 'create' | 'edit'>('view');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const canWrite = useHasRole('admin', 'doctor');
 
   const total = histories?.length ?? 0;
   const selectedHistory =
@@ -1069,7 +1071,7 @@ export default function PatientHistoryPage({
                 : `${total} historias registradas`}
           </p>
         </div>
-        {!showForm && (
+        {!showForm && canWrite && (
           <div className="flex items-center gap-2">
             {selectedHistory && isLatestSelected && (
               <Button
@@ -1167,13 +1169,15 @@ export default function PatientHistoryPage({
           <p className="text-sm text-text-secondary">
             No hay historia clínica registrada
           </p>
-          <Button
-            size="sm"
-            className="mt-2 gap-1.5"
-            onClick={() => setMode('create')}
-          >
-            <Plus className="h-3.5 w-3.5" /> Crear historia clínica
-          </Button>
+          {canWrite && (
+            <Button
+              size="sm"
+              className="mt-2 gap-1.5"
+              onClick={() => setMode('create')}
+            >
+              <Plus className="h-3.5 w-3.5" /> Crear historia clínica
+            </Button>
+          )}
         </div>
       )}
     </div>

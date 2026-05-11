@@ -14,11 +14,13 @@ import { ClinicalHistoriesService } from './clinical-histories.service';
 import { CreateClinicalHistoryDto } from './dto/create-clinical-history.dto';
 import { UpdateClinicalHistoryDto } from './dto/update-clinical-history.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('clinical-histories')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('clinical-histories')
 export class ClinicalHistoriesController {
   constructor(
@@ -26,6 +28,7 @@ export class ClinicalHistoriesController {
   ) {}
 
   @Post()
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Create a new clinical history' })
   create(
     @Body() dto: CreateClinicalHistoryDto,
@@ -35,24 +38,28 @@ export class ClinicalHistoriesController {
   }
 
   @Get()
+  @Roles('admin', 'doctor', 'receptionist')
   @ApiOperation({ summary: 'Get all clinical histories (paginated)' })
   findAll(@Query('page') page?: number, @Query('pageSize') pageSize?: number) {
     return this.clinicalHistoriesService.findAll(page, pageSize);
   }
 
   @Get('patient/:patientId')
+  @Roles('admin', 'doctor', 'receptionist')
   @ApiOperation({ summary: 'Get clinical histories by patient' })
   findByPatient(@Param('patientId') patientId: string) {
     return this.clinicalHistoriesService.findByPatient(patientId);
   }
 
   @Get(':id')
+  @Roles('admin', 'doctor', 'receptionist')
   @ApiOperation({ summary: 'Get a clinical history by ID' })
   findOne(@Param('id') id: string) {
     return this.clinicalHistoriesService.findOne(id);
   }
 
   @Put(':id')
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Update a clinical history' })
   update(
     @Param('id') id: string,
@@ -63,6 +70,7 @@ export class ClinicalHistoriesController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Delete a clinical history' })
   remove(@Param('id') id: string) {
     return this.clinicalHistoriesService.remove(id);

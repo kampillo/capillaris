@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { PrescriptionForm } from '@/components/prescriptions/prescription-form';
 import { usePatient } from '@/hooks/use-patients';
 import { useCreatePrescription } from '@/hooks/use-prescriptions';
+import { useRequireRole } from '@/hooks/use-has-role';
 
 export default function NewPatientPrescriptionPage() {
   const params = useParams();
@@ -15,6 +16,8 @@ export default function NewPatientPrescriptionPage() {
 
   const { data: patient } = usePatient(patientId);
   const createMutation = useCreatePrescription();
+  const authorized = useRequireRole('admin', 'doctor');
+  if (!authorized) return null;
 
   const back = `/dashboard/patients/${patientId}/prescriptions`;
   const patientLabel = patient

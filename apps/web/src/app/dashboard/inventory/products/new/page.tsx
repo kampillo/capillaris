@@ -6,10 +6,13 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProductForm } from '@/components/inventory/product-form';
 import { useCreateProduct } from '@/hooks/use-inventory';
+import { useRequireRole } from '@/hooks/use-has-role';
 
 export default function NewProductPage() {
   const router = useRouter();
   const createMutation = useCreateProduct();
+  const authorized = useRequireRole('admin', 'inventory_manager');
+  if (!authorized) return null;
 
   return (
     <div className="space-y-6">

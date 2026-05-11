@@ -21,6 +21,7 @@ import { Avatar } from '@/components/clinic/avatar';
 import { usePatients } from '@/hooks/use-patients';
 import { useDoctors } from '@/hooks/use-clinical';
 import { useCreateAppointment } from '@/hooks/use-appointments';
+import { useRequireRole } from '@/hooks/use-has-role';
 
 const SUGGESTED_SLOTS = [
   '09:00',
@@ -82,6 +83,7 @@ function SectionHeader({
 export default function NewAppointmentPage() {
   const router = useRouter();
   const createMutation = useCreateAppointment();
+  const authorized = useRequireRole('admin', 'doctor', 'receptionist');
 
   const [patientSearch, setPatientSearch] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState('');
@@ -144,6 +146,8 @@ export default function NewAppointmentPage() {
       setError(err?.message || 'Error al crear la cita');
     }
   };
+
+  if (!authorized) return null;
 
   return (
     <div className="flex flex-col gap-5">
