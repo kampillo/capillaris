@@ -38,6 +38,7 @@ import {
   useCreateUser,
   useUpdateUser,
   useDeleteUser,
+  useReactivateUser,
   type User,
 } from '@/hooks/use-users';
 import { useRoles } from '@/hooks/use-roles';
@@ -51,11 +52,15 @@ function formatDate(iso: string) {
   });
 }
 
+type StatusFilter = 'all' | 'active' | 'inactive';
+
 export default function UsersManagementPage() {
   const authorized = useRequireRole('admin');
   const [showNew, setShowNew] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [reactivateTarget, setReactivateTarget] = useState<User | null>(null);
   const [editTarget, setEditTarget] = useState<User | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
 
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -79,6 +84,15 @@ export default function UsersManagementPage() {
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
   const deleteMutation = useDeleteUser();
+  const reactivateMutation = useReactivateUser();
+
+  const filteredUsers = (users ?? []).filter((u) => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return u.isActive;
+    return !u.isActive;
+  });
+  const activeCount = (users ?? []).filter((u) => u.isActive).length;
+  const inactiveCount = (users ?? []).filter((u) => !u.isActive).length;
 
   useEffect(() => {
     if (!editTarget) return;
@@ -164,6 +178,12 @@ export default function UsersManagementPage() {
     setDeleteTarget(null);
   };
 
+  const handleReactivate = async () => {
+    if (!reactivateTarget) return;
+    await reactivateMutation.mutateAsync(reactivateTarget.id);
+    setReactivateTarget(null);
+  };
+
   if (!authorized) return null;
 
   return (
@@ -179,6 +199,37 @@ export default function UsersManagementPage() {
         </Button>
       </div>
 
+      {/* Status filter tabs */}
+      <div className="flex gap-1 border-b">
+        {(
+          [
+            { value: 'active', label: 'Activos', count: activeCount },
+            { value: 'inactive', label: 'Inactivos', count: inactiveCount },
+            { value: 'all', label: 'Todos', count: (users ?? []).length },
+          ] as { value: StatusFilter; label: string; count: number }[]
+        ).map((t) => {
+          const active = statusFilter === t.value;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setStatusFilter(t.value)}
+              className={
+                '-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-[13px] transition-colors ' +
+                (active
+                  ? 'border-foreground font-medium text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground')
+              }
+            >
+              {t.label}
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">
+                {t.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <Card className="shadow-sm">
         <CardContent className="p-0">
           {isLoading ? (
@@ -189,12 +240,16 @@ export default function UsersManagementPage() {
             <div className="flex items-center justify-center py-16">
               <p className="text-sm text-destructive">Error al cargar usuarios</p>
             </div>
-          ) : !users || users.length === 0 ? (
+          ) : filteredUsers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                 <Users className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">No hay usuarios registrados</p>
+              <p className="text-sm text-muted-foreground">
+                {statusFilter === 'inactive'
+                  ? 'No hay usuarios inactivos'
+                  : 'No hay usuarios registrados'}
+              </p>
             </div>
           ) : (
             <Table>
@@ -210,8 +265,14 @@ export default function UsersManagementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id} className="hover:bg-accent/50 transition-colors">
+                {filteredUsers.map((user) => (
+                  <TableRow
+                    key={user.id}
+                    className={
+                      'hover:bg-accent/50 transition-colors ' +
+                      (user.isActive ? '' : 'opacity-60')
+                    }
+                  >
                     <TableCell className="font-medium">
                       {user.nombre} {user.apellido}
                     </TableCell>
@@ -251,14 +312,25 @@ export default function UsersManagementPage() {
                       >
                         Editar
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-xs text-destructive hover:text-destructive"
-                        onClick={() => setDeleteTarget(user)}
-                      >
-                        Desactivar
-                      </Button>
+                      {user.isActive ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(user)}
+                        >
+                          Desactivar
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs text-emerald-700 hover:text-emerald-700"
+                          onClick={() => setReactivateTarget(user)}
+                        >
+                          Reactivar
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -403,7 +475,7 @@ export default function UsersManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
+      {/* Deactivate Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -411,13 +483,33 @@ export default function UsersManagementPage() {
             <DialogDescription>
               ¿Estás seguro de que deseas desactivar a{' '}
               <strong>{deleteTarget?.nombre} {deleteTarget?.apellido}</strong>?
-              El usuario no podrá acceder al sistema.
+              El usuario no podrá acceder al sistema. Podrás reactivarlo más adelante.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? 'Desactivando...' : 'Desactivar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reactivate Dialog */}
+      <Dialog open={!!reactivateTarget} onOpenChange={() => setReactivateTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reactivar Usuario</DialogTitle>
+            <DialogDescription>
+              ¿Reactivar a{' '}
+              <strong>{reactivateTarget?.nombre} {reactivateTarget?.apellido}</strong>?
+              Podrá iniciar sesión nuevamente con sus credenciales anteriores.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setReactivateTarget(null)}>Cancelar</Button>
+            <Button onClick={handleReactivate} disabled={reactivateMutation.isPending}>
+              {reactivateMutation.isPending ? 'Reactivando...' : 'Reactivar'}
             </Button>
           </DialogFooter>
         </DialogContent>

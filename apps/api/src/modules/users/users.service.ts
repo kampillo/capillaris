@@ -112,7 +112,15 @@ export class UsersService {
     await this.findOne(id);
     return this.prisma.user.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { isActive: false },
+    });
+  }
+
+  async reactivate(id: string) {
+    await this.findOne(id);
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive: true },
     });
   }
 }

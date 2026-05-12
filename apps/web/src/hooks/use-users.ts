@@ -79,3 +79,13 @@ export function useDeleteUser() {
     },
   });
 }
+
+export function useReactivateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/users/${id}/reactivate`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}

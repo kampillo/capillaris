@@ -52,8 +52,15 @@ export class UsersController {
 
   @Delete(':id')
   @Roles('admin')
-  @ApiOperation({ summary: 'Soft delete a user' })
+  @ApiOperation({ summary: 'Deactivate a user (reversible)' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
+  }
+
+  @Post(':id/reactivate')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Reactivate a previously deactivated user' })
+  reactivate(@Param('id') id: string) {
+    return this.usersService.reactivate(id);
   }
 }
