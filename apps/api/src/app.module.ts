@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import storageConfig from './config/storage.config';
 import googleConfig from './config/google.config';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuditModule } from './common/audit/audit.module';
+import { AuditContextInterceptor } from './common/audit/audit-context.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuthModule } from './modules/auth/auth.module';
@@ -29,6 +31,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ImagesModule } from './modules/images/images.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.module';
+import { AuditFeatureModule } from './modules/audit/audit.module';
 
 @Module({
   imports: [
@@ -37,6 +40,7 @@ import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.
       load: [appConfig, databaseConfig, jwtConfig, storageConfig, googleConfig],
     }),
     PrismaModule,
+    AuditModule,
     HealthModule,
     AuthModule,
     UsersModule,
@@ -57,12 +61,15 @@ import { GoogleCalendarModule } from './modules/google-calendar/google-calendar.
     ImagesModule,
     CatalogModule,
     GoogleCalendarModule,
+    AuditFeatureModule,
   ],
   providers: [
     // Global JWT guard - all routes protected by default, use @Public() to opt out
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Global roles guard - use @Roles('admin', 'doctor') to restrict
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Captures req.user/ip/UA into AsyncLocalStorage so audit writes know who acted.
+    { provide: APP_INTERCEPTOR, useClass: AuditContextInterceptor },
   ],
 })
 export class AppModule {}

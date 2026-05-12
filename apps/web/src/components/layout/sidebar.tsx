@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { usePendingReminders } from '@/hooks/use-reminders';
+import { api } from '@/lib/api';
 import { Avatar } from '@/components/clinic/avatar';
 import { CapillarisLogo } from './capillaris-logo';
 import type { RoleName } from '@/lib/roles';
@@ -84,7 +85,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Audit the logout server-side before clearing the token locally.
+      await api.post('/auth/logout', {});
+    } catch {
+      // Network/expired token — proceed with local logout anyway.
+    }
     logout();
     router.push('/login');
   };

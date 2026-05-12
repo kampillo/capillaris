@@ -45,4 +45,15 @@ export class AuthController {
   async getProfile(@CurrentUser('id') userId: string) {
     return this.authService.getProfile(userId);
   }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Registrar cierre de sesión (auditoría)' })
+  async logout(
+    @CurrentUser('id') userId: string,
+    @CurrentUser('email') email: string,
+  ) {
+    return this.authService.logout(userId, email);
+  }
 }

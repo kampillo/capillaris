@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Users, ArrowRight, Calendar, CheckCircle2, Loader2 } from 'lucide-react';
+import { Users, ArrowRight, Calendar, CheckCircle2, Loader2, FileSearch } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -25,6 +25,14 @@ const settingsLinks = [
     icon: Users,
     iconBg: 'bg-blue-50',
     iconColor: 'text-blue-600',
+  },
+  {
+    title: 'Historial de actividad',
+    description: 'Auditoría de movimientos hechos por los usuarios',
+    href: '/dashboard/settings/audit-logs',
+    icon: FileSearch,
+    iconBg: 'bg-purple-50',
+    iconColor: 'text-purple-600',
   },
 ];
 

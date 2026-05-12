@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { AuditWriterService } from '../../common/audit/audit-writer.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -12,6 +13,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
+    private readonly audit: AuditWriterService,
   ) {}
 
   async validateUser(email: string, password: string) {
@@ -43,7 +45,18 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
+    let user: Awaited<ReturnType<typeof this.validateUser>>;
+    try {
+      user = await this.validateUser(loginDto.email, loginDto.password);
+    } catch (err) {
+      await this.audit.write({
+        action: 'LOGIN_FAILED',
+        entityType: 'auth',
+        userEmail: loginDto.email,
+        newValues: { email: loginDto.email, reason: (err as Error).message },
+      });
+      throw err;
+    }
 
     const roles = user.userRoles.map(
       (ur: { role: { name: string } }) => ur.role.name,
@@ -61,6 +74,14 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    await this.audit.write({
+      action: 'LOGIN',
+      entityType: 'auth',
+      entityId: user.id,
+      userId: user.id,
+      userEmail: user.email,
+    });
+
     return {
       accessToken: this.jwtService.sign(payload),
       user: {
@@ -71,6 +92,17 @@ export class AuthService {
         roles,
       },
     };
+  }
+
+  async logout(userId: string, userEmail: string) {
+    await this.audit.write({
+      action: 'LOGOUT',
+      entityType: 'auth',
+      entityId: userId,
+      userId,
+      userEmail,
+    });
+    return { ok: true };
   }
 
   async register(dto: RegisterDto) {

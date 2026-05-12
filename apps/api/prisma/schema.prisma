@@ -736,6 +736,7 @@ model Reminder {
 model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid
   userId     String?  @map("user_id") @db.Uuid
+  userEmail  String?  @map("user_email") @db.VarChar(255)
   action     String   @db.VarChar(30)
   entityType String   @map("entity_type") @db.VarChar(50)
   entityId   String?  @map("entity_id") @db.Uuid
