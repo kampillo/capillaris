@@ -45,11 +45,20 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export type PatientSortField =
+  | 'name'
+  | 'tipoPaciente'
+  | 'origenCanal'
+  | 'updatedAt'
+  | 'createdAt';
+
 export interface SearchParams {
   query?: string;
   tipoPaciente?: string;
   page?: number;
   pageSize?: number;
+  sortBy?: PatientSortField;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export type CreatePatientData = Omit<Patient, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
@@ -61,6 +70,8 @@ export function usePatients(params: SearchParams = {}) {
   if (params.tipoPaciente) searchParams.tipoPaciente = params.tipoPaciente;
   if (params.page) searchParams.page = String(params.page);
   if (params.pageSize) searchParams.pageSize = String(params.pageSize);
+  if (params.sortBy) searchParams.sortBy = params.sortBy;
+  if (params.sortOrder) searchParams.sortOrder = params.sortOrder;
 
   const hasSearch = params.query || params.tipoPaciente;
   const endpoint = hasSearch ? '/patients/search' : '/patients';

@@ -13,7 +13,10 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
-import { SearchPatientsDto } from './dto/search-patients.dto';
+import {
+  SearchPatientsDto,
+  PatientSortField,
+} from './dto/search-patients.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -39,8 +42,13 @@ export class PatientsController {
   @Get()
   @Roles('admin', 'doctor', 'receptionist', 'inventory_manager')
   @ApiOperation({ summary: 'Get all patients (paginated)' })
-  findAll(@Query('page') page?: number, @Query('pageSize') pageSize?: number) {
-    return this.patientsService.findAll(page, pageSize);
+  findAll(
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('sortBy') sortBy?: PatientSortField,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ) {
+    return this.patientsService.findAll(page, pageSize, sortBy, sortOrder);
   }
 
   @Get('search')

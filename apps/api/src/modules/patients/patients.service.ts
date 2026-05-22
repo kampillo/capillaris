@@ -3,7 +3,40 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
-import { SearchPatientsDto } from './dto/search-patients.dto';
+import {
+  SearchPatientsDto,
+  PatientSortField,
+} from './dto/search-patients.dto';
+
+type SortOrder = 'asc' | 'desc';
+
+const SORT_ORDERBY_PRISMA: Record<
+  PatientSortField,
+  (dir: SortOrder) => Prisma.PatientOrderByWithRelationInput[]
+> = {
+  name: (dir) => [{ nombre: dir }, { apellido: dir }],
+  tipoPaciente: (dir) => [{ tipoPaciente: dir }],
+  origenCanal: (dir) => [{ origenCanal: { sort: dir, nulls: 'last' } }],
+  updatedAt: (dir) => [{ updatedAt: dir }],
+  createdAt: (dir) => [{ createdAt: dir }],
+};
+
+const SORT_RAW_SQL: Record<PatientSortField, string> = {
+  name: 'nombre {{dir}}, apellido {{dir}}',
+  tipoPaciente: 'tipo_paciente {{dir}}',
+  origenCanal: 'origen_canal {{dir}} NULLS LAST',
+  updatedAt: 'updated_at {{dir}}',
+  createdAt: 'created_at {{dir}}',
+};
+
+function resolveSort(
+  sortBy?: PatientSortField,
+  sortOrder?: SortOrder,
+): { field: PatientSortField; dir: SortOrder } {
+  const field: PatientSortField = sortBy ?? 'createdAt';
+  const dir: SortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
+  return { field, dir };
+}
 
 @Injectable()
 export class PatientsService {
@@ -18,17 +51,23 @@ export class PatientsService {
     });
   }
 
-  async findAll(page?: number, pageSize?: number) {
+  async findAll(
+    page?: number,
+    pageSize?: number,
+    sortBy?: PatientSortField,
+    sortOrder?: SortOrder,
+  ) {
     const p = page && !isNaN(page) ? page : 1;
     const ps = pageSize && !isNaN(pageSize) ? pageSize : 20;
     const skip = (p - 1) * ps;
+    const { field, dir } = resolveSort(sortBy, sortOrder);
 
     const [data, total] = await Promise.all([
       this.prisma.patient.findMany({
         where: { deletedAt: null },
         skip,
         take: ps,
-        orderBy: { createdAt: 'desc' },
+        orderBy: SORT_ORDERBY_PRISMA[field](dir),
       }),
       this.prisma.patient.count({ where: { deletedAt: null } }),
     ]);
@@ -64,8 +103,19 @@ export class PatientsService {
   }
 
   async search(searchDto: SearchPatientsDto) {
-    const { query, tipoPaciente, page = 1, pageSize = 20 } = searchDto;
+    const {
+      query,
+      tipoPaciente,
+      page = 1,
+      pageSize = 20,
+      sortBy,
+      sortOrder,
+    } = searchDto;
     const skip = (page - 1) * pageSize;
+    const { field, dir } = resolveSort(sortBy, sortOrder);
+    const orderBySql = Prisma.raw(
+      SORT_RAW_SQL[field].replaceAll('{{dir}}', dir.toUpperCase()),
+    );
 
     const tokens = (query ?? '').trim().split(/\s+/).filter(Boolean);
 
@@ -99,7 +149,7 @@ export class PatientsService {
     const idRows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM patients
       WHERE ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY ${orderBySql}
       LIMIT ${pageSize} OFFSET ${skip}
     `;
 

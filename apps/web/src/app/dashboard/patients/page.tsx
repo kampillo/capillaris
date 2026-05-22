@@ -10,6 +10,9 @@ import {
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,7 +27,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { usePatients, useDeletePatient } from '@/hooks/use-patients';
-import type { Patient } from '@/hooks/use-patients';
+import type { Patient, PatientSortField } from '@/hooks/use-patients';
 import { useHasRole } from '@/hooks/use-has-role';
 import { Avatar } from '@/components/clinic/avatar';
 
@@ -94,7 +97,60 @@ function fmtDateShort(iso?: string) {
   return new Date(iso).toLocaleDateString('es-MX', {
     day: '2-digit',
     month: 'short',
+    year: 'numeric',
   });
+}
+
+type SortableColumn = {
+  key: PatientSortField;
+  label: string;
+};
+
+const SORTABLE_COLUMNS: Record<PatientSortField, SortableColumn> = {
+  name: { key: 'name', label: 'Paciente' },
+  tipoPaciente: { key: 'tipoPaciente', label: 'Estado' },
+  origenCanal: { key: 'origenCanal', label: 'Origen' },
+  updatedAt: { key: 'updatedAt', label: 'Última visita' },
+  createdAt: { key: 'createdAt', label: 'Creado' },
+};
+
+function SortableTh({
+  column,
+  sortBy,
+  sortOrder,
+  onSort,
+}: {
+  column: SortableColumn;
+  sortBy: PatientSortField;
+  sortOrder: 'asc' | 'desc';
+  onSort: (key: PatientSortField) => void;
+}) {
+  const active = sortBy === column.key;
+  const Icon = !active
+    ? ChevronsUpDown
+    : sortOrder === 'asc'
+      ? ChevronUp
+      : ChevronDown;
+  return (
+    <th className="cap-eyebrow px-4 py-3 text-left">
+      <button
+        type="button"
+        onClick={() => onSort(column.key)}
+        className={cn(
+          'inline-flex items-center gap-1 transition-colors hover:text-foreground',
+          active ? 'text-foreground' : 'text-text-tertiary',
+        )}
+      >
+        {column.label}
+        <Icon
+          className={cn(
+            'h-3 w-3',
+            active ? 'opacity-100' : 'opacity-60',
+          )}
+        />
+      </button>
+    </th>
+  );
 }
 
 export default function PatientsPage() {
@@ -104,6 +160,8 @@ export default function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState(urlQuery);
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<PatientSortField>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [deleteTarget, setDeleteTarget] = useState<Patient | null>(null);
   const canCreatePatient = useHasRole('admin', 'doctor', 'receptionist');
 
@@ -117,7 +175,19 @@ export default function PatientsPage() {
     tipoPaciente: filter === 'all' ? undefined : filter,
     page,
     pageSize: 20,
+    sortBy,
+    sortOrder,
   });
+
+  const handleSort = (key: PatientSortField) => {
+    if (sortBy === key) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(key);
+      setSortOrder(key === 'name' || key === 'tipoPaciente' ? 'asc' : 'desc');
+    }
+    setPage(1);
+  };
 
   const deleteMutation = useDeletePatient();
 
@@ -230,21 +300,38 @@ export default function PatientsPage() {
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr className="border-b border-border bg-surface-2">
-                  {[
-                    'Paciente',
-                    'Contacto',
-                    'Estado',
-                    'Origen',
-                    'Última visita',
-                    '',
-                  ].map((h, i) => (
-                    <th
-                      key={i}
-                      className="cap-eyebrow px-4 py-3 text-left"
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  <SortableTh
+                    column={SORTABLE_COLUMNS.name}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                  <th className="cap-eyebrow px-4 py-3 text-left">Contacto</th>
+                  <SortableTh
+                    column={SORTABLE_COLUMNS.tipoPaciente}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                  <SortableTh
+                    column={SORTABLE_COLUMNS.origenCanal}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                  <SortableTh
+                    column={SORTABLE_COLUMNS.updatedAt}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                  <SortableTh
+                    column={SORTABLE_COLUMNS.createdAt}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                  <th className="cap-eyebrow px-4 py-3 text-left" />
                 </tr>
               </thead>
               <tbody>
@@ -299,6 +386,9 @@ export default function PatientsPage() {
                       </td>
                       <td className="cap-mono px-4 py-3.5 text-xs text-text-secondary">
                         {fmtDateShort(p.updatedAt)}
+                      </td>
+                      <td className="cap-mono px-4 py-3.5 text-xs text-text-secondary">
+                        {fmtDateShort(p.createdAt)}
                       </td>
                       <td
                         className="px-4 py-3.5 text-right"
