@@ -9,6 +9,16 @@ import {
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateMedicalConsultationDto {
+  @ApiPropertyOptional({ description: 'Doctor UUID' })
+  @IsOptional()
+  @IsUUID()
+  doctorId?: string;
+
+  @ApiPropertyOptional({ example: '2024-03-15' })
+  @IsOptional()
+  @IsDateString()
+  consultationDate?: string;
+
   @ApiPropertyOptional({ example: 'mediano' })
   @IsOptional()
   @IsString()
@@ -53,6 +63,14 @@ export class UpdateMedicalConsultationDto {
   @IsOptional()
   @IsDateString()
   fechaSugeridaTransplante?: string;
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Trasplante de dos días (la segunda cirugía es el día siguiente)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  trasplanteDosDias?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

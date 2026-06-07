@@ -20,6 +20,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:seed:rooms": "ts-node prisma/seed-operating-rooms.ts",
+    "prisma:seed:rooms:prod": "dotenv -e .env.production -- ts-node prisma/seed-operating-rooms.ts",
     "prisma:deploy:dev": "dotenv -e .env -- prisma migrate deploy",
     "prisma:deploy:prod": "dotenv -e .env.production -- prisma migrate deploy",
     "prisma:studio:prod": "dotenv -e .env.production -- prisma studio"

@@ -103,6 +103,7 @@ export interface MedicalConsultation {
   diagnostico?: string;
   estrategiaQuirurgica?: string;
   fechaSugeridaTransplante?: string;
+  trasplanteDosDias?: boolean;
   comentarios?: string;
   doctor?: { id: string; nombre: string; apellido: string };
   donorZones?: { donorZone: { id: string; name: string } }[];
@@ -129,6 +130,22 @@ export function useCreateConsultation() {
   });
 }
 
+export function useUpdateConsultation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      patientId: _patientId,
+      ...data
+    }: { id: string; patientId: string } & Record<string, any>) =>
+      api.put<MedicalConsultation>(`/medical-consultations/${id}`, data),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['consultations', 'patient', variables.patientId] });
+      qc.invalidateQueries({ queryKey: ['patient', variables.patientId] });
+    },
+  });
+}
+
 // ---- Procedures ----
 
 export interface ProcedureReport {
@@ -143,6 +160,8 @@ export interface ProcedureReport {
   cb3?: number;
   cb4?: number;
   totalFoliculos?: number;
+  operatingRoomId?: string;
+  operatingRoom?: { id: string; name: string };
   anestExtFechaInicial?: string;
   anestExtFechaFinal?: string;
   anestExtLidocaina?: string;
@@ -217,6 +236,14 @@ export function useHairTypes() {
   return useQuery<CatalogItem[]>({
     queryKey: ['catalog', 'hair-types'],
     queryFn: () => api.get('/catalog/hair-types'),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOperatingRooms() {
+  return useQuery<CatalogItem[]>({
+    queryKey: ['catalog', 'operating-rooms'],
+    queryFn: () => api.get('/catalog/operating-rooms'),
     staleTime: 5 * 60 * 1000,
   });
 }

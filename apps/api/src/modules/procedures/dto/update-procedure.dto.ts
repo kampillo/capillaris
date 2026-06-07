@@ -62,6 +62,11 @@ export class UpdateProcedureDto {
   @Min(0)
   totalFoliculos?: number;
 
+  @ApiPropertyOptional({ description: 'Operating room UUID' })
+  @IsOptional()
+  @IsUUID()
+  operatingRoomId?: string;
+
   // Anesthesia - Extraction
   @ApiPropertyOptional() @IsOptional() @IsDateString()
   anestExtFechaInicial?: string;

@@ -23,6 +23,7 @@ import {
   useCreateProcedure,
   useDoctors,
   useHairTypes,
+  useOperatingRooms,
 } from '@/hooks/use-clinical';
 import type { ProcedureReport } from '@/hooks/use-clinical';
 import { useHasRole } from '@/hooks/use-has-role';
@@ -221,6 +222,11 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
                 .join(' · ')}
             </div>
           )}
+          {procedure.operatingRoom && (
+            <span className="mt-1 inline-flex items-center rounded-full border border-brand/25 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand-dark">
+              {procedure.operatingRoom.name}
+            </span>
+          )}
         </div>
         {displayTotal > 0 && (
           <div className="text-right">
@@ -414,10 +420,12 @@ function ProcedureForm({
   const createMutation = useCreateProcedure();
   const { data: doctors = [] } = useDoctors();
   const { data: hairTypes = [] } = useHairTypes();
+  const { data: operatingRooms = [] } = useOperatingRooms();
 
   const [form, setForm] = useState({
     procedureDate: new Date().toISOString().split('T')[0],
     descripcion: '',
+    operatingRoomId: '',
     punchSize: '',
     implantador: '',
     cb1: '',
@@ -491,6 +499,7 @@ function ProcedureForm({
       patientId,
       procedureDate: form.procedureDate,
       descripcion: str(form.descripcion),
+      operatingRoomId: str(form.operatingRoomId),
       punchSize: num(form.punchSize),
       implantador: str(form.implantador),
       cb1: num(form.cb1),
@@ -592,6 +601,28 @@ function ProcedureForm({
             </div>
           </div>
         </div>
+
+        {operatingRooms.length > 0 && (
+          <div className="mt-4 space-y-2 border-t border-border pt-4">
+            <Label className="cap-eyebrow">Quirófano</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {operatingRooms.map((room) => (
+                <ChoicePill
+                  key={room.id}
+                  active={form.operatingRoomId === room.id}
+                  onClick={() =>
+                    set(
+                      'operatingRoomId',
+                      form.operatingRoomId === room.id ? '' : room.id,
+                    )
+                  }
+                >
+                  {room.name}
+                </ChoicePill>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Doctores */}

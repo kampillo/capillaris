@@ -111,10 +111,25 @@ export class MedicalConsultationsService {
       where: { id },
       data: {
         ...data,
+        consultationDate: data.consultationDate
+          ? new Date(data.consultationDate)
+          : undefined,
         fechaSugeridaTransplante: data.fechaSugeridaTransplante
           ? new Date(data.fechaSugeridaTransplante)
           : undefined,
         updatedBy: userId,
+        donorZones: donorZoneIds
+          ? {
+              deleteMany: {},
+              create: donorZoneIds.map((donorZoneId) => ({ donorZoneId })),
+            }
+          : undefined,
+        variants: variantIds
+          ? {
+              deleteMany: {},
+              create: variantIds.map((variantId) => ({ variantId })),
+            }
+          : undefined,
       } as any,
       include: {
         patient: true,

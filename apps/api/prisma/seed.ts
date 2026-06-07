@@ -164,6 +164,17 @@ async function main() {
   }
   console.log(`Created ${hairTypes.length} hair types`);
 
+  // 11. Seed catalog data - Operating Rooms
+  const operatingRooms = ['Quirófano 1', 'Quirófano 2'];
+  for (const name of operatingRooms) {
+    await prisma.operatingRoom.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+  console.log(`Created ${operatingRooms.length} operating rooms`);
+
   console.log('Seed completed successfully!');
 }
 

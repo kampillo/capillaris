@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Calendar,
   FileText,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -31,13 +32,14 @@ import { variantsToSeverity } from '@/components/clinic/scalp-zones';
 import {
   useConsultationsByPatient,
   useCreateConsultation,
+  useUpdateConsultation,
   useDonorZones,
   useVariants,
   useDoctors,
 } from '@/hooks/use-clinical';
 import type { MedicalConsultation } from '@/hooks/use-clinical';
 import { useHasRole } from '@/hooks/use-has-role';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   HairThickness,
@@ -172,8 +174,10 @@ function appendTemplate(current: string, template: string) {
 
 function ConsultationCard({
   consultation,
+  onEdit,
 }: {
   consultation: MedicalConsultation;
+  onEdit?: () => void;
 }) {
   const stats = [
     consultation.grosor && {
@@ -226,9 +230,21 @@ function ConsultationCard({
             </div>
           )}
         </div>
-        <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
-          <FileText className="h-3.5 w-3.5" /> PDF
-        </Button>
+        <div className="flex items-center gap-1">
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={onEdit}
+            >
+              <Pencil className="h-3.5 w-3.5" /> Editar
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+            <FileText className="h-3.5 w-3.5" /> PDF
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-5 p-6">
@@ -310,16 +326,33 @@ function ConsultationCard({
           </div>
         )}
         {consultation.fechaSugeridaTransplante && (
-          <div className="inline-flex items-center gap-2 rounded-md bg-brand-softer px-3 py-2 text-xs text-brand-darker">
-            <Calendar className="h-3.5 w-3.5" />
-            Fecha sugerida de trasplante:{' '}
-            <span className="cap-mono font-medium">
-              {format(
-                new Date(consultation.fechaSugeridaTransplante),
-                "dd 'de' MMM yyyy",
-                { locale: es },
-              )}
-            </span>
+          <div className="flex flex-col gap-1.5">
+            <div className="inline-flex w-fit items-center gap-2 rounded-md bg-brand-softer px-3 py-2 text-xs text-brand-darker">
+              <Calendar className="h-3.5 w-3.5" />
+              {consultation.trasplanteDosDias
+                ? 'Primer día de trasplante:'
+                : 'Fecha sugerida de trasplante:'}{' '}
+              <span className="cap-mono font-medium">
+                {format(
+                  new Date(consultation.fechaSugeridaTransplante),
+                  "dd 'de' MMM yyyy",
+                  { locale: es },
+                )}
+              </span>
+            </div>
+            {consultation.trasplanteDosDias && (
+              <div className="inline-flex w-fit items-center gap-2 rounded-md bg-brand-softer px-3 py-2 text-xs text-brand-darker">
+                <Calendar className="h-3.5 w-3.5" />
+                Segundo día de trasplante:{' '}
+                <span className="cap-mono font-medium">
+                  {format(
+                    addDays(new Date(consultation.fechaSugeridaTransplante), 1),
+                    "dd 'de' MMM yyyy",
+                    { locale: es },
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         )}
         {consultation.comentarios && (
@@ -339,33 +372,43 @@ function ConsultationCard({
 
 function ConsultationForm({
   patientId,
+  consultation,
   onSuccess,
   onCancel,
 }: {
   patientId: string;
+  consultation?: MedicalConsultation;
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const isEdit = !!consultation;
   const createMutation = useCreateConsultation();
+  const updateMutation = useUpdateConsultation();
+  const mutation = isEdit ? updateMutation : createMutation;
   const { data: donorZones = [] } = useDonorZones();
   const { data: variants = [] } = useVariants();
   const { data: doctors = [] } = useDoctors();
 
   const [form, setForm] = useState({
-    doctorId: '',
-    consultationDate: new Date().toISOString().split('T')[0],
-    grosor: '',
-    color: '',
-    textura: '',
-    caspa: undefined as boolean | undefined,
-    grasa: undefined as boolean | undefined,
-    valoracionZonaDonante: '',
-    diagnostico: '',
-    estrategiaQuirurgica: '',
-    fechaSugeridaTransplante: '',
-    comentarios: '',
-    donorZoneIds: [] as string[],
-    variantIds: [] as string[],
+    doctorId: consultation?.doctorId ?? '',
+    consultationDate: consultation?.consultationDate
+      ? consultation.consultationDate.split('T')[0]
+      : new Date().toISOString().split('T')[0],
+    grosor: consultation?.grosor ?? '',
+    color: consultation?.color ?? '',
+    textura: consultation?.textura ?? '',
+    caspa: consultation?.caspa as boolean | undefined,
+    grasa: consultation?.grasa as boolean | undefined,
+    valoracionZonaDonante: consultation?.valoracionZonaDonante ?? '',
+    diagnostico: consultation?.diagnostico ?? '',
+    estrategiaQuirurgica: consultation?.estrategiaQuirurgica ?? '',
+    fechaSugeridaTransplante: consultation?.fechaSugeridaTransplante
+      ? consultation.fechaSugeridaTransplante.split('T')[0]
+      : '',
+    trasplanteDosDias: consultation?.trasplanteDosDias ?? false,
+    comentarios: consultation?.comentarios ?? '',
+    donorZoneIds: consultation?.donorZones?.map((d) => d.donorZone.id) ?? [],
+    variantIds: consultation?.variants?.map((v) => v.variant.id) ?? [],
   });
 
   const set = <K extends keyof typeof form>(
@@ -404,10 +447,19 @@ function ConsultationForm({
       diagnostico: form.diagnostico || undefined,
       estrategiaQuirurgica: form.estrategiaQuirurgica || undefined,
       fechaSugeridaTransplante: form.fechaSugeridaTransplante || undefined,
+      trasplanteDosDias: form.trasplanteDosDias,
       comentarios: form.comentarios || undefined,
-      donorZoneIds:
-        form.donorZoneIds.length > 0 ? form.donorZoneIds : undefined,
-      variantIds: form.variantIds.length > 0 ? form.variantIds : undefined,
+      // On edit, always send the arrays so removals persist; on create, omit when empty.
+      donorZoneIds: isEdit
+        ? form.donorZoneIds
+        : form.donorZoneIds.length > 0
+          ? form.donorZoneIds
+          : undefined,
+      variantIds: isEdit
+        ? form.variantIds
+        : form.variantIds.length > 0
+          ? form.variantIds
+          : undefined,
     };
 
     Object.keys(payload).forEach((k) => {
@@ -415,10 +467,14 @@ function ConsultationForm({
     });
 
     try {
-      await createMutation.mutateAsync(payload);
+      if (isEdit && consultation) {
+        await updateMutation.mutateAsync({ id: consultation.id, ...payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
       onSuccess();
     } catch {
-      // captured in createMutation.error
+      // captured in mutation.error
     }
   };
 
@@ -659,13 +715,34 @@ function ConsultationForm({
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label>Fecha sugerida de trasplante</Label>
               <DatePicker
                 value={form.fechaSugeridaTransplante}
                 onChange={(v) => set('fechaSugeridaTransplante', v)}
                 fromDate={new Date()}
               />
+              <ChoicePill
+                active={form.trasplanteDosDias}
+                onClick={() =>
+                  set('trasplanteDosDias', !form.trasplanteDosDias)
+                }
+              >
+                Trasplante de dos días
+              </ChoicePill>
+              {form.trasplanteDosDias && form.fechaSugeridaTransplante && (
+                <p className="text-[11px] text-text-tertiary">
+                  Segundo día:{' '}
+                  {format(
+                    addDays(
+                      new Date(`${form.fechaSugeridaTransplante}T00:00:00`),
+                      1,
+                    ),
+                    "dd 'de' MMM yyyy",
+                    { locale: es },
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
@@ -682,9 +759,10 @@ function ConsultationForm({
         </div>
       </section>
 
-      {createMutation.isError && (
+      {mutation.isError && (
         <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-          {createMutation.error?.message || 'Error al crear consulta'}
+          {mutation.error?.message ||
+            (isEdit ? 'Error al actualizar consulta' : 'Error al crear consulta')}
         </div>
       )}
 
@@ -700,9 +778,13 @@ function ConsultationForm({
         <Button
           type="submit"
           className="h-11 px-8 font-medium"
-          disabled={createMutation.isPending || !form.doctorId}
+          disabled={mutation.isPending || !form.doctorId}
         >
-          {createMutation.isPending ? 'Guardando...' : 'Guardar consulta'}
+          {mutation.isPending
+            ? 'Guardando...'
+            : isEdit
+              ? 'Actualizar consulta'
+              : 'Guardar consulta'}
         </Button>
       </div>
     </form>
@@ -718,7 +800,13 @@ export default function PatientConsultationsPage({
     params.id,
   );
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<MedicalConsultation | null>(null);
   const canWrite = useHasRole('admin', 'doctor');
+  const formOpen = showForm || !!editing;
+  const closeForm = () => {
+    setShowForm(false);
+    setEditing(null);
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -738,7 +826,7 @@ export default function PatientConsultationsPage({
               : 'Cargando...'}
           </p>
         </div>
-        {!showForm && canWrite && (
+        {!formOpen && canWrite && (
           <Button size="sm" className="gap-1.5" onClick={() => setShowForm(true)}>
             <Plus className="h-3.5 w-3.5" /> Nueva consulta
           </Button>
@@ -749,16 +837,21 @@ export default function PatientConsultationsPage({
         <div className="flex items-center justify-center rounded-xl border border-border bg-surface py-16 shadow-xs">
           <p className="text-sm text-text-secondary">Cargando...</p>
         </div>
-      ) : showForm ? (
+      ) : formOpen ? (
         <ConsultationForm
           patientId={params.id}
-          onSuccess={() => setShowForm(false)}
-          onCancel={() => setShowForm(false)}
+          consultation={editing ?? undefined}
+          onSuccess={closeForm}
+          onCancel={closeForm}
         />
       ) : consultations && consultations.length > 0 ? (
         <div className="flex flex-col gap-4">
           {consultations.map((c) => (
-            <ConsultationCard key={c.id} consultation={c} />
+            <ConsultationCard
+              key={c.id}
+              consultation={c}
+              onEdit={canWrite ? () => setEditing(c) : undefined}
+            />
           ))}
         </div>
       ) : (

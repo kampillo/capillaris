@@ -70,6 +70,14 @@ export class CreateMedicalConsultationDto {
   @IsDateString()
   fechaSugeridaTransplante?: string;
 
+  @ApiPropertyOptional({
+    example: false,
+    description: 'Trasplante de dos días (la segunda cirugía es el día siguiente)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  trasplanteDosDias?: boolean;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

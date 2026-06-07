@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -35,7 +34,6 @@ const patientSchema = z.object({
   celular: z.string().optional(),
   direccion: z.string().optional(),
   fechaNacimiento: z.string().optional(),
-  edadApproximada: z.boolean().optional(),
   genero: z.string().optional(),
   estadoCivil: z.string().optional(),
   ocupacion: z.string().optional(),
@@ -310,20 +308,6 @@ interface PatientFormProps {
   submitLabel?: string;
 }
 
-// Age ↔ date helpers — used when "Edad aproximada" is active.
-function ageToDate(age: number): string {
-  if (!age || age < 0) return '';
-  const year = new Date().getFullYear() - age;
-  return `${year}-01-01`;
-}
-
-function dateToAge(iso: string): number | null {
-  if (!iso) return null;
-  const year = new Date(iso).getFullYear();
-  if (!year) return null;
-  return new Date().getFullYear() - year;
-}
-
 export function PatientForm({
   defaultValues,
   onSubmit,
@@ -355,33 +339,10 @@ export function PatientForm({
   const estadoCivil = watch('estadoCivil') || '';
   const ocupacion = watch('ocupacion') || '';
   const origenCanal = watch('origenCanal') || '';
-  const edadAprox = watch('edadApproximada') || false;
   const fechaNacimiento = watch('fechaNacimiento') || '';
   const pais = watch('pais') || '';
   const consentData = watch('consentDataProcessing') || false;
   const consentMkt = watch('consentMarketing') || false;
-
-  // Local state for "age in years" entry when aproximada is active
-  const [ageInput, setAgeInput] = useState<string>(() => {
-    if (defaultValues?.edadApproximada && defaultValues?.fechaNacimiento) {
-      const a = dateToAge(defaultValues.fechaNacimiento);
-      return a != null ? String(a) : '';
-    }
-    return '';
-  });
-
-  // When user types age, sync to fechaNacimiento via ageToDate
-  useEffect(() => {
-    if (!edadAprox) return;
-    if (!ageInput) {
-      setValue('fechaNacimiento', '');
-      return;
-    }
-    const n = parseInt(ageInput, 10);
-    if (!isNaN(n) && n >= 0 && n <= 120) {
-      setValue('fechaNacimiento', ageToDate(n));
-    }
-  }, [ageInput, edadAprox, setValue]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
@@ -445,50 +406,19 @@ export function PatientForm({
             />
           </div>
 
-          {/* Fecha nacimiento con toggle aproximada */}
+          {/* Fecha de nacimiento */}
           <div className="space-y-1.5 sm:col-span-2">
-            <div className="flex items-center justify-between">
-              <Label>
-                <Calendar className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
-                {edadAprox ? 'Edad (años)' : 'Fecha de nacimiento'}
-              </Label>
-              <ChoicePill
-                active={edadAprox}
-                onClick={() => {
-                  const next = !edadAprox;
-                  setValue('edadApproximada', next);
-                  if (!next) {
-                    // Leaving approximate mode — clear local age, keep fechaNacimiento
-                    setAgeInput('');
-                  } else if (fechaNacimiento) {
-                    // Entering approximate mode — derive age from existing date
-                    const a = dateToAge(fechaNacimiento);
-                    if (a != null) setAgeInput(String(a));
-                  }
-                }}
-              >
-                Edad aproximada
-              </ChoicePill>
-            </div>
-            {edadAprox ? (
-              <Input
-                type="number"
-                min="0"
-                max="120"
-                value={ageInput}
-                onChange={(e) => setAgeInput(e.target.value)}
-                className="cap-mono h-11 max-w-[180px]"
-                placeholder="45"
-              />
-            ) : (
-              <DatePicker
-                id="fechaNacimiento"
-                value={fechaNacimiento}
-                onChange={(v) => setValue('fechaNacimiento', v)}
-                className="max-w-[260px]"
-                toDate={new Date()}
-              />
-            )}
+            <Label htmlFor="fechaNacimiento">
+              <Calendar className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
+              Fecha de nacimiento
+            </Label>
+            <DatePicker
+              id="fechaNacimiento"
+              value={fechaNacimiento}
+              onChange={(v) => setValue('fechaNacimiento', v)}
+              className="max-w-[260px]"
+              toDate={new Date()}
+            />
           </div>
 
           {/* Género */}

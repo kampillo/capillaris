@@ -36,6 +36,7 @@ export class ProceduresService {
       } as any,
       include: {
         patient: true,
+        operatingRoom: true,
         doctors: { include: { doctor: true } },
         hairTypes: { include: { hairType: true } },
         images: true,
@@ -77,6 +78,7 @@ export class ProceduresService {
     return this.prisma.procedureReport.findMany({
       where: { patientId },
       include: {
+        operatingRoom: true,
         doctors: { include: { doctor: true } },
         hairTypes: { include: { hairType: true } },
       },
@@ -89,6 +91,7 @@ export class ProceduresService {
       where: { id },
       include: {
         patient: true,
+        operatingRoom: true,
         doctors: { include: { doctor: true } },
         hairTypes: { include: { hairType: true } },
         images: true,
@@ -121,6 +124,7 @@ export class ProceduresService {
       } as any,
       include: {
         patient: true,
+        operatingRoom: true,
         doctors: { include: { doctor: true } },
         hairTypes: { include: { hairType: true } },
         images: true,

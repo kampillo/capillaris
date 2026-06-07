@@ -28,6 +28,12 @@ export class CatalogController {
     return this.prisma.hairType.findMany({ orderBy: { name: 'asc' } });
   }
 
+  @Get('operating-rooms')
+  @ApiOperation({ summary: 'List all operating rooms' })
+  operatingRooms() {
+    return this.prisma.operatingRoom.findMany({ orderBy: { name: 'asc' } });
+  }
+
   @Get('doctors')
   @ApiOperation({ summary: 'List all doctors (users with doctor role)' })
   async doctors() {

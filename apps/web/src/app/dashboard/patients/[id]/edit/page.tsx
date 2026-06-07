@@ -76,7 +76,6 @@ export default function EditPatientPage({
     fechaNacimiento: patient.fechaNacimiento
       ? patient.fechaNacimiento.split('T')[0]
       : '',
-    edadApproximada: patient.edadApproximada || false,
     genero: patient.genero || '',
     estadoCivil: patient.estadoCivil || '',
     ocupacion: patient.ocupacion || '',

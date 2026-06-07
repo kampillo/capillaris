@@ -137,9 +137,14 @@ export default function PatientDetailPage({
 
   const metaParts: string[] = [];
   if (patient.fechaNacimiento) {
-    const age =
-      new Date().getFullYear() - new Date(patient.fechaNacimiento).getFullYear();
-    metaParts.push(`${age} años`);
+    metaParts.push(
+      new Date(patient.fechaNacimiento).toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }),
+    );
   }
   if (patient.genero) metaParts.push(capitalize(patient.genero));
 
