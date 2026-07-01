@@ -94,6 +94,26 @@ function formatDate(date?: string | null) {
   }
 }
 
+function calcularEdad(date?: string | null): number | null {
+  if (!date) return null;
+  const nacimiento = new Date(date);
+  if (isNaN(nacimiento.getTime())) return null;
+  const hoy = new Date();
+  let edad = hoy.getUTCFullYear() - nacimiento.getUTCFullYear();
+  const mes = hoy.getUTCMonth() - nacimiento.getUTCMonth();
+  if (mes < 0 || (mes === 0 && hoy.getUTCDate() < nacimiento.getUTCDate())) {
+    edad--;
+  }
+  return edad >= 0 && edad < 150 ? edad : null;
+}
+
+function formatFechaNacimiento(date?: string | null) {
+  const fecha = formatDate(date);
+  if (!fecha) return null;
+  const edad = calcularEdad(date);
+  return edad !== null ? `${fecha} · ${edad} años` : fecha;
+}
+
 function capitalize(s?: string | null) {
   if (!s) return '';
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -286,7 +306,7 @@ export default function PatientDetailPage({
               <InfoItem label="Celular" value={patient.celular} />
               <InfoItem
                 label="Fecha de nacimiento"
-                value={formatDate(patient.fechaNacimiento)}
+                value={formatFechaNacimiento(patient.fechaNacimiento)}
               />
               <InfoItem label="Género" value={capitalize(patient.genero)} />
               <InfoItem
