@@ -11,7 +11,9 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
+import { PatientMergeService } from './patient-merge.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
+import { MergePatientsDto } from './dto/merge-patients.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import {
   SearchPatientsDto,
@@ -27,7 +29,10 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('patients')
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(
+    private readonly patientsService: PatientsService,
+    private readonly mergeService: PatientMergeService,
+  ) {}
 
   @Post()
   @Roles('admin', 'doctor', 'receptionist')
@@ -49,6 +54,15 @@ export class PatientsController {
     @Query('sortOrder') sortOrder?: 'asc' | 'desc',
   ) {
     return this.patientsService.findAll(page, pageSize, sortBy, sortOrder);
+  }
+
+  @Get('duplicates')
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Grupos de pacientes duplicados, ordenados por riesgo',
+  })
+  duplicates() {
+    return this.mergeService.findDuplicates();
   }
 
   @Get('search')
@@ -77,9 +91,31 @@ export class PatientsController {
   }
 
   @Delete(':id')
-  @Roles('admin', 'doctor')
+  @Roles('admin')
   @ApiOperation({ summary: 'Soft delete a patient' })
   remove(@Param('id') id: string) {
     return this.patientsService.remove(id);
+  }
+
+  @Post(':id/merge')
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Fusiona otro expediente dentro de este',
+    description:
+      'Reasigna las nueve relaciones del absorbido, aplica los campos resueltos y deja al absorbido soft-borrado apuntando a este. Reversible con unmerge.',
+  })
+  merge(
+    @Param('id') survivorId: string,
+    @Body() dto: MergePatientsDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.mergeService.merge(survivorId, dto, userId);
+  }
+
+  @Post(':id/unmerge')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Deshace la fusión de este expediente' })
+  unmerge(@Param('id') absorbedId: string, @CurrentUser('id') userId: string) {
+    return this.mergeService.unmerge(absorbedId, userId);
   }
 }

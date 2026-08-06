@@ -137,6 +137,16 @@ model Patient {
   consentDate           DateTime? @map("consent_date")
   notasInternas         String?   @map("notas_internas") @db.Text
   legacyId              Int?      @map("legacy_id")
+  // Fusión de duplicados: el expediente absorbido queda soft-borrado
+  // (deletedAt) y apunta al que se conservó. Guardar el rastro es lo que
+  // hace la fusión reversible — sin esto, los registros reasignados no se
+  // podrían devolver.
+  mergedIntoId          String?   @map("merged_into_id") @db.Uuid
+  mergedAt              DateTime? @map("merged_at")
+  // Qué registros se movieron, por relación: { "appointment": ["uuid", ...] }.
+  // Deshacer una fusión exige saberlo con exactitud — filtrar por fecha
+  // devolvería también los registros que ya eran del expediente conservado.
+  mergedRecordIds       Json?     @map("merged_record_ids")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   deletedAt             DateTime? @map("deleted_at")
@@ -153,6 +163,8 @@ model Patient {
   hairmedicines         Hairmedicine[]
   patientImages         PatientImage[]
   reminders             Reminder[]
+  mergedInto            Patient?              @relation("PatientMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom            Patient[]             @relation("PatientMerge")
 
   @@index([email])
   @@index([celularNormalized])
@@ -160,6 +172,7 @@ model Patient {
   @@index([nombre, apellido])
   @@index([deletedAt])
   @@index([legacyId])
+  @@index([mergedIntoId])
   @@map("patients")
 }
 
