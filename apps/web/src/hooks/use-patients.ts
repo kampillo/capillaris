@@ -125,3 +125,67 @@ export function useDeletePatient() {
     },
   });
 }
+
+// ============================================================
+// Duplicados y fusión
+// ============================================================
+
+export type ClasificacionDuplicado =
+  | 'fusion_obligatoria'
+  | 'borrado_seguro'
+  | 'ambos_vacios';
+
+export interface ConteoRegistros {
+  appointments: number;
+  medicalConsultations: number;
+  procedureReports: number;
+  prescriptions: number;
+  clinicalHistories: number;
+  patientImages: number;
+  micropigmentations: number;
+  hairmedicines: number;
+  reminders: number;
+}
+
+export interface PacienteDuplicado extends Patient {
+  legacyId?: number;
+  totalRegistros: number;
+  _count: ConteoRegistros;
+}
+
+export interface GrupoDuplicado {
+  key: string;
+  clasificacion: ClasificacionDuplicado;
+  conflictos: string[];
+  sugeridoConservarId: string;
+  pacientes: PacienteDuplicado[];
+}
+
+export function useDuplicatePatients(enabled = true) {
+  return useQuery<GrupoDuplicado[]>({
+    queryKey: ['patients', 'duplicates'],
+    queryFn: () => api.get('/patients/duplicates'),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useMergePatients() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      survivorId,
+      absorbedId,
+      campos,
+    }: {
+      survivorId: string;
+      absorbedId: string;
+      campos?: Partial<Patient>;
+    }) =>
+      api.post(`/patients/${survivorId}/merge`, { absorbedId, campos }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
+  });
+}

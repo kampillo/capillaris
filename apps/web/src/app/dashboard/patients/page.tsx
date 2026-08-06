@@ -8,6 +8,7 @@ import {
   Plus,
   Download,
   MoreHorizontal,
+  Trash2,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -164,6 +165,9 @@ export default function PatientsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [deleteTarget, setDeleteTarget] = useState<Patient | null>(null);
   const canCreatePatient = useHasRole('admin', 'doctor', 'receptionist');
+  // Borrar es sólo de admin: el endpoint lo exige y casi siempre lo correcto
+  // es fusionar, no borrar (ver Configuración → Pacientes duplicados).
+  const canDeletePatient = useHasRole('admin');
 
   useEffect(() => {
     setSearchQuery(urlQuery);
@@ -394,14 +398,24 @@ export default function PatientsPage() {
                         className="px-4 py-3.5 text-right"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-0.5">
                           <Link
                             href={`/dashboard/patients/${p.id}/edit`}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:bg-surface-3 hover:text-foreground"
-                            aria-label="Acciones"
+                            aria-label={`Editar a ${p.nombre} ${p.apellido}`}
                           >
                             <MoreHorizontal className="h-[15px] w-[15px]" />
                           </Link>
+                          {canDeletePatient && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(p)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:bg-red-50 hover:text-red-600"
+                              aria-label={`Eliminar a ${p.nombre} ${p.apellido}`}
+                            >
+                              <Trash2 className="h-[15px] w-[15px]" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -450,11 +464,22 @@ export default function PatientsPage() {
           <DialogHeader>
             <DialogTitle>Eliminar paciente</DialogTitle>
             <DialogDescription>
-              ¿Estás seguro de que deseas eliminar a{' '}
+              ¿Eliminar a{' '}
               <strong>
                 {deleteTarget?.nombre} {deleteTarget?.apellido}
               </strong>
-              ? Esta acción se puede revertir.
+              ? El expediente se archiva, no se borra de la base.
+              <span className="mt-2 block">
+                Si es un expediente repetido,{' '}
+                <Link
+                  href="/dashboard/settings/duplicates"
+                  className="font-medium text-brand-dark underline underline-offset-2"
+                >
+                  fusiónalo
+                </Link>{' '}
+                en vez de eliminarlo: así no se pierden sus consultas ni sus
+                procedimientos.
+              </span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
