@@ -8,6 +8,7 @@
     "dev": "nest start --watch",
     "dev:prod": "dotenv -e .env.production -e .env -- nest start --watch",
     "build": "nest build",
+    "typecheck": "tsc --noEmit",
     "start": "node dist/src/main",
     "start:prod": "node dist/src/main",
     "start:debug": "nest start --debug --watch",

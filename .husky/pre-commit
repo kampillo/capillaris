@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Runs `tsc --noEmit` only on the workspaces that have staged TS/TSX files.
+# Keeps the hook fast on small commits while still blocking type-broken code.
+
+set -e
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+check_api=false
+check_web=false
+
+while IFS= read -r file; do
+  case "$file" in
+    apps/api/*.ts|apps/api/*.tsx) check_api=true ;;
+    apps/web/*.ts|apps/web/*.tsx) check_web=true ;;
+    packages/shared/*) check_api=true; check_web=true ;;
+  esac
+done <<EOF
+$staged
+EOF
+
+if [ "$check_api" = true ]; then
+  echo "→ Typechecking @capillaris/api..."
+  npm run --workspace @capillaris/api typecheck
+fi
+
+if [ "$check_web" = true ]; then
+  echo "→ Typechecking @capillaris/web..."
+  npm run --workspace @capillaris/web typecheck
+fi
