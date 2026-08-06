@@ -19,6 +19,12 @@ import { useAppointments, type Appointment } from '@/hooks/use-appointments';
 import { usePendingReminders } from '@/hooks/use-reminders';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/clinic/avatar';
+import {
+  instantToLocalDateKey,
+  toLocalDateKey,
+  todayInput,
+} from '@/lib/dates';
+import { displayName } from '@/lib/names';
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -218,7 +224,7 @@ function TodayTimeline({ appointments }: { appointments: Appointment[] }) {
                 </div>
                 <div className="truncate text-xs text-text-secondary">
                   {a.title ?? 'Consulta'}
-                  {a.doctor ? ` · Dr. ${a.doctor.apellido}` : ''}
+                  {a.doctor ? ` · ${a.doctor.apellido}` : ''}
                 </div>
               </div>
               <span
@@ -245,13 +251,10 @@ function TodayTimeline({ appointments }: { appointments: Appointment[] }) {
 
 function getMonthRange() {
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1)
-    .toISOString()
-    .split('T')[0];
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    .toISOString()
-    .split('T')[0];
-  return { start, end };
+  return {
+    start: toLocalDateKey(new Date(now.getFullYear(), now.getMonth(), 1)),
+    end: toLocalDateKey(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+  };
 }
 
 export default function DashboardPage() {
@@ -264,10 +267,10 @@ export default function DashboardPage() {
   const { data: appointmentsData } = useAppointments(1, 100);
   const { data: pendingReminders } = usePendingReminders();
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayInput();
   const allAppointments = appointmentsData?.data || [];
   const todayAppointments = allAppointments
-    .filter((a) => a.startDatetime.startsWith(today))
+    .filter((a) => instantToLocalDateKey(a.startDatetime) === today)
     .sort((a, b) => a.startDatetime.localeCompare(b.startDatetime));
   const confirmedToday = todayAppointments.filter(
     (a) => a.status === 'confirmed',
@@ -304,7 +307,8 @@ export default function DashboardPage() {
           <h2 className="cap-h1 mb-1.5">
             {getGreeting()},{' '}
             <em className="italic text-brand-dark">
-              {user?.nombre ? `Dr. ${user.nombre}` : 'Doctor'}
+              {displayName({ nombre: user?.nombre, roles: user?.roles }) ||
+                'Bienvenido'}
             </em>
           </h2>
           <p className="text-sm text-text-secondary">
@@ -414,7 +418,8 @@ export default function DashboardPage() {
               ) : (
                 upcoming.map((a) => {
                   const d = new Date(a.startDatetime);
-                  const isToday = a.startDatetime.slice(0, 10) === today;
+                  const isToday =
+                    instantToLocalDateKey(a.startDatetime) === today;
                   const st = STATUS[a.status] || STATUS.scheduled;
                   return (
                     <button

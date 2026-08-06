@@ -1,8 +1,15 @@
 /**
  * Layout compartido de las zonas del cuero cabelludo para la vista superior.
- * Los nombres deben coincidir con los seedeados en la tabla `donor_zones`.
+ * Los nombres deben coincidir con los de la tabla `donor_zones`, que pese al
+ * nombre contiene zonas **receptoras** (Frontal, Frontal media, Medio,
+ * Coronilla, Lados, Cejas, Barba). El nombre de la tabla viene heredado del
+ * sistema PHP viejo.
+ *
  * Las 3 zonas no-scalp (Barba, Cejas, Lados) no están en el layout — se
  * muestran como chips al lado del mapa.
+ *
+ * Occipital, Parietal y Temporal quedan acá para el seed de desarrollo, pero
+ * no existen en la base de producción.
  */
 export type ZoneLayout = {
   rect: { x: number; y: number; w: number; h: number };
@@ -50,8 +57,12 @@ export const ZONE_LAYOUT: Record<string, ZoneLayout> = {
 
 /**
  * Mapea nombres de variants (catalog) a un severity 0-1 para la zona
- * receptora. Los variants en DB no son estrictamente Norwood sino
- * categorías diagnósticas (Androgenética, Difusa, etc.); el max gana.
+ * receptora. Los variants en producción no son Norwood ni Ludwig, sino
+ * características del caso: Pelo blanco, Pelo fino, Donante escasa,
+ * Receptora amplia, Reparación. El max gana.
+ *
+ * Las entradas Androgenética / Difusa / Areata / Cicatricial / Universal
+ * corresponden al seed de desarrollo y no existen en producción.
  */
 const VARIANT_SEVERITY: Record<string, number> = {
   'Receptora amplia': 0.8,

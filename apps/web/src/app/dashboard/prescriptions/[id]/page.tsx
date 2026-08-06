@@ -38,6 +38,8 @@ import {
   useDeletePrescription,
 } from '@/hooks/use-prescriptions';
 import { useHasRole } from '@/hooks/use-has-role';
+import { formatDateLong, toDateInput } from '@/lib/dates';
+import { displayName } from '@/lib/names';
 
 const STATUS_META: Record<
   string,
@@ -70,14 +72,6 @@ const STATUS_OPTIONS: { value: string; label: string; icon: typeof CheckCircle2 
   { value: 'completed', label: 'Marcar completada', icon: CheckCircle2 },
   { value: 'cancelled', label: 'Cancelar prescripción', icon: XCircle },
 ];
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-}
 
 function formatDateShort(iso: string) {
   return new Date(iso).toLocaleDateString('es-MX', {
@@ -125,7 +119,7 @@ export default function PrescriptionDetailPage() {
     ? `${rx.patient.nombre} ${rx.patient.apellido}`
     : 'Paciente';
   const doctorLabel = rx.doctor
-    ? `Dr. ${rx.doctor.nombre} ${rx.doctor.apellido}`
+    ? displayName(rx.doctor)
     : '—';
 
   const handleDelete = async () => {
@@ -154,7 +148,7 @@ export default function PrescriptionDetailPage() {
               Prescripción
             </h2>
             <p className="text-sm text-muted-foreground">
-              {patientLabel} · {formatDate(rx.prescriptionDate)}
+              {patientLabel} · {formatDateLong(rx.prescriptionDate)}
             </p>
           </div>
         </div>
@@ -183,7 +177,7 @@ export default function PrescriptionDetailPage() {
               patientId: rx.patientId,
               patientLabel,
               doctorId: rx.doctorId,
-              prescriptionDate: rx.prescriptionDate.split('T')[0],
+              prescriptionDate: toDateInput(rx.prescriptionDate),
               notas: rx.notas,
               status: rx.status,
               items: rx.items.map((i) => ({
@@ -250,7 +244,7 @@ export default function PrescriptionDetailPage() {
                   )}
                 </Field>
                 <Field label="Médico tratante">{doctorLabel}</Field>
-                <Field label="Fecha emisión">{formatDate(rx.prescriptionDate)}</Field>
+                <Field label="Fecha emisión">{formatDateLong(rx.prescriptionDate)}</Field>
               </div>
 
               <hr className="border-border" />
@@ -439,7 +433,7 @@ export default function PrescriptionDetailPage() {
             <DialogDescription>
               ¿Seguro que deseas eliminar la prescripción de{' '}
               <strong>{patientLabel}</strong> del{' '}
-              {formatDate(rx.prescriptionDate)}? Esta acción no se puede deshacer.
+              {formatDateLong(rx.prescriptionDate)}? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">

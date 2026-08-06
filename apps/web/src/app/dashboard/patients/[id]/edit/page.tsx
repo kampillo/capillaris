@@ -8,6 +8,7 @@ import { PatientForm } from '@/components/patients/patient-form';
 import type { PatientFormValues } from '@/components/patients/patient-form';
 import { usePatient, useUpdatePatient } from '@/hooks/use-patients';
 import { useRequireRole } from '@/hooks/use-has-role';
+import { toDateInput, toDateOnlyPayload } from '@/lib/dates';
 
 export default function EditPatientPage({
   params,
@@ -25,12 +26,10 @@ export default function EditPatientPage({
       Object.entries(data).filter(([, v]) => v !== '' && v !== undefined),
     );
 
-    if (
-      cleaned.fechaNacimiento &&
-      typeof cleaned.fechaNacimiento === 'string' &&
-      !cleaned.fechaNacimiento.includes('T')
-    ) {
-      cleaned.fechaNacimiento = `${cleaned.fechaNacimiento}T00:00:00.000Z`;
+    if (typeof cleaned.fechaNacimiento === 'string') {
+      const fecha = toDateOnlyPayload(cleaned.fechaNacimiento);
+      if (fecha) cleaned.fechaNacimiento = fecha;
+      else delete cleaned.fechaNacimiento;
     }
 
     try {
@@ -73,9 +72,7 @@ export default function EditPatientPage({
     email: patient.email || '',
     celular: patient.celular || '',
     direccion: patient.direccion || '',
-    fechaNacimiento: patient.fechaNacimiento
-      ? patient.fechaNacimiento.split('T')[0]
-      : '',
+    fechaNacimiento: toDateInput(patient.fechaNacimiento),
     genero: patient.genero || '',
     estadoCivil: patient.estadoCivil || '',
     ocupacion: patient.ocupacion || '',

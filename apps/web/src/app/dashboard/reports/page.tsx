@@ -43,40 +43,34 @@ import {
   useClinicalReport,
 } from '@/hooks/use-dashboard';
 import { useRequireRole } from '@/hooks/use-has-role';
+import { parseDateOnly, toLocalDateKey, todayInput } from '@/lib/dates';
 
 type Preset = 'month' | '30d' | 'quarter' | 'year' | 'custom';
 
 function startOfMonth() {
   const d = new Date();
   d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().split('T')[0];
+  return toLocalDateKey(d);
 }
 function daysAgo(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().split('T')[0];
+  return toLocalDateKey(d);
 }
 function startOfQuarter() {
   const d = new Date();
-  const q = Math.floor(d.getMonth() / 3);
-  d.setMonth(q * 3, 1);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().split('T')[0];
+  d.setMonth(Math.floor(d.getMonth() / 3) * 3, 1);
+  return toLocalDateKey(d);
 }
 function startOfYear() {
   const d = new Date();
   d.setMonth(0, 1);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().split('T')[0];
-}
-function todayISO() {
-  return new Date().toISOString().split('T')[0];
+  return toLocalDateKey(d);
 }
 function formatRange(start: string, end: string) {
-  if (!start || !end) return '';
-  const s = new Date(start);
-  const e = new Date(end);
+  const s = parseDateOnly(start);
+  const e = parseDateOnly(end);
+  if (!s || !e) return '';
   return `${s.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} → ${e.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
@@ -124,11 +118,11 @@ export default function ReportsPage() {
   const authorized = useRequireRole('admin', 'doctor', 'inventory_manager');
   const [preset, setPreset] = useState<Preset>('month');
   const [startDate, setStartDate] = useState(startOfMonth());
-  const [endDate, setEndDate] = useState(todayISO());
+  const [endDate, setEndDate] = useState(todayInput());
 
   useEffect(() => {
     if (preset === 'custom') return;
-    const today = todayISO();
+    const today = todayInput();
     setEndDate(today);
     if (preset === 'month') setStartDate(startOfMonth());
     else if (preset === '30d') setStartDate(daysAgo(30));
@@ -582,7 +576,7 @@ export default function ReportsPage() {
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart
                   data={proceduresRpt.byDoctor.map((d) => ({
-                    name: `Dr. ${d.name.split(' ')[0]}`,
+                    name: d.name.split(' ')[0],
                     value: d.count,
                   }))}
                   margin={{ top: 8, right: 8, left: -12, bottom: 0 }}

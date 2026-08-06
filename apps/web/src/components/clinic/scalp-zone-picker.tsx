@@ -33,7 +33,7 @@ export function ScalpZonePicker({
             viewBox="0 0 200 200"
             className="h-auto w-full max-w-[320px]"
             role="group"
-            aria-label="Selección de zonas donantes"
+            aria-label="Selección de zonas receptoras"
           >
             <defs>
               <clipPath id="scalp-zone-clip">
@@ -156,7 +156,7 @@ export function ScalpZonePicker({
             {selectedZones.length === 0 ? (
               <p className="text-xs text-text-tertiary">
                 Haz clic en el mapa o en los chips para seleccionar las zonas
-                donantes.
+                receptoras.
               </p>
             ) : (
               <div className="flex flex-wrap gap-1.5">

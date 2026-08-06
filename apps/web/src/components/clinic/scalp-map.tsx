@@ -7,10 +7,15 @@ import { ZONE_LAYOUT } from './scalp-zones';
  * Dos modos visuales combinables:
  * - `severity` (0–1): opacidad del tinte ámbar en la zona receptora
  *   (mayor severidad → más visible).
- * - `highlightedZoneNames`: lista de nombres de zonas donantes (matching
- *   con los seeds en `donor_zones`) para resaltarlas sobre el cuero
+ * - `highlightedZoneNames`: nombres de zonas a resaltar sobre el cuero
  *   cabelludo. Las zonas no-scalp (Barba, Cejas, Lados) se ignoran acá
  *   y deben mostrarse aparte como chips.
+ *
+ * Ojo con la tabla de origen: los nombres vienen de `donor_zones`, pero ese
+ * catálogo contiene zonas **receptoras** (Frontal, Coronilla, Cejas, Barba).
+ * El nombre de la tabla lo heredamos del sistema PHP viejo, donde ya estaba
+ * mal. Las etiquetas visibles dicen "receptora"; la tabla se renombrará por
+ * separado, con migración.
  */
 export function ScalpMap({
   severity = 0,

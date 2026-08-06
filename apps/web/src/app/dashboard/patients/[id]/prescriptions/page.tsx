@@ -18,6 +18,8 @@ import {
 import { usePatient } from '@/hooks/use-patients';
 import { usePrescriptions } from '@/hooks/use-prescriptions';
 import { useHasRole } from '@/hooks/use-has-role';
+import { formatDateOnly } from '@/lib/dates';
+import { displayName } from '@/lib/names';
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   draft: { label: 'Borrador', className: 'bg-gray-50 text-gray-600 border-gray-200' },
@@ -25,14 +27,6 @@ const STATUS_BADGES: Record<string, { label: string; className: string }> = {
   completed: { label: 'Completada', className: 'bg-blue-50 text-blue-700 border-blue-200' },
   cancelled: { label: 'Cancelada', className: 'bg-red-50 text-red-600 border-red-200' },
 };
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-}
 
 export default function PatientPrescriptionsPage({
   params,
@@ -110,9 +104,9 @@ export default function PatientPrescriptionsPage({
                   const badge = STATUS_BADGES[rx.status] || STATUS_BADGES.draft;
                   return (
                     <TableRow key={rx.id} className="hover:bg-accent/50 transition-colors">
-                      <TableCell className="text-sm">{formatDate(rx.prescriptionDate)}</TableCell>
+                      <TableCell className="text-sm">{formatDateOnly(rx.prescriptionDate)}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {rx.doctor ? `Dr. ${rx.doctor.nombre} ${rx.doctor.apellido}` : '—'}
+                        {displayName(rx.doctor) || '—'}
                       </TableCell>
                       <TableCell>
                         {rx.items?.length ? (

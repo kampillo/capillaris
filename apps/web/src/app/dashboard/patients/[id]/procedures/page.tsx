@@ -27,8 +27,8 @@ import {
 } from '@/hooks/use-clinical';
 import type { ProcedureReport } from '@/hooks/use-clinical';
 import { useHasRole } from '@/hooks/use-has-role';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { formatDateLong, todayInput } from '@/lib/dates';
+import { displayName } from '@/lib/names';
 
 const PUNCH_PRESETS = ['0.8', '0.9', '1.0'];
 const IMPLANTADOR_PRESETS = ['Choi', 'DHI', 'FUE punch', 'Zafiro'];
@@ -164,6 +164,10 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
   const folicullesSum = cb1 + cb2 + cb3 + cb4;
   const hairCount = cb1 + cb2 * 2 + cb3 * 3 + cb4 * 4;
   const displayTotal = procedure.totalFoliculos ?? folicullesSum;
+  // Se calcula sobre la suma de CB, no sobre totalFoliculos: el total puede
+  // capturarse a mano y no siempre cuadra con la distribución.
+  const coeficiente =
+    folicullesSum > 0 ? (hairCount / folicullesSum).toFixed(2) : null;
 
   const anesthesiaRows: Array<{
     label: string;
@@ -211,14 +215,12 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
           <div className="text-[15px] font-semibold">
-            {format(new Date(procedure.procedureDate), "dd 'de' MMMM yyyy", {
-              locale: es,
-            })}
+            {formatDateLong(procedure.procedureDate)}
           </div>
           {procedure.doctors && procedure.doctors.length > 0 && (
             <div className="text-xs text-text-tertiary">
               {procedure.doctors
-                .map((d) => `Dr. ${d.doctor.nombre} ${d.doctor.apellido}`)
+                .map((d) => displayName(d.doctor))
                 .join(' · ')}
             </div>
           )}
@@ -228,12 +230,32 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
             </span>
           )}
         </div>
-        {displayTotal > 0 && (
-          <div className="text-right">
-            <div className="cap-eyebrow">Total folículos</div>
-            <div className="cap-mono text-xl font-semibold text-brand-dark">
-              {displayTotal.toLocaleString()}
-            </div>
+        {(displayTotal > 0 || hairCount > 0) && (
+          <div className="flex items-start gap-6 text-right">
+            {displayTotal > 0 && (
+              <div>
+                <div className="cap-eyebrow">Total folículos</div>
+                <div className="cap-mono text-xl font-semibold text-brand-dark">
+                  {displayTotal.toLocaleString()}
+                </div>
+              </div>
+            )}
+            {hairCount > 0 && (
+              <div>
+                <div className="cap-eyebrow">Total pelos</div>
+                <div className="cap-mono text-xl font-semibold text-brand-dark">
+                  {hairCount.toLocaleString()}
+                </div>
+              </div>
+            )}
+            {coeficiente && (
+              <div>
+                <div className="cap-eyebrow">Pelos / folículo</div>
+                <div className="cap-mono text-xl font-semibold text-brand-dark">
+                  {coeficiente}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -261,7 +283,7 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
                 <div className="mb-1.5 flex items-center justify-between">
                   <div className="cap-eyebrow">Distribución</div>
                   <div className="cap-mono text-[11px] text-text-tertiary">
-                    ≈ {hairCount.toLocaleString()} pelos
+                    {folicullesSum.toLocaleString()} folículos
                   </div>
                 </div>
                 <FollicleDistributionBar
@@ -292,7 +314,7 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
 
         {procedure.hairTypes && procedure.hairTypes.length > 0 && (
           <div>
-            <div className="cap-eyebrow mb-2">Tipos de cabello</div>
+            <div className="cap-eyebrow mb-2">Zonas tratadas</div>
             <div className="flex flex-wrap gap-1.5">
               {procedure.hairTypes.map((ht) => (
                 <span
@@ -423,7 +445,7 @@ function ProcedureForm({
   const { data: operatingRooms = [] } = useOperatingRooms();
 
   const [form, setForm] = useState({
-    procedureDate: new Date().toISOString().split('T')[0],
+    procedureDate: todayInput(),
     descripcion: '',
     operatingRoomId: '',
     punchSize: '',
@@ -649,7 +671,7 @@ function ProcedureForm({
                       : 'border-border bg-surface text-text-secondary hover:bg-surface-2 hover:text-foreground',
                   )}
                 >
-                  Dr. {d.nombre} {d.apellido}
+                  {displayName(d, { isDoctor: true })}
                 </button>
               );
             })}
@@ -733,11 +755,15 @@ function ProcedureForm({
                 <span className="font-medium text-foreground">
                   {follicleSum.toLocaleString()}
                 </span>{' '}
-                folículos · ≈{' '}
+                folículos ·{' '}
                 <span className="font-medium text-foreground">
                   {hairCount.toLocaleString()}
                 </span>{' '}
-                pelos
+                pelos ·{' '}
+                <span className="font-medium text-foreground">
+                  {(hairCount / follicleSum).toFixed(2)}
+                </span>{' '}
+                pelos/folículo
               </div>
             </div>
             <FollicleDistributionBar
@@ -750,10 +776,10 @@ function ProcedureForm({
         )}
       </section>
 
-      {/* Tipos de cabello */}
+      {/* Zonas tratadas */}
       {hairTypes.length > 0 && (
         <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
-          <SectionHeader icon={Scissors} title="Tipos de cabello" />
+          <SectionHeader icon={Scissors} title="Zonas tratadas" />
           <div className="flex flex-wrap gap-1.5">
             {hairTypes.map((ht) => {
               const active = form.hairTypeIds.includes(ht.id);

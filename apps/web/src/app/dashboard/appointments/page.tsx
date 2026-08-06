@@ -42,6 +42,8 @@ import {
 } from '@/hooks/use-google-calendar';
 import { Segmented } from '@/components/clinic/segmented';
 import { useHasRole } from '@/hooks/use-has-role';
+import { instantToLocalDateKey, toLocalDateKey } from '@/lib/dates';
+import { displayName } from '@/lib/names';
 
 // ── Constants ──────────────────────────────────────────────
 
@@ -124,10 +126,6 @@ function formatHour(h: number) {
   return `${String(h).padStart(2, '0')}:00`;
 }
 
-function toDateKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function getMonday(d: Date): Date {
   const date = new Date(d);
   const day = date.getDay();
@@ -202,7 +200,7 @@ function mergeItems(
         ? `${a.patient.nombre} ${a.patient.apellido}`
         : undefined,
       doctorName: a.doctor
-        ? `Dr. ${a.doctor.nombre} ${a.doctor.apellido}`
+        ? displayName(a.doctor)
         : undefined,
       patientId: a.patient?.id,
     });
@@ -251,7 +249,7 @@ function WeekView({
   weekStart: Date;
 }) {
   const today = new Date();
-  const todayKey = toDateKey(today);
+  const todayKey = toLocalDateKey(today);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -261,7 +259,7 @@ function WeekView({
   const itemsByDay = useMemo(() => {
     const map: Record<string, CalendarItem[]> = {};
     for (const item of items) {
-      const key = item.startDatetime.split('T')[0];
+      const key = instantToLocalDateKey(item.startDatetime);
       if (!map[key]) map[key] = [];
       map[key].push(item);
     }
@@ -282,7 +280,7 @@ function WeekView({
           <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-border bg-surface-2">
             <div className="p-2" />
             {weekDays.map((day, i) => {
-              const key = toDateKey(day);
+              const key = toLocalDateKey(day);
               const isToday = key === todayKey;
               return (
                 <div
@@ -321,7 +319,7 @@ function WeekView({
                   </span>
                 </div>
                 {weekDays.map((day, dayIdx) => {
-                  const dayKey = toDateKey(day);
+                  const dayKey = toLocalDateKey(day);
                   const isToday = dayKey === todayKey;
                   const dayItems = itemsByDay[dayKey] || [];
                   const hourItems = dayItems.filter((item) => {
@@ -393,12 +391,12 @@ function WeekView({
             ))}
 
             {/* Current time indicator */}
-            {weekDays.some((d) => toDateKey(d) === todayKey) &&
+            {weekDays.some((d) => toLocalDateKey(d) === todayKey) &&
               nowHour >= HOURS[0] &&
               nowHour <= HOURS[HOURS.length - 1] &&
               (() => {
                 const todayIdx = weekDays.findIndex(
-                  (d) => toDateKey(d) === todayKey,
+                  (d) => toLocalDateKey(d) === todayKey,
                 );
                 const topOffset =
                   (nowHour - HOURS[0]) * 60 + (nowMinute / 60) * 60;
@@ -441,7 +439,7 @@ function MonthView({ items }: { items: CalendarItem[] }) {
   const itemsByDate = useMemo(() => {
     const map: Record<string, CalendarItem[]> = {};
     items.forEach((item) => {
-      const key = item.startDatetime.split('T')[0];
+      const key = instantToLocalDateKey(item.startDatetime);
       if (!map[key]) map[key] = [];
       map[key].push(item);
     });
@@ -461,7 +459,7 @@ function MonthView({ items }: { items: CalendarItem[] }) {
     } else setCalMonth(calMonth + 1);
   };
 
-  const todayKey = toDateKey(today);
+  const todayKey = toLocalDateKey(today);
 
   return (
     <div className="rounded-xl border border-border bg-surface p-6 shadow-xs">
@@ -498,7 +496,7 @@ function MonthView({ items }: { items: CalendarItem[] }) {
 
       <div className="grid grid-cols-7 overflow-hidden rounded-lg border-l border-t border-border">
         {days.map((day, i) => {
-          const key = toDateKey(day.date);
+          const key = toLocalDateKey(day.date);
           const dayItems = itemsByDate[key] || [];
           const isToday = key === todayKey;
 
@@ -822,7 +820,7 @@ export default function AppointmentsPage() {
                       </td>
                       <td className="px-4 py-3.5 text-text-secondary">
                         {appt.doctor
-                          ? `Dr. ${appt.doctor.nombre} ${appt.doctor.apellido}`
+                          ? displayName(appt.doctor)
                           : '—'}
                       </td>
                       <td className="px-4 py-3.5 text-text-secondary">

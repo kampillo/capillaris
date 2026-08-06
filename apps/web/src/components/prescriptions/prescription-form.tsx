@@ -38,6 +38,8 @@ import type {
   CreatePrescriptionData,
   CreatePrescriptionItemData,
 } from '@/hooks/use-prescriptions';
+import { toDateOnlyPayload, todayInput } from '@/lib/dates';
+import { displayName } from '@/lib/names';
 
 const FREQUENCY_PRESETS = [
   'Cada 8 h',
@@ -208,7 +210,7 @@ export function PrescriptionForm({
   );
   const [doctorId, setDoctorId] = useState(defaultValues?.doctorId ?? '');
   const [prescriptionDate, setPrescriptionDate] = useState(
-    defaultValues?.prescriptionDate ?? new Date().toISOString().split('T')[0],
+    defaultValues?.prescriptionDate ?? todayInput(),
   );
   const [notas, setNotas] = useState(defaultValues?.notas ?? '');
   const [items, setItems] = useState<ItemForm[]>(
@@ -265,14 +267,17 @@ export function PrescriptionForm({
       return;
     }
 
-    const toISO = (d: string) =>
-      d.includes('T') ? d : `${d}T00:00:00.000Z`;
+    const fechaEmision = toDateOnlyPayload(prescriptionDate);
+    if (!fechaEmision) {
+      setError('La fecha de emisión no es válida.');
+      return;
+    }
 
     try {
       await onSubmit({
         patientId: selectedPatientId,
         doctorId,
-        prescriptionDate: toISO(prescriptionDate),
+        prescriptionDate: fechaEmision,
         notas: notas.trim() || undefined,
         status: defaultValues?.status ?? 'active',
         items: validItems.map(({ key, ...rest }) => ({
@@ -394,7 +399,7 @@ export function PrescriptionForm({
                   <SelectContent>
                     {(doctors || []).map((d) => (
                       <SelectItem key={d.id} value={d.id}>
-                        Dr. {d.nombre} {d.apellido}
+                        {displayName(d, { isDoctor: true })}
                       </SelectItem>
                     ))}
                   </SelectContent>

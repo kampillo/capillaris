@@ -42,11 +42,25 @@ import { useHasRole } from '@/hooks/use-has-role';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
+  formatDateLong,
+  formatDateOnly,
+  parseDateOnly,
+  toDateInput,
+  todayInput,
+} from '@/lib/dates';
+
+/** El trasplante de dos días cae en el día siguiente a la fecha sugerida. */
+function segundoDiaTrasplante(value?: string | null) {
+  const d = parseDateOnly(value);
+  return d ? format(addDays(d, 1), "dd 'de' MMM yyyy", { locale: es }) : null;
+}
+import {
   HairThickness,
   HairColor,
   HairTexture,
   DonorZoneAssessment,
 } from '@capillaris/shared';
+import { displayName } from '@/lib/names';
 
 const GROSOR_LABELS: Record<string, string> = {
   [HairThickness.FRAGIL]: 'Frágil',
@@ -220,13 +234,11 @@ function ConsultationCard({
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
           <div className="text-[15px] font-semibold">
-            {format(new Date(consultation.consultationDate), "dd 'de' MMMM yyyy", {
-              locale: es,
-            })}
+            {formatDateLong(consultation.consultationDate)}
           </div>
           {consultation.doctor && (
             <div className="text-xs text-text-tertiary">
-              Dr. {consultation.doctor.nombre} {consultation.doctor.apellido}
+              {displayName(consultation.doctor)}
             </div>
           )}
         </div>
@@ -276,7 +288,7 @@ function ConsultationCard({
             <div className="flex flex-col gap-2">
               {donorZoneNames.length > 0 && (
                 <div>
-                  <div className="cap-eyebrow mb-1.5">Zonas donantes</div>
+                  <div className="cap-eyebrow mb-1.5">Zonas receptoras</div>
                   <div className="flex flex-wrap gap-1.5">
                     {donorZoneNames.map((name) => (
                       <span
@@ -333,11 +345,7 @@ function ConsultationCard({
                 ? 'Primer día de trasplante:'
                 : 'Fecha sugerida de trasplante:'}{' '}
               <span className="cap-mono font-medium">
-                {format(
-                  new Date(consultation.fechaSugeridaTransplante),
-                  "dd 'de' MMM yyyy",
-                  { locale: es },
-                )}
+                {formatDateOnly(consultation.fechaSugeridaTransplante)}
               </span>
             </div>
             {consultation.trasplanteDosDias && (
@@ -345,11 +353,7 @@ function ConsultationCard({
                 <Calendar className="h-3.5 w-3.5" />
                 Segundo día de trasplante:{' '}
                 <span className="cap-mono font-medium">
-                  {format(
-                    addDays(new Date(consultation.fechaSugeridaTransplante), 1),
-                    "dd 'de' MMM yyyy",
-                    { locale: es },
-                  )}
+                  {segundoDiaTrasplante(consultation.fechaSugeridaTransplante)}
                 </span>
               </div>
             )}
@@ -392,8 +396,8 @@ function ConsultationForm({
   const [form, setForm] = useState({
     doctorId: consultation?.doctorId ?? '',
     consultationDate: consultation?.consultationDate
-      ? consultation.consultationDate.split('T')[0]
-      : new Date().toISOString().split('T')[0],
+      ? toDateInput(consultation.consultationDate)
+      : todayInput(),
     grosor: consultation?.grosor ?? '',
     color: consultation?.color ?? '',
     textura: consultation?.textura ?? '',
@@ -403,7 +407,7 @@ function ConsultationForm({
     diagnostico: consultation?.diagnostico ?? '',
     estrategiaQuirurgica: consultation?.estrategiaQuirurgica ?? '',
     fechaSugeridaTransplante: consultation?.fechaSugeridaTransplante
-      ? consultation.fechaSugeridaTransplante.split('T')[0]
+      ? toDateInput(consultation.fechaSugeridaTransplante)
       : '',
     trasplanteDosDias: consultation?.trasplanteDosDias ?? false,
     comentarios: consultation?.comentarios ?? '',
@@ -499,7 +503,7 @@ function ConsultationForm({
             <SelectContent>
               {doctors.map((d) => (
                 <SelectItem key={d.id} value={d.id}>
-                  Dr. {d.nombre} {d.apellido}
+                  {displayName(d, { isDoctor: true })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -607,10 +611,10 @@ function ConsultationForm({
 
       {/* Zonas donantes (+ valoración integrada) */}
       <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
-        <SectionHeader icon={Scissors} title="Zonas donantes" />
+        <SectionHeader icon={Scissors} title="Zonas receptoras" />
         <p className="-mt-2 mb-4 text-xs text-text-tertiary">
-          Haz clic en el mapa para marcar las zonas del cuero cabelludo con
-          disponibilidad de folículos para extracción.
+          Haz clic en el mapa para marcar las zonas donde se van a implantar
+          los folículos.
         </p>
         <ScalpZonePicker
           zones={donorZones}
@@ -645,9 +649,7 @@ function ConsultationForm({
         <SectionHeader icon={MessageSquare} title="Diagnóstico y estrategia" />
         <div className="grid gap-5">
           <div>
-            <Label className="cap-eyebrow mb-2 block">
-              Variantes (Norwood / Ludwig)
-            </Label>
+            <Label className="cap-eyebrow mb-2 block">Variantes</Label>
             <div className="flex flex-wrap gap-1.5">
               {variants.map((v) => {
                 const active = form.variantIds.includes(v.id);
@@ -733,14 +735,7 @@ function ConsultationForm({
               {form.trasplanteDosDias && form.fechaSugeridaTransplante && (
                 <p className="text-[11px] text-text-tertiary">
                   Segundo día:{' '}
-                  {format(
-                    addDays(
-                      new Date(`${form.fechaSugeridaTransplante}T00:00:00`),
-                      1,
-                    ),
-                    "dd 'de' MMM yyyy",
-                    { locale: es },
-                  )}
+                  {segundoDiaTrasplante(form.fechaSugeridaTransplante)}
                 </p>
               )}
             </div>

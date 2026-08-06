@@ -23,8 +23,13 @@ import { useHasRole } from '@/hooks/use-has-role';
 import { Avatar } from '@/components/clinic/avatar';
 import { ScalpMap } from '@/components/clinic/scalp-map';
 import { variantsToSeverity } from '@/components/clinic/scalp-zones';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import {
+  calcAge,
+  formatDateLong,
+  formatDateOnly,
+  formatDateShort,
+  formatInstantDate,
+} from '@/lib/dates';
 
 const PATIENT_TYPE: Record<
   string,
@@ -85,32 +90,10 @@ function InfoItem({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function formatDate(date?: string | null) {
-  if (!date) return null;
-  try {
-    return format(new Date(date), "dd 'de' MMM yyyy", { locale: es });
-  } catch {
-    return date;
-  }
-}
-
-function calcularEdad(date?: string | null): number | null {
-  if (!date) return null;
-  const nacimiento = new Date(date);
-  if (isNaN(nacimiento.getTime())) return null;
-  const hoy = new Date();
-  let edad = hoy.getUTCFullYear() - nacimiento.getUTCFullYear();
-  const mes = hoy.getUTCMonth() - nacimiento.getUTCMonth();
-  if (mes < 0 || (mes === 0 && hoy.getUTCDate() < nacimiento.getUTCDate())) {
-    edad--;
-  }
-  return edad >= 0 && edad < 150 ? edad : null;
-}
-
 function formatFechaNacimiento(date?: string | null) {
-  const fecha = formatDate(date);
+  const fecha = formatDateOnly(date);
   if (!fecha) return null;
-  const edad = calcularEdad(date);
+  const edad = calcAge(date);
   return edad !== null ? `${fecha} · ${edad} años` : fecha;
 }
 
@@ -156,16 +139,8 @@ export default function PatientDetailPage({
   const type = PATIENT_TYPE[patient.tipoPaciente || 'lead'];
 
   const metaParts: string[] = [];
-  if (patient.fechaNacimiento) {
-    metaParts.push(
-      new Date(patient.fechaNacimiento).toLocaleDateString('es-MX', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'UTC',
-      }),
-    );
-  }
+  const nacimiento = formatDateLong(patient.fechaNacimiento);
+  if (nacimiento) metaParts.push(nacimiento);
   if (patient.genero) metaParts.push(capitalize(patient.genero));
 
   const stats = [
@@ -240,7 +215,7 @@ export default function PatientDetailPage({
             </div>
             {patient.createdAt && (
               <p className="mt-1 text-[11px] text-text-tertiary">
-                Registrado el {formatDate(patient.createdAt)}
+                Registrado el {formatInstantDate(patient.createdAt)}
               </p>
             )}
           </div>
@@ -365,11 +340,7 @@ export default function PatientDetailPage({
               <h3 className="text-sm font-semibold">Mapa capilar</h3>
               {latestConsultation && (
                 <span className="cap-eyebrow">
-                  {format(
-                    new Date(latestConsultation.consultationDate),
-                    'dd MMM yy',
-                    { locale: es },
-                  )}
+                  {formatDateShort(latestConsultation.consultationDate)}
                 </span>
               )}
             </div>
@@ -385,7 +356,7 @@ export default function PatientDetailPage({
               <div className="mt-3 space-y-2.5 border-t border-border pt-3">
                 {donorZoneNames.length > 0 && (
                   <div>
-                    <div className="cap-eyebrow mb-1.5">Zonas donantes</div>
+                    <div className="cap-eyebrow mb-1.5">Zonas receptoras</div>
                     <div className="flex flex-wrap gap-1">
                       {donorZoneNames.map((name) => (
                         <span
@@ -427,7 +398,7 @@ export default function PatientDetailPage({
             items={(patient.appointments as any[] ?? []).slice(0, 4).map((apt: any) => ({
               id: apt.id,
               title: apt.title || 'Cita',
-              date: formatDate(apt.startDatetime),
+              date: formatInstantDate(apt.startDatetime),
             }))}
             emptyText="Sin citas registradas"
           />
@@ -437,7 +408,7 @@ export default function PatientDetailPage({
             items={(patient.medicalConsultations as any[] ?? []).slice(0, 4).map((c: any) => ({
               id: c.id,
               title: 'Consulta médica',
-              date: formatDate(c.consultationDate),
+              date: formatDateOnly(c.consultationDate),
             }))}
             emptyText="Sin consultas"
           />
@@ -447,7 +418,7 @@ export default function PatientDetailPage({
             items={(patient.procedureReports as any[] ?? []).slice(0, 4).map((p: any) => ({
               id: p.id,
               title: p.procedureType || 'Procedimiento',
-              date: formatDate(p.procedureDate),
+              date: formatDateOnly(p.procedureDate),
             }))}
             emptyText="Sin procedimientos"
           />
@@ -457,7 +428,7 @@ export default function PatientDetailPage({
             items={(patient.prescriptions as any[] ?? []).slice(0, 4).map((rx: any) => ({
               id: rx.id,
               title: `Prescripción · ${rx.status}`,
-              date: formatDate(rx.createdAt),
+              date: formatInstantDate(rx.createdAt),
             }))}
             emptyText="Sin prescripciones"
           />

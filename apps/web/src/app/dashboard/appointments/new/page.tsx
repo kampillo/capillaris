@@ -22,6 +22,8 @@ import { usePatients } from '@/hooks/use-patients';
 import { useDoctors } from '@/hooks/use-clinical';
 import { useCreateAppointment } from '@/hooks/use-appointments';
 import { useRequireRole } from '@/hooks/use-has-role';
+import { todayInput } from '@/lib/dates';
+import { displayName } from '@/lib/names';
 
 const SUGGESTED_SLOTS = [
   '09:00',
@@ -91,7 +93,7 @@ export default function NewAppointmentPage() {
   const [doctorId, setDoctorId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayInput());
   const [startTime, setStartTime] = useState('10:00');
   const [duration, setDuration] = useState('45');
   const [status, setStatus] = useState('scheduled');
@@ -320,7 +322,7 @@ export default function NewAppointmentPage() {
                   <SelectContent>
                     {(doctors || []).map((d) => (
                       <SelectItem key={d.id} value={d.id}>
-                        Dr. {d.nombre} {d.apellido}
+                        {displayName(d, { isDoctor: true })}
                       </SelectItem>
                     ))}
                   </SelectContent>
