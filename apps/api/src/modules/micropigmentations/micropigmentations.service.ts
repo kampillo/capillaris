@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMicropigmentationDto } from './dto/create-micropigmentation.dto';
 import { UpdateMicropigmentationDto } from './dto/update-micropigmentation.dto';
+import { USER_PUBLIC_SELECT } from '../../common/prisma/user-select';
 
 @Injectable()
 export class MicropigmentationsService {
@@ -22,7 +23,7 @@ export class MicropigmentationsService {
       } as any,
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
         hairTypes: { include: { hairType: true } },
       },
     });
@@ -38,7 +39,7 @@ export class MicropigmentationsService {
         orderBy: { fecha: 'desc' },
         include: {
           patient: true,
-          doctor: true,
+          doctor: { select: USER_PUBLIC_SELECT },
           hairTypes: { include: { hairType: true } },
         },
       }),
@@ -61,7 +62,7 @@ export class MicropigmentationsService {
       where: { id },
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
         hairTypes: { include: { hairType: true } },
       },
     });
@@ -85,7 +86,7 @@ export class MicropigmentationsService {
       } as any,
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
         hairTypes: { include: { hairType: true } },
       },
     });

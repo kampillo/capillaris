@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateHairmedicineDto } from './dto/create-hairmedicine.dto';
 import { UpdateHairmedicineDto } from './dto/update-hairmedicine.dto';
+import { USER_PUBLIC_SELECT } from '../../common/prisma/user-select';
 
 @Injectable()
 export class HairmedicinesService {
@@ -15,7 +16,7 @@ export class HairmedicinesService {
       } as any,
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
       },
     });
   }
@@ -30,7 +31,7 @@ export class HairmedicinesService {
         orderBy: { fecha: 'desc' },
         include: {
           patient: true,
-          doctor: true,
+          doctor: { select: USER_PUBLIC_SELECT },
         },
       }),
       this.prisma.hairmedicine.count(),
@@ -52,7 +53,7 @@ export class HairmedicinesService {
       where: { id },
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
       },
     });
 
@@ -73,7 +74,7 @@ export class HairmedicinesService {
       } as any,
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
       },
     });
   }

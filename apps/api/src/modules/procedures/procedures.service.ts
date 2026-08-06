@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
 import { UpdateProcedureDto } from './dto/update-procedure.dto';
+import { USER_PUBLIC_SELECT } from '../../common/prisma/user-select';
 
 @Injectable()
 export class ProceduresService {
@@ -37,7 +38,7 @@ export class ProceduresService {
       include: {
         patient: true,
         operatingRoom: true,
-        doctors: { include: { doctor: true } },
+        doctors: { include: { doctor: { select: USER_PUBLIC_SELECT } } },
         hairTypes: { include: { hairType: true } },
         images: true,
       },
@@ -56,7 +57,7 @@ export class ProceduresService {
         orderBy: { procedureDate: 'desc' },
         include: {
           patient: true,
-          doctors: { include: { doctor: true } },
+          doctors: { include: { doctor: { select: USER_PUBLIC_SELECT } } },
           hairTypes: { include: { hairType: true } },
         },
       }),
@@ -79,7 +80,7 @@ export class ProceduresService {
       where: { patientId },
       include: {
         operatingRoom: true,
-        doctors: { include: { doctor: true } },
+        doctors: { include: { doctor: { select: USER_PUBLIC_SELECT } } },
         hairTypes: { include: { hairType: true } },
       },
       orderBy: { procedureDate: 'desc' },
@@ -92,7 +93,7 @@ export class ProceduresService {
       include: {
         patient: true,
         operatingRoom: true,
-        doctors: { include: { doctor: true } },
+        doctors: { include: { doctor: { select: USER_PUBLIC_SELECT } } },
         hairTypes: { include: { hairType: true } },
         images: true,
       },
@@ -125,7 +126,7 @@ export class ProceduresService {
       include: {
         patient: true,
         operatingRoom: true,
-        doctors: { include: { doctor: true } },
+        doctors: { include: { doctor: { select: USER_PUBLIC_SELECT } } },
         hairTypes: { include: { hairType: true } },
         images: true,
       },

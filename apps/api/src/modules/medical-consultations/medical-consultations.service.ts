@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMedicalConsultationDto } from './dto/create-medical-consultation.dto';
 import { UpdateMedicalConsultationDto } from './dto/update-medical-consultation.dto';
+import { USER_PUBLIC_SELECT } from '../../common/prisma/user-select';
 
 @Injectable()
 export class MedicalConsultationsService {
@@ -35,7 +36,7 @@ export class MedicalConsultationsService {
       } as any,
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
         donorZones: { include: { donorZone: true } },
         variants: { include: { variant: true } },
       },
@@ -54,7 +55,7 @@ export class MedicalConsultationsService {
         orderBy: { consultationDate: 'desc' },
         include: {
           patient: true,
-          doctor: true,
+          doctor: { select: USER_PUBLIC_SELECT },
           donorZones: { include: { donorZone: true } },
           variants: { include: { variant: true } },
         },
@@ -77,7 +78,7 @@ export class MedicalConsultationsService {
     return this.prisma.medicalConsultation.findMany({
       where: { patientId },
       include: {
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
         donorZones: { include: { donorZone: true } },
         variants: { include: { variant: true } },
       },
@@ -90,7 +91,7 @@ export class MedicalConsultationsService {
       where: { id },
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
         donorZones: { include: { donorZone: true } },
         variants: { include: { variant: true } },
       },
@@ -133,7 +134,7 @@ export class MedicalConsultationsService {
       } as any,
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
         donorZones: { include: { donorZone: true } },
         variants: { include: { variant: true } },
       },

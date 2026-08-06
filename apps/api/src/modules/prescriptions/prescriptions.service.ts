@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
+import { USER_PUBLIC_SELECT } from '../../common/prisma/user-select';
 
 @Injectable()
 export class PrescriptionsService {
@@ -23,7 +24,7 @@ export class PrescriptionsService {
       include: {
         items: true,
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
       },
     });
   }
@@ -39,7 +40,7 @@ export class PrescriptionsService {
         include: {
           items: true,
           patient: true,
-          doctor: true,
+          doctor: { select: USER_PUBLIC_SELECT },
         },
       }),
       this.prisma.prescription.count(),
@@ -64,7 +65,7 @@ export class PrescriptionsService {
           include: { product: true },
         },
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
       },
     });
 
@@ -97,7 +98,7 @@ export class PrescriptionsService {
         include: {
           items: { include: { product: true } },
           patient: true,
-          doctor: true,
+          doctor: { select: USER_PUBLIC_SELECT },
         },
       });
     });

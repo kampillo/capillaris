@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
+import { USER_PUBLIC_SELECT } from '../../common/prisma/user-select';
 
 @Injectable()
 export class AppointmentsService {
@@ -19,7 +20,7 @@ export class AppointmentsService {
       } as any,
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
       },
     });
 
@@ -63,7 +64,7 @@ export class AppointmentsService {
         orderBy: { startDatetime: 'desc' },
         include: {
           patient: true,
-          doctor: true,
+          doctor: { select: USER_PUBLIC_SELECT },
         },
       }),
       this.prisma.appointment.count({ where }),
@@ -85,7 +86,7 @@ export class AppointmentsService {
       where: { id },
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
       },
     });
 
@@ -106,7 +107,7 @@ export class AppointmentsService {
       } as any,
       include: {
         patient: true,
-        doctor: true,
+        doctor: { select: USER_PUBLIC_SELECT },
       },
     });
 
