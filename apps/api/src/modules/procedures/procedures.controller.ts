@@ -73,4 +73,20 @@ export class ProceduresController {
   remove(@Param('id') id: string) {
     return this.proceduresService.remove(id);
   }
+
+  @Post(':id/session')
+  @Roles('admin', 'doctor')
+  @ApiOperation({
+    summary: 'Une este reporte con otro del mismo paciente en una sesión',
+  })
+  linkSession(@Param('id') id: string, @Body('withId') withId: string) {
+    return this.proceduresService.linkSession(id, withId);
+  }
+
+  @Delete(':id/session')
+  @Roles('admin', 'doctor')
+  @ApiOperation({ summary: 'Saca este reporte de su sesión' })
+  unlinkSession(@Param('id') id: string) {
+    return this.proceduresService.unlinkSession(id);
+  }
 }

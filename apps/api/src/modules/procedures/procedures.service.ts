@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
 import { UpdateProcedureDto } from './dto/update-procedure.dto';
@@ -136,5 +141,93 @@ export class ProceduresService {
   async remove(id: string) {
     await this.findOne(id);
     return this.prisma.procedureReport.delete({ where: { id } });
+  }
+
+  /**
+   * Une dos reportes en una misma sesión de trasplante.
+   *
+   * La clínica reparte algunos trasplantes en dos días. Antes quedaban como
+   * dos procedimientos sueltos, cada uno con su cuenta de folículos; unirlos
+   * permite mostrarlos como una sesión con el total sumado.
+   *
+   * Si alguno ya pertenece a una sesión se reutiliza ese grupo, así que unir
+   * un tercer día funciona igual.
+   */
+  async linkSession(id: string, otherId: string) {
+    if (id === otherId) {
+      throw new BadRequestException('Un reporte no se puede unir consigo mismo');
+    }
+
+    const [a, b] = await Promise.all([
+      this.prisma.procedureReport.findUnique({ where: { id } }),
+      this.prisma.procedureReport.findUnique({ where: { id: otherId } }),
+    ]);
+    if (!a) throw new NotFoundException(`Procedimiento ${id} no encontrado`);
+    if (!b) throw new NotFoundException(`Procedimiento ${otherId} no encontrado`);
+    if (a.patientId !== b.patientId) {
+      throw new BadRequestException(
+        'Sólo se pueden unir procedimientos del mismo paciente',
+      );
+    }
+
+    const groupId = a.sessionGroupId ?? b.sessionGroupId ?? randomUUID();
+
+    const miembros = await this.prisma.procedureReport.findMany({
+      where: {
+        OR: [
+          { id: { in: [id, otherId] } },
+          ...(a.sessionGroupId ? [{ sessionGroupId: a.sessionGroupId }] : []),
+          ...(b.sessionGroupId ? [{ sessionGroupId: b.sessionGroupId }] : []),
+        ],
+      },
+      orderBy: { procedureDate: 'asc' },
+    });
+
+    // El día se numera por fecha, no por orden de captura.
+    await this.prisma.$transaction(
+      miembros.map((m, idx) =>
+        this.prisma.procedureReport.update({
+          where: { id: m.id },
+          data: { sessionGroupId: groupId, sessionDay: idx + 1 },
+        }),
+      ),
+    );
+
+    return this.findByPatient(a.patientId);
+  }
+
+  /** Saca un reporte de su sesión y renumera los que quedan. */
+  async unlinkSession(id: string) {
+    const reporte = await this.prisma.procedureReport.findUnique({
+      where: { id },
+    });
+    if (!reporte) throw new NotFoundException(`Procedimiento ${id} no encontrado`);
+    if (!reporte.sessionGroupId) {
+      throw new BadRequestException('Ese procedimiento no pertenece a una sesión');
+    }
+
+    const restantes = await this.prisma.procedureReport.findMany({
+      where: { sessionGroupId: reporte.sessionGroupId, id: { not: id } },
+      orderBy: { procedureDate: 'asc' },
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.procedureReport.update({
+        where: { id },
+        data: { sessionGroupId: null, sessionDay: null },
+      }),
+      // Un solo miembro ya no es una sesión.
+      ...restantes.map((m, idx) =>
+        this.prisma.procedureReport.update({
+          where: { id: m.id },
+          data:
+            restantes.length === 1
+              ? { sessionGroupId: null, sessionDay: null }
+              : { sessionDay: idx + 1 },
+        }),
+      ),
+    ]);
+
+    return this.findByPatient(reporte.patientId);
   }
 }

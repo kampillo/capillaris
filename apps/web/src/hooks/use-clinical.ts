@@ -9,6 +9,8 @@ export interface ClinicalHistory {
   personalesPatologicos?: string;
   padecimientoActual?: string;
   diagnostico?: string;
+  gradoNorwood?: string;
+  gradoLudwig?: string;
   tratamiento?: string;
   inheritRelatives?: {
     id: string;
@@ -101,6 +103,8 @@ export interface MedicalConsultation {
   textura?: string;
   valoracionZonaDonante?: string;
   diagnostico?: string;
+  gradoNorwood?: string;
+  gradoLudwig?: string;
   estrategiaQuirurgica?: string;
   fechaSugeridaTransplante?: string;
   trasplanteDosDias?: boolean;
@@ -162,6 +166,13 @@ export interface ProcedureReport {
   totalFoliculos?: number;
   operatingRoomId?: string;
   operatingRoom?: { id: string; name: string };
+  horaInicio?: string;
+  horaComidaInicio?: string;
+  horaComidaFin?: string;
+  horaImplantacionInicio?: string;
+  horaFin?: string;
+  sessionGroupId?: string;
+  sessionDay?: number;
   anestExtFechaInicial?: string;
   anestExtFechaFinal?: string;
   anestExtLidocaina?: string;
@@ -253,5 +264,29 @@ export function useDoctors() {
     queryKey: ['catalog', 'doctors'],
     queryFn: () => api.get('/catalog/doctors'),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Une o separa reportes de un trasplante repartido en varios días. */
+export function useLinkProcedureSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, withId }: { id: string; withId: string }) =>
+      api.post(`/procedures/${id}/session`, { withId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['procedures'] });
+    },
+  });
+}
+
+export function useUnlinkProcedureSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/procedures/${id}/session`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['procedures'] });
+    },
   });
 }

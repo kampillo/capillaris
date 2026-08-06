@@ -94,4 +94,14 @@ export class CreateMedicalConsultationDto {
   @IsArray()
   @IsUUID(undefined, { each: true })
   variantIds?: string[];
+
+  @ApiPropertyOptional({ example: 'III', description: 'Grado Hamilton-Norwood (hombres)' })
+  @IsOptional()
+  @IsString()
+  gradoNorwood?: string;
+
+  @ApiPropertyOptional({ example: 'II', description: 'Grado Ludwig (mujeres)' })
+  @IsOptional()
+  @IsString()
+  gradoLudwig?: string;
 }

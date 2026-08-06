@@ -281,6 +281,11 @@ model MedicalConsultation {
   textura                   String?   @db.VarChar(30)
   valoracionZonaDonante     String?   @map("valoracion_zona_donante") @db.VarChar(30)
   diagnostico               String?   @db.Text
+  // Graduación de la alopecia, aparte del diagnóstico: son cosas distintas
+  // y el campo de texto libre las venía mezclando.
+  // Hamilton-Norwood para hombres (I–VII), Ludwig para mujeres (I–III).
+  gradoNorwood              String?   @map("grado_norwood") @db.VarChar(10)
+  gradoLudwig               String?   @map("grado_ludwig") @db.VarChar(10)
   estrategiaQuirurgica      String?   @map("estrategia_quirurgica") @db.Text
   fechaSugeridaTransplante  DateTime? @map("fecha_sugerida_transplante") @db.Date
   trasplanteDosDias         Boolean   @default(false) @map("trasplante_dos_dias")
@@ -368,6 +373,21 @@ model ProcedureReport {
   cb4                       Int?
   totalFoliculos            Int?      @map("total_foliculos")
   operatingRoomId           String?   @map("operating_room_id") @db.Uuid
+  // Tiempos del procedimiento como "HH:MM" en hora de la clínica.
+  // A propósito no son timestamps: una hora de pared no tiene zona horaria,
+  // y guardarla como instante la corre según dónde esté el que la mira.
+  // (Las columnas anest_*_fecha_* de abajo sí son timestamps, heredados de
+  // la migración del sistema viejo.)
+  horaInicio                String?   @map("hora_inicio") @db.VarChar(5)
+  horaComidaInicio          String?   @map("hora_comida_inicio") @db.VarChar(5)
+  horaComidaFin             String?   @map("hora_comida_fin") @db.VarChar(5)
+  horaImplantacionInicio    String?   @map("hora_implantacion_inicio") @db.VarChar(5)
+  horaFin                   String?   @map("hora_fin") @db.VarChar(5)
+  // Trasplante repartido en varios días: los reportes de una misma sesión
+  // comparten sessionGroupId y se numeran con sessionDay. La clínica los
+  // quiere ver como un procedimiento con el total sumado, no como dos.
+  sessionGroupId            String?   @map("session_group_id") @db.Uuid
+  sessionDay                Int?      @map("session_day")
   // Anesthesia - Extraction
   anestExtFechaInicial      DateTime? @map("anest_ext_fecha_inicial")
   anestExtFechaFinal        DateTime? @map("anest_ext_fecha_final")
@@ -400,6 +420,7 @@ model ProcedureReport {
 
   @@index([patientId])
   @@index([procedureDate])
+  @@index([sessionGroupId])
   @@map("procedure_reports")
 }
 

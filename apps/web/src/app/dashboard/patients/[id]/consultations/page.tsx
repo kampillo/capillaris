@@ -86,15 +86,28 @@ const VALORACION_LABELS: Record<string, string> = {
   [DonorZoneAssessment.AMPLIA]: 'Amplia',
 };
 
+/**
+ * El grado de alopecia se captura aparte, en su escala. Antes se escribía
+ * dentro del texto de diagnóstico ("Alopecia androgénica grado III"), que
+ * mezcla dos cosas distintas: qué tiene el paciente y qué tan avanzado está.
+ */
 const DIAGNOSTICO_TEMPLATES = [
-  'Alopecia androgénica grado II',
-  'Alopecia androgénica grado III',
-  'Alopecia androgénica grado IV',
+  'Alopecia androgenética',
   'Alopecia areata',
   'Alopecia difusa',
+  'Alopecia cicatricial',
   'Efluvio telógeno',
   'Sin alopecia aparente',
 ];
+
+/** Hamilton-Norwood, la escala habitual en hombres. */
+const NORWOOD = [
+  'I', 'II', 'IIA', 'III', 'IIIA', 'III vertex',
+  'IV', 'IVA', 'V', 'VA', 'VI', 'VII',
+];
+
+/** Ludwig, para patrón femenino. */
+const LUDWIG = ['I', 'II', 'III'];
 
 const ESTRATEGIA_TEMPLATES = [
   'Se sugiere FUE con 2000–2500 folículos',
@@ -321,6 +334,27 @@ function ConsultationCard({
           </div>
         </div>
 
+        {(consultation.gradoNorwood || consultation.gradoLudwig) && (
+          <div className="flex flex-wrap gap-5 border-t border-border pt-4">
+            {consultation.gradoNorwood && (
+              <div>
+                <div className="cap-eyebrow mb-1">Grado Hamilton-Norwood</div>
+                <div className="cap-mono text-lg font-semibold text-brand-dark">
+                  {consultation.gradoNorwood}
+                </div>
+              </div>
+            )}
+            {consultation.gradoLudwig && (
+              <div>
+                <div className="cap-eyebrow mb-1">Grado Ludwig</div>
+                <div className="cap-mono text-lg font-semibold text-brand-dark">
+                  {consultation.gradoLudwig}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {consultation.diagnostico && (
           <div className="border-t border-border pt-4">
             <div className="cap-eyebrow mb-1.5">Diagnóstico</div>
@@ -405,6 +439,8 @@ function ConsultationForm({
     grasa: consultation?.grasa as boolean | undefined,
     valoracionZonaDonante: consultation?.valoracionZonaDonante ?? '',
     diagnostico: consultation?.diagnostico ?? '',
+    gradoNorwood: consultation?.gradoNorwood ?? '',
+    gradoLudwig: consultation?.gradoLudwig ?? '',
     estrategiaQuirurgica: consultation?.estrategiaQuirurgica ?? '',
     fechaSugeridaTransplante: consultation?.fechaSugeridaTransplante
       ? toDateInput(consultation.fechaSugeridaTransplante)
@@ -449,6 +485,8 @@ function ConsultationForm({
       grasa: form.grasa,
       valoracionZonaDonante: form.valoracionZonaDonante || undefined,
       diagnostico: form.diagnostico || undefined,
+      gradoNorwood: form.gradoNorwood || undefined,
+      gradoLudwig: form.gradoLudwig || undefined,
       estrategiaQuirurgica: form.estrategiaQuirurgica || undefined,
       fechaSugeridaTransplante: form.fechaSugeridaTransplante || undefined,
       trasplanteDosDias: form.trasplanteDosDias,
@@ -664,6 +702,45 @@ function ConsultationForm({
                   </ChoicePill>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Grado Hamilton-Norwood</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {NORWOOD.map((g) => (
+                  <ChoicePill
+                    key={g}
+                    active={form.gradoNorwood === g}
+                    onClick={() =>
+                      set('gradoNorwood', form.gradoNorwood === g ? '' : g)
+                    }
+                  >
+                    {g}
+                  </ChoicePill>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Grado Ludwig</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {LUDWIG.map((g) => (
+                  <ChoicePill
+                    key={g}
+                    tone="lilac"
+                    active={form.gradoLudwig === g}
+                    onClick={() =>
+                      set('gradoLudwig', form.gradoLudwig === g ? '' : g)
+                    }
+                  >
+                    {g}
+                  </ChoicePill>
+                ))}
+              </div>
+              <p className="text-[11px] text-text-tertiary">
+                Para patrón femenino.
+              </p>
             </div>
           </div>
 

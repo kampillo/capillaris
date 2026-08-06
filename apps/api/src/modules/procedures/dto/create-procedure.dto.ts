@@ -1,12 +1,13 @@
 import {
+  IsArray,
+  IsDateString,
+  IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  IsDateString,
-  IsInt,
-  IsNumber,
-  IsArray,
+  Matches,
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -133,4 +134,40 @@ export class CreateProcedureDto {
   @IsArray()
   @IsUUID(undefined, { each: true })
   hairTypeIds?: string[];
+
+  @ApiPropertyOptional({ example: '08:30', description: 'Hora de inicio (HH:MM)' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'horaInicio debe ser HH:MM' })
+  horaInicio?: string;
+
+  @ApiPropertyOptional({ example: '13:00', description: 'Inicio de la comida (HH:MM)' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'horaComidaInicio debe ser HH:MM' })
+  horaComidaInicio?: string;
+
+  @ApiPropertyOptional({ example: '14:00', description: 'Fin de la comida (HH:MM)' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'horaComidaFin debe ser HH:MM' })
+  horaComidaFin?: string;
+
+  @ApiPropertyOptional({ example: '14:30', description: 'Inicio de la implantación (HH:MM)' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'horaImplantacionInicio debe ser HH:MM' })
+  horaImplantacionInicio?: string;
+
+  @ApiPropertyOptional({ example: '18:45', description: 'Hora de fin (HH:MM)' })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'horaFin debe ser HH:MM' })
+  horaFin?: string;
+
+  @ApiPropertyOptional({ description: 'Agrupa los reportes de una sesión de varios días' })
+  @IsOptional()
+  @IsUUID()
+  sessionGroupId?: string;
+
+  @ApiPropertyOptional({ example: 1, description: 'Día dentro de la sesión (1, 2, ...)' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  sessionDay?: number;
 }

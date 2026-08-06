@@ -11,6 +11,7 @@ import {
   Hash,
   FileText,
   Zap,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,10 @@ import {
 import type { ProcedureReport } from '@/hooks/use-clinical';
 import { useHasRole } from '@/hooks/use-has-role';
 import { formatDateLong, todayInput } from '@/lib/dates';
+import {
+  useLinkProcedureSession,
+  useUnlinkProcedureSession,
+} from '@/hooks/use-clinical';
 import { displayName } from '@/lib/names';
 
 const PUNCH_PRESETS = ['0.8', '0.9', '1.0'];
@@ -152,6 +157,275 @@ function FollicleDistributionBar({
           />
         ) : null,
       )}
+    </div>
+  );
+}
+
+/** Minutos entre dos horas "HH:MM". Null si falta alguna o el orden no cuadra. */
+function minutosEntre(desde?: string, hasta?: string): number | null {
+  if (!desde || !hasta) return null;
+  const [h1, m1] = desde.split(':').map(Number);
+  const [h2, m2] = hasta.split(':').map(Number);
+  const diff = h2 * 60 + m2 - (h1 * 60 + m1);
+  return diff > 0 ? diff : null;
+}
+
+function duracion(min: number | null): string | null {
+  if (min === null) return null;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h > 0 ? `${h} h ${m ? `${m} min` : ''}`.trim() : `${m} min`;
+}
+
+/** Hora de un timestamp de anestesia, fijada a la zona de la clínica. */
+function horaDeInstante(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'America/Mexico_City',
+  });
+}
+
+/**
+ * Agrupa los reportes por sesión. Un trasplante repartido en dos días son dos
+ * reportes que comparten sessionGroupId, y la clínica los quiere ver como un
+ * solo procedimiento con el total sumado.
+ */
+type Sesion = { key: string; dias: ProcedureReport[] };
+
+function agruparPorSesion(procedures: ProcedureReport[]): Sesion[] {
+  const sesiones: Sesion[] = [];
+  const indice = new Map<string, Sesion>();
+
+  for (const p of procedures) {
+    if (!p.sessionGroupId) {
+      sesiones.push({ key: p.id, dias: [p] });
+      continue;
+    }
+    const existente = indice.get(p.sessionGroupId);
+    if (existente) {
+      existente.dias.push(p);
+    } else {
+      const nueva = { key: p.sessionGroupId, dias: [p] };
+      indice.set(p.sessionGroupId, nueva);
+      sesiones.push(nueva);
+    }
+  }
+
+  for (const s of sesiones) {
+    s.dias.sort((a, b) => (a.sessionDay ?? 0) - (b.sessionDay ?? 0));
+  }
+  return sesiones;
+}
+
+function TarjetaSesion({
+  sesion,
+  candidatos,
+  puedeEditar,
+}: {
+  sesion: Sesion;
+  /** Otros procedimientos del paciente, para poder unirlos como otro día. */
+  candidatos: ProcedureReport[];
+  puedeEditar: boolean;
+}) {
+  const unlink = useUnlinkProcedureSession();
+  const link = useLinkProcedureSession();
+  const [uniendo, setUniendo] = useState(false);
+
+  if (sesion.dias.length === 1) {
+    const solo = sesion.dias[0];
+    return (
+      <div>
+        <ProcedureCard procedure={solo} />
+        {puedeEditar && candidatos.length > 0 && (
+          <div className="mt-1.5 pl-1">
+            {uniendo ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] text-text-secondary">
+                  Unir con:
+                </span>
+                {candidatos.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    disabled={link.isPending}
+                    onClick={() =>
+                      link.mutate(
+                        { id: solo.id, withId: c.id },
+                        { onSuccess: () => setUniendo(false) },
+                      )
+                    }
+                    className="rounded-sm border border-border-strong px-2 py-0.5 text-[11px] hover:bg-surface-2"
+                  >
+                    {formatDateLong(c.procedureDate)}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setUniendo(false)}
+                  className="text-[11px] text-text-tertiary hover:text-foreground"
+                >
+                  cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setUniendo(true)}
+                className="text-[11px] text-text-tertiary underline underline-offset-2 hover:text-foreground"
+              >
+                Es parte de un trasplante de varios días
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const foliculos = sesion.dias.reduce((n, d) => {
+    const suma = (d.cb1 ?? 0) + (d.cb2 ?? 0) + (d.cb3 ?? 0) + (d.cb4 ?? 0);
+    return n + (d.totalFoliculos ?? suma);
+  }, 0);
+  const pelos = sesion.dias.reduce(
+    (n, d) =>
+      n + (d.cb1 ?? 0) + (d.cb2 ?? 0) * 2 + (d.cb3 ?? 0) * 3 + (d.cb4 ?? 0) * 4,
+    0,
+  );
+  const sumaCb = sesion.dias.reduce(
+    (n, d) => n + (d.cb1 ?? 0) + (d.cb2 ?? 0) + (d.cb3 ?? 0) + (d.cb4 ?? 0),
+    0,
+  );
+
+  return (
+    <section className="rounded-xl border-2 border-brand/30 bg-brand-softer/40 p-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <div className="cap-eyebrow mb-0.5">
+            Sesión de {sesion.dias.length} días
+          </div>
+          <div className="text-[15px] font-semibold">
+            {formatDateLong(sesion.dias[0].procedureDate)} —{' '}
+            {formatDateLong(sesion.dias[sesion.dias.length - 1].procedureDate)}
+          </div>
+        </div>
+        <div className="flex items-start gap-6 text-right">
+          <div>
+            <div className="cap-eyebrow">Total folículos</div>
+            <div className="cap-mono text-xl font-semibold text-brand-dark">
+              {foliculos.toLocaleString()}
+            </div>
+          </div>
+          {pelos > 0 && (
+            <div>
+              <div className="cap-eyebrow">Total pelos</div>
+              <div className="cap-mono text-xl font-semibold text-brand-dark">
+                {pelos.toLocaleString()}
+              </div>
+            </div>
+          )}
+          {sumaCb > 0 && (
+            <div>
+              <div className="cap-eyebrow">Pelos / folículo</div>
+              <div className="cap-mono text-xl font-semibold text-brand-dark">
+                {(pelos / sumaCb).toFixed(2)}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        {sesion.dias.map((d) => (
+          <div key={d.id} className="relative">
+            <span className="absolute -left-0.5 top-4 z-10 rounded-r-sm bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white">
+              Día {d.sessionDay}
+            </span>
+            <ProcedureCard procedure={d} />
+            {puedeEditar && (
+              <button
+                type="button"
+                onClick={() => unlink.mutate(d.id)}
+                disabled={unlink.isPending}
+                className="absolute right-3 top-3 text-[11px] text-text-tertiary underline underline-offset-2 hover:text-foreground"
+              >
+                separar de la sesión
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LineaDeTiempo({ procedure }: { procedure: ProcedureReport }) {
+  const hitos = [
+    { label: 'Inicio', hora: procedure.horaInicio },
+    {
+      label: 'Anestesia extracción',
+      hora: horaDeInstante(procedure.anestExtFechaInicial),
+    },
+    { label: 'Comida', hora: procedure.horaComidaInicio },
+    { label: 'Reanudación', hora: procedure.horaComidaFin },
+    {
+      label: 'Anestesia implantación',
+      hora: horaDeInstante(procedure.anestImpFechaInicial),
+    },
+    { label: 'Implantación', hora: procedure.horaImplantacionInicio },
+    { label: 'Fin', hora: procedure.horaFin },
+  ].filter((h) => h.hora);
+
+  if (hitos.length === 0) return null;
+
+  const total = minutosEntre(procedure.horaInicio, procedure.horaFin);
+  const comida = minutosEntre(procedure.horaComidaInicio, procedure.horaComidaFin);
+  const efectivo = total !== null && comida !== null ? total - comida : total;
+  const implantacion = minutosEntre(
+    procedure.horaImplantacionInicio,
+    procedure.horaFin,
+  );
+
+  return (
+    <div className="rounded-md border border-border bg-surface-2 p-4">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div className="cap-eyebrow">Tiempos</div>
+        <div className="flex flex-wrap gap-x-3 text-[11px] text-text-secondary">
+          {total !== null && (
+            <span>
+              Duración total{' '}
+              <strong className="text-foreground">{duracion(total)}</strong>
+            </span>
+          )}
+          {efectivo !== null && comida !== null && (
+            <span>
+              Quirúrgico{' '}
+              <strong className="text-foreground">{duracion(efectivo)}</strong>
+            </span>
+          )}
+          {implantacion !== null && (
+            <span>
+              Implantación{' '}
+              <strong className="text-foreground">
+                {duracion(implantacion)}
+              </strong>
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        {hitos.map((h) => (
+          <div key={h.label}>
+            <div className="text-[10px] uppercase tracking-wide text-text-tertiary">
+              {h.label}
+            </div>
+            <div className="cap-mono text-sm font-medium">{h.hora}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -312,6 +586,8 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
           </div>
         )}
 
+        <LineaDeTiempo procedure={procedure} />
+
         {procedure.hairTypes && procedure.hairTypes.length > 0 && (
           <div>
             <div className="cap-eyebrow mb-2">Zonas tratadas</div>
@@ -446,6 +722,11 @@ function ProcedureForm({
 
   const [form, setForm] = useState({
     procedureDate: todayInput(),
+    horaInicio: '',
+    horaComidaInicio: '',
+    horaComidaFin: '',
+    horaImplantacionInicio: '',
+    horaFin: '',
     descripcion: '',
     operatingRoomId: '',
     punchSize: '',
@@ -511,6 +792,18 @@ function ProcedureForm({
     [cb1n, cb2n, cb3n, cb4n],
   );
 
+  const resumenTiempos = useMemo(() => {
+    const total = minutosEntre(form.horaInicio, form.horaFin);
+    if (total === null) return null;
+    const comida = minutosEntre(form.horaComidaInicio, form.horaComidaFin);
+    const partes = [`Duración total ${duracion(total)}`];
+    if (comida !== null) {
+      partes.push(`comida ${duracion(comida)}`);
+      partes.push(`quirúrgico ${duracion(total - comida)}`);
+    }
+    return partes.join(' · ');
+  }, [form.horaInicio, form.horaFin, form.horaComidaInicio, form.horaComidaFin]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -520,6 +813,11 @@ function ProcedureForm({
     const payload: any = {
       patientId,
       procedureDate: form.procedureDate,
+      horaInicio: str(form.horaInicio),
+      horaComidaInicio: str(form.horaComidaInicio),
+      horaComidaFin: str(form.horaComidaFin),
+      horaImplantacionInicio: str(form.horaImplantacionInicio),
+      horaFin: str(form.horaFin),
       descripcion: str(form.descripcion),
       operatingRoomId: str(form.operatingRoomId),
       punchSize: num(form.punchSize),
@@ -644,6 +942,38 @@ function ProcedureForm({
               ))}
             </div>
           </div>
+        )}
+      </section>
+
+      {/* Tiempos */}
+      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <SectionHeader icon={Clock} title="Tiempos del procedimiento" />
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {(
+            [
+              ['horaInicio', 'Inicio'],
+              ['horaComidaInicio', 'Comida'],
+              ['horaComidaFin', 'Reanudación'],
+              ['horaImplantacionInicio', 'Implantación'],
+              ['horaFin', 'Fin'],
+            ] as const
+          ).map(([key, label]) => (
+            <div key={key} className="space-y-1.5">
+              <Label htmlFor={key} className="cap-eyebrow">
+                {label}
+              </Label>
+              <Input
+                id={key}
+                type="time"
+                value={form[key]}
+                onChange={(e) => set(key, e.target.value)}
+                className="h-11"
+              />
+            </div>
+          ))}
+        </div>
+        {resumenTiempos && (
+          <p className="mt-3 text-xs text-text-secondary">{resumenTiempos}</p>
         )}
       </section>
 
@@ -962,8 +1292,15 @@ export default function PatientProceduresPage({
         />
       ) : procedures && procedures.length > 0 ? (
         <div className="flex flex-col gap-4">
-          {procedures.map((p) => (
-            <ProcedureCard key={p.id} procedure={p} />
+          {agruparPorSesion(procedures).map((sesion, _i, todas) => (
+            <TarjetaSesion
+              key={sesion.key}
+              sesion={sesion}
+              candidatos={todas
+                .filter((o) => o.key !== sesion.key)
+                .flatMap((o) => o.dias)}
+              puedeEditar={canWrite}
+            />
           ))}
         </div>
       ) : (
