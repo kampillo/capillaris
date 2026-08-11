@@ -102,7 +102,7 @@ export class PatientsController {
   @ApiOperation({
     summary: 'Fusiona otro expediente dentro de este',
     description:
-      'Reasigna las nueve relaciones del absorbido, aplica los campos resueltos y deja al absorbido soft-borrado apuntando a este. Reversible con unmerge.',
+      'Reasigna todas las relaciones del absorbido, aplica los campos resueltos y deja al absorbido soft-borrado apuntando a este. Reversible con unmerge.',
   })
   merge(
     @Param('id') survivorId: string,

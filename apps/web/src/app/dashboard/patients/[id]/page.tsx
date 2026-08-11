@@ -14,6 +14,7 @@ import {
   Phone,
   Mail,
   Images,
+  Syringe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -77,6 +78,7 @@ const QUICK_ACTIONS = [
   { icon: ClipboardList, label: 'Historia clínica', path: 'history' },
   { icon: Stethoscope, label: 'Consultas', path: 'consultations' },
   { icon: Scissors, label: 'Procedimientos', path: 'procedures' },
+  { icon: Syringe, label: 'Tratamientos', path: 'treatments' },
   { icon: FileText, label: 'Prescripciones', path: 'prescriptions' },
   { icon: Images, label: 'Antes / Después', path: 'images' },
 ];

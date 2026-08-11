@@ -290,3 +290,86 @@ export function useUnlinkProcedureSession() {
     },
   });
 }
+
+// ============================================================
+// Tratamientos (PRP, dutasteride, betametasona, micropigmentación...)
+// ============================================================
+
+export interface TreatmentType {
+  id: string;
+  code: string;
+  name: string;
+  orden: number;
+}
+
+export interface Treatment {
+  id: string;
+  patientId: string;
+  fecha: string;
+  sesionNumero?: number;
+  duracion?: number;
+  dilucion?: string;
+  descripcion?: string;
+  comentarios?: string;
+  origen?: string;
+  realizadoPor?: { id: string; nombre: string; apellido: string };
+  tipos: { treatmentType: TreatmentType }[];
+  zonas: { hairType: { id: string; name: string } }[];
+  createdAt: string;
+}
+
+export interface CreateTreatmentData {
+  patientId: string;
+  fecha: string;
+  treatmentTypeIds?: string[];
+  zonaIds?: string[];
+  realizadoPorId?: string;
+  sesionNumero?: number;
+  duracion?: number;
+  dilucion?: string;
+  descripcion?: string;
+  comentarios?: string;
+}
+
+export function useTreatmentTypes() {
+  return useQuery<TreatmentType[]>({
+    queryKey: ['catalog', 'treatment-types'],
+    queryFn: () => api.get('/treatments/types'),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useTreatmentsByPatient(patientId: string) {
+  return useQuery<Treatment[]>({
+    queryKey: ['treatments', 'patient', patientId],
+    queryFn: () => api.get(`/treatments/patient/${patientId}`),
+    enabled: !!patientId,
+  });
+}
+
+export function useCreateTreatment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateTreatmentData) =>
+      api.post<Treatment>('/treatments', data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['treatments', 'patient', variables.patientId],
+      });
+    },
+  });
+}
+
+export function useDeleteTreatment(patientId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/treatments/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['treatments', 'patient', patientId],
+      });
+    },
+  });
+}

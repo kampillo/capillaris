@@ -175,6 +175,30 @@ async function main() {
   }
   console.log(`Created ${operatingRooms.length} operating rooms`);
 
+  // 12. Catálogo de tratamientos.
+  // Los nombres salen de lo que la clínica ya venía capturando como texto
+  // libre en hairmedicines.descripcion — no son categorías inventadas.
+  const treatmentTypes = [
+    { code: 'PRP', name: 'PRP (plasma rico en plaquetas)', orden: 1 },
+    { code: 'DUT', name: 'Dutasteride', orden: 2 },
+    { code: 'BET', name: 'Betametasona', orden: 3 },
+    { code: 'BICA', name: 'Bicalutamida', orden: 4 },
+    { code: 'MESO', name: 'Mesoterapia', orden: 5 },
+    { code: 'CARBO', name: 'Carboxiterapia', orden: 6 },
+    { code: 'BIOEST', name: 'Bioestimulación', orden: 7 },
+    { code: 'MICRO', name: 'Micropigmentación', orden: 8 },
+    { code: 'MINOX', name: 'Minoxidil', orden: 9 },
+    { code: 'OTRO', name: 'Otro', orden: 99 },
+  ];
+  for (const t of treatmentTypes) {
+    await prisma.treatmentType.upsert({
+      where: { code: t.code },
+      update: { name: t.name, orden: t.orden },
+      create: t,
+    });
+  }
+  console.log(`Created ${treatmentTypes.length} treatment types`);
+
   console.log('Seed completed successfully!');
 }
 

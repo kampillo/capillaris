@@ -20,6 +20,7 @@ import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
 import { MedicalConsultationsModule } from './modules/medical-consultations/medical-consultations.module';
 import { ProceduresModule } from './modules/procedures/procedures.module';
+import { TreatmentsModule } from './modules/treatments/treatments.module';
 import { ClinicalHistoriesModule } from './modules/clinical-histories/clinical-histories.module';
 import { MicropigmentationsModule } from './modules/micropigmentations/micropigmentations.module';
 import { HairmedicinesModule } from './modules/hairmedicines/hairmedicines.module';
@@ -50,6 +51,7 @@ import { AuditFeatureModule } from './modules/audit/audit.module';
     PrescriptionsModule,
     MedicalConsultationsModule,
     ProceduresModule,
+    TreatmentsModule,
     ClinicalHistoriesModule,
     MicropigmentationsModule,
     HairmedicinesModule,

@@ -42,6 +42,7 @@ model User {
   procedureReportDoctors     ProcedureReportDoctor[]
   auditLogs                  AuditLog[]
   remindersCreated           Reminder[]             @relation("ReminderCreatedBy")
+  treatmentsRealizados       Treatment[]            @relation("TreatmentsRealizados")
   googleToken                GoogleToken?
 
   @@index([email])
@@ -163,6 +164,7 @@ model Patient {
   hairmedicines         Hairmedicine[]
   patientImages         PatientImage[]
   reminders             Reminder[]
+  treatments            Treatment[]
   mergedInto            Patient?              @relation("PatientMerge", fields: [mergedIntoId], references: [id])
   mergedFrom            Patient[]             @relation("PatientMerge")
 
@@ -456,6 +458,7 @@ model HairType {
   // Relations
   procedureReports      ProcedureReportHairType[]
   micropigmentations    MicropigmentationHairType[]
+  treatments            TreatmentZone[]
 
   @@map("hair_types")
 }
@@ -630,6 +633,90 @@ model Hairmedicine {
   @@index([patientId])
   @@index([doctorId])
   @@map("hairmedicines")
+}
+
+// ============================================================
+// TREATMENTS
+// ============================================================
+
+// Catálogo de tratamientos. Los nombres salen de lo que la clínica ya venía
+// capturando como texto libre en `hairmedicines.descripcion`.
+model TreatmentType {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(30)
+  name      String   @unique @db.VarChar(100)
+  activo    Boolean  @default(true)
+  orden     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  treatments TreatmentOnType[]
+
+  @@map("treatment_types")
+}
+
+// Tratamiento aplicado a un paciente: PRP, dutasteride, betametasona,
+// mesoterapia, micropigmentación, etc.
+//
+// Un mismo tratamiento lleva varios tipos a la vez — en los datos del
+// sistema viejo abundan los combinados ("Dutasteride + mesoterapia"), así
+// que la relación con el catálogo es de muchos a muchos.
+//
+// `origen` y `origenId` apuntan al registro del que salió cuando se importó
+// desde micropigmentations o hairmedicines. Sirven para no duplicar si la
+// importación se corre dos veces, y para poder rastrear de dónde vino cada
+// fila. En los tratamientos capturados a mano van en null.
+model Treatment {
+  id             String    @id @default(uuid()) @db.Uuid
+  patientId      String    @map("patient_id") @db.Uuid
+  realizadoPorId String?   @map("realizado_por_id") @db.Uuid
+  fecha          DateTime  @db.Date
+  sesionNumero   Int?      @map("sesion_numero")
+  duracion       Int?
+  dilucion       String?   @db.VarChar(100)
+  descripcion    String?   @db.Text
+  comentarios    String?   @db.Text
+  origen         String?   @db.VarChar(30)
+  origenId       String?   @map("origen_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+
+  patient      Patient           @relation(fields: [patientId], references: [id])
+  realizadoPor User?             @relation("TreatmentsRealizados", fields: [realizadoPorId], references: [id])
+  tipos        TreatmentOnType[]
+  zonas        TreatmentZone[]
+
+  @@unique([origen, origenId])
+  @@index([patientId])
+  @@index([fecha])
+  @@map("treatments")
+}
+
+model TreatmentOnType {
+  id              String @id @default(uuid()) @db.Uuid
+  treatmentId     String @map("treatment_id") @db.Uuid
+  treatmentTypeId String @map("treatment_type_id") @db.Uuid
+
+  treatment     Treatment     @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+  treatmentType TreatmentType @relation(fields: [treatmentTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([treatmentId, treatmentTypeId])
+  @@map("treatment_on_types")
+}
+
+// Zonas tratadas. Reutiliza el catálogo `hair_types`, que pese al nombre
+// contiene zonas (Frontal, Coronilla, Cejas, Barba...).
+model TreatmentZone {
+  id          String @id @default(uuid()) @db.Uuid
+  treatmentId String @map("treatment_id") @db.Uuid
+  hairTypeId  String @map("hair_type_id") @db.Uuid
+
+  treatment Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+  hairType  HairType  @relation(fields: [hairTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([treatmentId, hairTypeId])
+  @@map("treatment_zones")
 }
 
 // ============================================================

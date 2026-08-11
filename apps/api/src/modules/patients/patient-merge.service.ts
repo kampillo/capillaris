@@ -25,12 +25,13 @@ const PATIENT_RELATIONS = [
   'hairmedicine',
   'patientImage',
   'reminder',
+  'treatment',
 ] as const;
 
 type PatientRelation = (typeof PATIENT_RELATIONS)[number];
 
 /**
- * Los delegados de Prisma son nueve tipos distintos y su unión no se estrecha
+ * Los delegados de Prisma son de tipos distintos y su unión no se estrecha
  * sola. Todos comparten la columna `patientId`, que es lo único que la fusión
  * necesita tocar, así que se los ve por esa rendija.
  */
@@ -60,6 +61,7 @@ const COUNT_SELECT = {
   micropigmentations: true,
   hairmedicines: true,
   reminders: true,
+  treatments: true,
 } as const;
 
 const PATIENT_SUMMARY_SELECT = {
@@ -166,7 +168,7 @@ export class PatientMergeService {
   /**
    * Fusiona `absorbedId` dentro de `survivorId`.
    *
-   * Todo ocurre en una transacción: o se mueven las nueve relaciones y se
+   * Todo ocurre en una transacción: o se mueven todas las relaciones y se
    * marca el absorbido, o no pasa nada. El absorbido no se borra de verdad —
    * queda con `deletedAt` y apuntando al sobreviviente, que es lo que permite
    * deshacer la fusión después.
