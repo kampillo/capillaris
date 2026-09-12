@@ -26,7 +26,7 @@
     /* ---- Text ---- */
     --foreground: 160 15% 12%;      /* #1A2420 */
     --text-secondary: 154 8% 39%;   /* #5B6B65 */
-    --text-tertiary: 142 5% 57%;    /* #8A968F */
+    --text-tertiary: 142 5% 43%;    /* Secondary labels with stronger contrast */
     --text-inverse: 40 20% 98%;
 
     /* ---- Borders ---- */
@@ -177,7 +177,7 @@
   }
 
   .cap-eyebrow {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;

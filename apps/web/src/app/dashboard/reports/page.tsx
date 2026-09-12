@@ -597,6 +597,17 @@ export default function ReportsPage() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ChartCard
+            title="Participación de enfermería"
+            subtitle="Una participación por persona e intervención, en el mes del primer día."
+          >
+            {!proceduresRpt?.byNurse?.length ? <EmptyChart text="Sin participación de enfermería registrada en el periodo" /> : (
+              <ul className="divide-y divide-border">
+                {proceduresRpt.byNurse.map((n, index) => <li key={index} className="flex items-center justify-between gap-4 py-3 text-sm"><span>{n.name}</span><span className="font-medium">{n.count} {n.count === 1 ? 'procedimiento' : 'procedimientos'}</span></li>)}
+              </ul>
+            )}
+            <p className="mt-3 text-xs text-muted-foreground">La suma de participaciones puede superar el número de procedimientos: varias personas pueden participar en uno.</p>
+          </ChartCard>
+          <ChartCard
             title="Zonas dadoras evaluadas"
             subtitle="Top 8 zonas más identificadas en consultas"
           >

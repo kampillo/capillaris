@@ -17,6 +17,7 @@ interface ProceduresReport {
   averageFollicles: number | null;
   totalFollicles: number | null;
   byDoctor: { name: string; count: number }[];
+  byNurse: { name: string; count: number }[];
 }
 
 interface AppointmentsReport {

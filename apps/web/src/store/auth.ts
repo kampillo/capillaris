@@ -15,12 +15,18 @@ interface AuthState {
   login: (token: string, user: AuthUser) => void;
   logout: () => void;
   hydrate: () => void;
+  refreshUser: (user: AuthUser) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
+  refreshUser: (user) => {
+    const safeUser = { id: user.id, nombre: user.nombre, apellido: user.apellido, email: user.email, roles: user.roles };
+    localStorage.setItem('user', JSON.stringify(safeUser));
+    set({ user: safeUser });
+  },
 
   login: (token, user) => {
     localStorage.setItem('auth_token', token);

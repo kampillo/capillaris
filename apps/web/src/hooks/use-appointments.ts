@@ -34,6 +34,13 @@ export interface CreateAppointmentData {
 
 export type UpdateAppointmentData = Partial<CreateAppointmentData>;
 
+export function useDashboardAppointments(timeMin: string, timeMax: string) {
+  return useQuery<{ today: Appointment[]; upcoming: Appointment[] }>({
+    queryKey: ['appointments', 'dashboard', timeMin, timeMax],
+    queryFn: () => api.get('/appointments/dashboard', { params: { timeMin, timeMax } }),
+  });
+}
+
 export function useAppointments(page = 1, pageSize = 20, timeMin?: string, timeMax?: string) {
   const params: Record<string, string> = { page: String(page), pageSize: String(pageSize) };
   if (timeMin) params.timeMin = timeMin;

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NursingModule } from './modules/nursing/nursing.module';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import appConfig from './config/app.config';
@@ -36,6 +37,7 @@ import { AuditFeatureModule } from './modules/audit/audit.module';
 
 @Module({
   imports: [
+    NursingModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig, databaseConfig, jwtConfig, storageConfig, googleConfig],

@@ -87,6 +87,7 @@ export class PatientsService {
     const patient = await this.prisma.patient.findUnique({
       where: { id },
       include: {
+        _count: { select: { appointments: true, prescriptions: true, medicalConsultations: true, procedureReports: true } },
         appointments: { orderBy: { startDatetime: 'desc' }, take: 5 },
         prescriptions: { orderBy: { createdAt: 'desc' }, take: 5 },
         medicalConsultations: { orderBy: { consultationDate: 'desc' }, take: 5 },
@@ -99,7 +100,18 @@ export class PatientsService {
       throw new NotFoundException(`Patient with ID ${id} not found`);
     }
 
-    return patient;
+    const sessions = await this.prisma.procedureReport.groupBy({
+      by: ['sessionGroupId'],
+      where: { patientId: id },
+      _count: { _all: true },
+    });
+    // Each ungrouped report is a procedure; a multi-day group counts once.
+    const procedureCount = sessions.reduce(
+      (total, session) => total + (session.sessionGroupId === null ? session._count._all : 1),
+      0,
+    );
+
+    return { ...patient, procedureCount };
   }
 
   async search(searchDto: SearchPatientsDto) {

@@ -12,6 +12,7 @@ import { Avatar } from '@/components/clinic/avatar';
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Inicio',
   '/dashboard/patients': 'Pacientes',
+  '/dashboard/nursing': 'Enfermería',
   '/dashboard/appointments': 'Agenda',
   '/dashboard/inventory': 'Inventario',
   '/dashboard/reports': 'Reportes',

@@ -88,47 +88,72 @@ export class ReportsService {
     const r = parseRange(startDate, endDate);
     const prev = getPreviousRange(r);
     const where = dateFilter('procedureDate', r);
-    const wherePrev = prev ? dateFilter('procedureDate', prev) : null;
-
-    const [totalProcedures, previousTotal, agg, byDoctorRaw] = await Promise.all([
-      this.prisma.procedureReport.count({ where }),
-      wherePrev
-        ? this.prisma.procedureReport.count({ where: wherePrev })
-        : Promise.resolve(null),
-      this.prisma.procedureReport.aggregate({
-        _avg: { totalFoliculos: true },
-        _sum: { totalFoliculos: true },
-        where,
-      }),
-      this.prisma.procedureReport.findMany({
-        where,
-        select: {
-          doctors: {
-            select: { doctor: { select: { id: true, nombre: true, apellido: true } } },
-          },
-        },
-      }),
-    ]);
+    const select = {
+      id: true, patientId: true, sessionGroupId: true, procedureDate: true,
+      totalFoliculos: true,
+      doctors: { select: { doctor: { select: { id: true, nombre: true, apellido: true } } } },
+      nurses: { select: { nurse: { select: { id: true, nombre: true, apellido: true } } } },
+    } as const;
+    const candidates = await this.prisma.procedureReport.findMany({
+      where: prev ? { OR: [where, dateFilter('procedureDate', prev)] } : where,
+      select,
+    });
+    // Expand groups before filtering: the second day can fall outside the period.
+    const groupIds = [...new Set(candidates.flatMap(p => p.sessionGroupId ? [p.sessionGroupId] : []))];
+    const groupedRows = groupIds.length
+      ? await this.prisma.procedureReport.findMany({ where: { sessionGroupId: { in: groupIds } }, select })
+      : [];
+    const rows = [...candidates.filter(p => !p.sessionGroupId), ...groupedRows];
+    const sessions = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const key = row.sessionGroupId ? `group:${row.patientId}:${row.sessionGroupId}` : `report:${row.id}`;
+      const members = sessions.get(key) ?? [];
+      members.push(row);
+      sessions.set(key, members);
+    }
+    const inRange = (date: number, range: Range) =>
+      (!range.start || date >= range.start.getTime()) && (!range.end || date <= range.end.getTime());
+    const interventions = [...sessions.values()].map(members => ({
+      start: Math.min(...members.map(m => m.procedureDate.getTime())),
+      follicles: members.some(m => m.totalFoliculos !== null)
+        ? members.reduce((sum, m) => sum + (m.totalFoliculos ?? 0), 0) : null,
+      doctors: new Map(members.flatMap(m => m.doctors.map(d => [d.doctor.id, d.doctor] as const))),
+      nurses: new Map(members.flatMap(m => (m.nurses ?? []).map(n => [n.nurse.id, n.nurse] as const))),
+    }));
+    const current = interventions.filter(p => inRange(p.start, r));
+    const totalProcedures = current.length;
+    const previousTotal = prev ? interventions.filter(p => inRange(p.start, prev)).length : null;
+    const follicleValues = current.flatMap(p => p.follicles === null ? [] : [p.follicles]);
+    const totalFollicles = follicleValues.length ? follicleValues.reduce((a, b) => a + b, 0) : null;
 
     // Aggregate procedures per doctor (a procedure can have multiple doctors)
     const docCount = new Map<string, { name: string; count: number }>();
-    for (const p of byDoctorRaw) {
-      for (const d of p.doctors) {
-        const key = d.doctor.id;
-        const name = `${d.doctor.nombre} ${d.doctor.apellido}`;
+    for (const p of current) {
+      for (const d of p.doctors.values()) {
+        const key = d.id;
+        const name = `${d.nombre} ${d.apellido}`;
         const cur = docCount.get(key);
         docCount.set(key, { name, count: (cur?.count ?? 0) + 1 });
       }
     }
     const byDoctor = Array.from(docCount.values()).sort((a, b) => b.count - a.count);
+    const nurseCount = new Map<string, { name: string; count: number }>();
+    for (const procedure of current) {
+      for (const nurse of procedure.nurses.values()) {
+        const old = nurseCount.get(nurse.id);
+        nurseCount.set(nurse.id, { name: `${nurse.nombre} ${nurse.apellido}`, count: (old?.count ?? 0) + 1 });
+      }
+    }
+    const byNurse = [...nurseCount.values()].sort((a, b) => b.count - a.count);
 
     return {
       totalProcedures,
       previousTotal,
       proceduresDelta: delta(totalProcedures, previousTotal),
-      averageFollicles: agg._avg.totalFoliculos,
-      totalFollicles: agg._sum.totalFoliculos,
+      averageFollicles: totalFollicles === null ? null : totalFollicles / follicleValues.length,
+      totalFollicles,
       byDoctor,
+      byNurse,
     };
   }
 

@@ -8,14 +8,13 @@ import {
   Scissors,
   Target,
   Plus,
-  Download,
   ArrowRight,
   TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { usePatientsReport, useProceduresReport } from '@/hooks/use-dashboard';
-import { useAppointments, type Appointment } from '@/hooks/use-appointments';
+import { useDashboardAppointments, type Appointment } from '@/hooks/use-appointments';
 import { usePendingReminders } from '@/hooks/use-reminders';
 import { useAuthStore } from '@/store/auth';
 import { Avatar } from '@/components/clinic/avatar';
@@ -106,8 +105,8 @@ function KpiCard({
   trendUp?: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-surface p-5 shadow-xs">
-      <div className="mb-4 flex items-start justify-between">
+    <div className="relative overflow-hidden rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-5">
+      <div className="mb-2 flex items-start justify-between sm:mb-4">
         <div
           className="inline-flex h-9 w-9 items-center justify-center rounded-md"
           style={{
@@ -262,16 +261,18 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
   const router = useRouter();
 
-  const { data: patientsReport } = usePatientsReport();
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() - 1;
+  const { data: patientsReport } = usePatientsReport(monthStart, new Date(monthEnd).toISOString());
   const { data: proceduresReport } = useProceduresReport(start, end);
-  const { data: appointmentsData } = useAppointments(1, 100);
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+  const { data: appointmentsData, isLoading: loadingAppointments, error: appointmentsError, refetch: retryAppointments } = useDashboardAppointments(dayStart, dayEnd);
   const { data: pendingReminders } = usePendingReminders();
 
   const today = todayInput();
-  const allAppointments = appointmentsData?.data || [];
-  const todayAppointments = allAppointments
-    .filter((a) => instantToLocalDateKey(a.startDatetime) === today)
-    .sort((a, b) => a.startDatetime.localeCompare(b.startDatetime));
+  const todayAppointments = appointmentsData?.today || [];
   const confirmedToday = todayAppointments.filter(
     (a) => a.status === 'confirmed',
   ).length;
@@ -287,22 +288,14 @@ export default function DashboardPage() {
     0,
   );
 
-  const upcoming = allAppointments
-    .filter(
-      (a) =>
-        a.startDatetime >= new Date().toISOString() &&
-        a.status !== 'cancelled' &&
-        a.status !== 'completed',
-    )
-    .sort((a, b) => a.startDatetime.localeCompare(b.startDatetime))
-    .slice(0, 5);
+  const upcoming = appointmentsData?.upcoming || [];
 
   const pendingCount = pendingReminders?.length ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
       {/* Greeting */}
-      <div className="flex flex-wrap items-end justify-between gap-5">
+      <div className="order-1 flex flex-wrap items-end justify-between gap-5">
         <div>
           <h2 className="cap-h1 mb-1.5">
             {getGreeting()},{' '}
@@ -317,13 +310,10 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Download className="h-3.5 w-3.5" /> Exportar
-          </Button>
           <Button
             size="sm"
             className="gap-1.5"
-            onClick={() => router.push('/dashboard/appointments')}
+            onClick={() => router.push('/dashboard/appointments/new')}
           >
             <Plus className="h-3.5 w-3.5" /> Nueva cita
           </Button>
@@ -331,22 +321,21 @@ export default function DashboardPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="order-3 grid grid-cols-2 gap-3 lg:order-2 lg:grid-cols-4">
         <KpiCard
-          label="Pacientes activos"
+          label="Pacientes registrados"
           value={patientsReport?.totalPatients?.toLocaleString() ?? '—'}
           delta={
-            patientsReport?.newPatients
+            patientsReport
               ? `+${patientsReport.newPatients} este mes`
               : undefined
           }
           icon={Users}
           hue="hsl(var(--brand-primary))"
-          trendUp
         />
         <KpiCard
           label="Citas hoy"
-          value={String(todayAppointments.length)}
+          value={appointmentsData ? String(todayAppointments.length) : '—'}
           delta={`${confirmedToday} confirmadas`}
           icon={Calendar}
           hue="hsl(var(--accent-info))"
@@ -361,24 +350,22 @@ export default function DashboardPage() {
           }
           icon={Scissors}
           hue="hsl(var(--accent-amber))"
-          trendUp
         />
         <KpiCard
           label="Folículos implantados"
           value={
-            proceduresReport?.totalFollicles
-              ? `${(proceduresReport.totalFollicles / 1000).toFixed(1)}k`
+            proceduresReport
+              ? (proceduresReport.totalFollicles ?? 0).toLocaleString('es-MX')
               : '—'
           }
-          delta="Acumulado"
+          delta="Este mes"
           icon={Target}
           hue="hsl(var(--accent-lilac))"
-          trendUp
         />
       </div>
 
       {/* Main grid */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="order-2 grid gap-4 lg:order-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         {/* Today schedule */}
         <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs">
           <div className="flex items-center justify-between border-b border-border px-6 py-5">
@@ -397,7 +384,9 @@ export default function DashboardPage() {
               Ver agenda completa <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <TodayTimeline appointments={todayAppointments} />
+          {loadingAppointments ? <p role="status" className="p-6 text-sm text-text-secondary">Cargando agenda…</p> : appointmentsError ? (
+            <div role="alert" className="p-6 text-sm text-destructive">No se pudo cargar la agenda. <button className="underline" onClick={() => retryAppointments()}>Reintentar</button></div>
+          ) : <TodayTimeline appointments={todayAppointments} />}
         </div>
 
         {/* Side panel */}
@@ -411,7 +400,9 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="px-2 pb-2.5">
-              {upcoming.length === 0 ? (
+              {!appointmentsData ? (
+                <p className="px-3 py-6 text-sm text-text-secondary">{appointmentsError ? 'No se pudieron cargar las próximas citas' : 'Cargando próximas citas…'}</p>
+              ) : upcoming.length === 0 ? (
                 <div className="px-3 py-6 text-center text-sm text-text-tertiary">
                   No hay citas próximas
                 </div>

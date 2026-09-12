@@ -340,21 +340,23 @@ function TarjetaSesion({
       </div>
       <div className="flex flex-col gap-2">
         {sesion.dias.map((d) => (
-          <div key={d.id} className="relative">
-            <span className="absolute -left-0.5 top-4 z-10 rounded-r-sm bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              Día {d.sessionDay}
-            </span>
+          <div key={d.id}>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-1">
+              <span className="rounded-sm bg-brand px-2 py-1 text-xs font-semibold text-white">
+                Día {d.sessionDay}
+              </span>
+              {puedeEditar && (
+                <button
+                  type="button"
+                  onClick={() => unlink.mutate(d.id)}
+                  disabled={unlink.isPending}
+                  className="min-h-11 rounded-sm px-2 text-xs text-text-secondary underline underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  separar de la sesión
+                </button>
+              )}
+            </div>
             <ProcedureCard procedure={d} />
-            {puedeEditar && (
-              <button
-                type="button"
-                onClick={() => unlink.mutate(d.id)}
-                disabled={unlink.isPending}
-                className="absolute right-3 top-3 text-[11px] text-text-tertiary underline underline-offset-2 hover:text-foreground"
-              >
-                separar de la sesión
-              </button>
-            )}
           </div>
         ))}
       </div>
@@ -498,6 +500,7 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
                 .join(' · ')}
             </div>
           )}
+          {!!procedure.nurses?.length && <p className="mt-1 text-xs text-text-secondary">Enfermería: {procedure.nurses.map(n => `${n.nurse.nombre} ${n.nurse.apellido}`).join(' · ')}</p>}
           {procedure.operatingRoom && (
             <span className="mt-1 inline-flex items-center rounded-full border border-brand/25 bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-brand-dark">
               {procedure.operatingRoom.name}
@@ -1255,6 +1258,8 @@ export default function PatientProceduresPage({
   const [showForm, setShowForm] = useState(false);
   const canWrite = useHasRole('admin', 'doctor');
 
+  const sesiones = agruparPorSesion(procedures ?? []);
+
   return (
     <div className="flex flex-col gap-5">
       <Link
@@ -1269,7 +1274,7 @@ export default function PatientProceduresPage({
           <h2 className="cap-h2 mb-1">Procedimientos</h2>
           <p className="text-[13px] text-text-secondary">
             {procedures
-              ? `${procedures.length} procedimiento${procedures.length === 1 ? '' : 's'} registrado${procedures.length === 1 ? '' : 's'}`
+              ? `${sesiones.length} procedimiento${sesiones.length === 1 ? '' : 's'} · ${procedures.length} reporte${procedures.length === 1 ? '' : 's'} diario${procedures.length === 1 ? '' : 's'}`
               : 'Cargando...'}
           </p>
         </div>
@@ -1292,7 +1297,7 @@ export default function PatientProceduresPage({
         />
       ) : procedures && procedures.length > 0 ? (
         <div className="flex flex-col gap-4">
-          {agruparPorSesion(procedures).map((sesion, _i, todas) => (
+          {sesiones.map((sesion, _i, todas) => (
             <TarjetaSesion
               key={sesion.key}
               sesion={sesion}

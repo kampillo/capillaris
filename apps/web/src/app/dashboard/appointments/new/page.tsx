@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, Search, User, CalendarDays, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,11 +18,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar } from '@/components/clinic/avatar';
-import { usePatients } from '@/hooks/use-patients';
+import { usePatient, usePatients } from '@/hooks/use-patients';
 import { useDoctors } from '@/hooks/use-clinical';
 import { useCreateAppointment } from '@/hooks/use-appointments';
 import { useRequireRole } from '@/hooks/use-has-role';
-import { todayInput } from '@/lib/dates';
+import { todayInput, formatDateLong } from '@/lib/dates';
 import { displayName } from '@/lib/names';
 
 const SUGGESTED_SLOTS = [
@@ -83,13 +83,21 @@ function SectionHeader({
 }
 
 export default function NewAppointmentPage() {
+  return <Suspense fallback={<p role="status">Cargando formulario…</p>}><NewAppointmentForm /></Suspense>;
+}
+
+function NewAppointmentForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialPatientId = searchParams.get('patientId') || '';
+  const { data: initialPatient, isLoading: loadingPatient, error: patientError } = usePatient(initialPatientId);
   const createMutation = useCreateAppointment();
   const authorized = useRequireRole('admin', 'doctor', 'receptionist');
 
   const [patientSearch, setPatientSearch] = useState('');
-  const [selectedPatientId, setSelectedPatientId] = useState('');
-  const [selectedPatientName, setSelectedPatientName] = useState('');
+  const [patientSelection, setPatientSelection] = useState<{ id: string; name: string } | null>(null);
+  const selectedPatientId = patientSelection?.id ?? initialPatient?.id ?? '';
+  const selectedPatientName = patientSelection?.name ?? (initialPatient ? `${initialPatient.nombre} ${initialPatient.apellido}` : '');
   const [doctorId, setDoctorId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -110,14 +118,12 @@ export default function NewAppointmentPage() {
   const endTime = addMinutes(startTime, parseInt(duration, 10));
 
   const handleSelectPatient = (id: string, nombre: string, apellido: string) => {
-    setSelectedPatientId(id);
-    setSelectedPatientName(`${nombre} ${apellido}`);
+    setPatientSelection({ id, name: `${nombre} ${apellido}` });
     setPatientSearch('');
   };
 
   const handleClearPatient = () => {
-    setSelectedPatientId('');
-    setSelectedPatientName('');
+    setPatientSelection({ id: '', name: '' });
     setPatientSearch('');
   };
 
@@ -167,8 +173,8 @@ export default function NewAppointmentPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid max-w-2xl gap-5">
+      <form onSubmit={handleSubmit} className="grid items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+        <div className="grid min-w-0 gap-5">
           {error && (
             <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
@@ -178,6 +184,8 @@ export default function NewAppointmentPage() {
           {/* Patient */}
           <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
             <SectionHeader icon={User} label="Paciente" required />
+            {initialPatientId && !patientSelection && loadingPatient && <p role="status" className="mb-3 text-sm text-text-secondary">Cargando paciente del expediente…</p>}
+            {initialPatientId && !patientSelection && patientError && <p role="alert" className="mb-3 text-sm text-destructive">No se pudo cargar el paciente del expediente. Búscalo para continuar.</p>}
             {selectedPatientId ? (
               <div className="flex items-center gap-3 rounded-md bg-brand-softer p-3">
                 <Avatar name={selectedPatientName} size={32} />
@@ -246,7 +254,7 @@ export default function NewAppointmentPage() {
           <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
             <SectionHeader icon={Clock} label="Fecha y hora" required />
             <div className="grid gap-4">
-              <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-3">
+              <div className="grid gap-3 sm:grid-cols-[1.3fr_1fr_1fr]">
                 <div className="space-y-1.5">
                   <Label>Fecha</Label>
                   <DatePicker value={date} onChange={setDate} />
@@ -407,6 +415,17 @@ export default function NewAppointmentPage() {
             </Button>
           </div>
         </div>
+        <aside aria-label="Resumen de la cita" className="rounded-xl border border-border bg-surface p-6 shadow-xs xl:sticky xl:top-24">
+          <h3 className="mb-5 text-base font-semibold">Resumen de la cita</h3>
+          <dl className="space-y-4 text-sm">
+            <div><dt className="cap-eyebrow">Paciente</dt><dd className="mt-1 break-words">{selectedPatientName || 'Selecciona un paciente'}</dd></div>
+            <div><dt className="cap-eyebrow">Fecha</dt><dd className="mt-1">{formatDateLong(date) || 'Selecciona una fecha'}</dd></div>
+            <div><dt className="cap-eyebrow">Horario</dt><dd className="mt-1">{startTime || '—'} – {endTime} · {duration} min</dd></div>
+            <div><dt className="cap-eyebrow">Doctor</dt><dd className="mt-1">{doctorId ? displayName(doctors?.find((d) => d.id === doctorId), { isDoctor: true }) : 'Selecciona un doctor'}</dd></div>
+            <div><dt className="cap-eyebrow">Motivo</dt><dd className="mt-1 break-words">{title || 'Sin especificar'}</dd></div>
+          </dl>
+          <p className="mt-6 border-t border-border pt-4 text-xs text-text-secondary">La cita se guardará únicamente al pulsar «Agendar cita».</p>
+        </aside>
       </form>
     </div>
   );

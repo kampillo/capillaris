@@ -12,6 +12,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -28,8 +29,9 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  @Public()
   @Post('register')
+  @Roles('admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado' })
   @ApiResponse({ status: 409, description: 'Email ya registrado' })
@@ -38,6 +40,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager', 'nurse')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
   @ApiResponse({ status: 200, description: 'Perfil del usuario con roles y permisos' })
@@ -47,6 +50,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager', 'nurse')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Registrar cierre de sesión (auditoría)' })

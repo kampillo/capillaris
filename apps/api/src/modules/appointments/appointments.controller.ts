@@ -47,6 +47,12 @@ export class AppointmentsController {
     return this.appointmentsService.findAll(page, pageSize, timeMin, timeMax);
   }
 
+  @Get('dashboard')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager')
+  dashboard(@Query('timeMin') timeMin: string, @Query('timeMax') timeMax: string) {
+    return this.appointmentsService.dashboard(timeMin, timeMax);
+  }
+
   @Get(':id')
   @Roles('admin', 'doctor', 'receptionist', 'inventory_manager')
   @ApiOperation({ summary: 'Get an appointment by ID' })

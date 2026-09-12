@@ -12,11 +12,15 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
 
+    const { user } = context.switchToHttp().getRequest();
+    // Nurse accounts are restricted even if an old endpoint has no role metadata.
+    if (user?.roles?.includes('nurse')) {
+      return !!requiredRoles?.includes('nurse');
+    }
     if (!requiredRoles) {
       return true;
     }
 
-    const { user } = context.switchToHttp().getRequest();
 
     if (!user || !user.roles) {
       return false;

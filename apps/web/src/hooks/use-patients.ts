@@ -28,6 +28,8 @@ export interface Patient {
 }
 
 export interface PatientDetail extends Patient {
+  procedureCount: number;
+  _count: { appointments: number; prescriptions: number; medicalConsultations: number; procedureReports: number };
   appointments: any[];
   prescriptions: any[];
   medicalConsultations: any[];

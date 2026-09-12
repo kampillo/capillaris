@@ -22,6 +22,7 @@ import { usePatient } from '@/hooks/use-patients';
 import { useConsultationsByPatient } from '@/hooks/use-clinical';
 import { useHasRole } from '@/hooks/use-has-role';
 import { Avatar } from '@/components/clinic/avatar';
+import { NursingAssignments } from '@/components/clinic/nursing-assignments';
 import { ScalpMap } from '@/components/clinic/scalp-map';
 import { variantsToSeverity } from '@/components/clinic/scalp-zones';
 import {
@@ -113,6 +114,7 @@ export default function PatientDetailPage({
   const { data: patient, isLoading, error } = usePatient(params.id);
   const { data: consultations } = useConsultationsByPatient(params.id);
   const canEditPatient = useHasRole('admin', 'doctor', 'receptionist');
+  const canAssignNursing = useHasRole('admin', 'doctor');
   const canManageAppointments = useHasRole('admin', 'doctor', 'receptionist');
 
   if (isLoading) {
@@ -141,15 +143,17 @@ export default function PatientDetailPage({
   const type = PATIENT_TYPE[patient.tipoPaciente || 'lead'];
 
   const metaParts: string[] = [];
+  const age = calcAge(patient.fechaNacimiento);
+  if (age !== null) metaParts.push(`${age} ${age === 1 ? 'año' : 'años'}`);
   const nacimiento = formatDateLong(patient.fechaNacimiento);
   if (nacimiento) metaParts.push(nacimiento);
   if (patient.genero) metaParts.push(capitalize(patient.genero));
 
   const stats = [
-    { label: 'Citas', value: patient.appointments?.length ?? 0 },
-    { label: 'Consultas', value: patient.medicalConsultations?.length ?? 0 },
-    { label: 'Procedimientos', value: patient.procedureReports?.length ?? 0 },
-    { label: 'Prescripciones', value: patient.prescriptions?.length ?? 0 },
+    { label: 'Citas', value: patient._count?.appointments ?? '—' },
+    { label: 'Consultas', value: patient._count?.medicalConsultations ?? '—' },
+    { label: 'Procedimientos', value: patient.procedureCount ?? '—' },
+    { label: 'Prescripciones', value: patient._count?.prescriptions ?? '—' },
   ];
 
   // Mapa capilar — derivado de la última consulta (si existe)
@@ -231,7 +235,7 @@ export default function PatientDetailPage({
             )}
             {canManageAppointments && (
               <Button size="sm" className="gap-1.5" asChild>
-                <Link href="/dashboard/appointments/new">
+                <Link href={`/dashboard/appointments/new?patientId=${patient.id}`}>
                   <Calendar className="h-3.5 w-3.5" /> Agendar cita
                 </Link>
               </Button>
@@ -254,7 +258,7 @@ export default function PatientDetailPage({
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {QUICK_ACTIONS.map((a) => (
           <Link
             key={a.path}
@@ -270,6 +274,8 @@ export default function PatientDetailPage({
           </Link>
         ))}
       </div>
+
+      {canAssignNursing && <NursingAssignments patientId={patient.id} />}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Main info */}

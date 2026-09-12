@@ -190,6 +190,7 @@ export interface ProcedureReport {
   anestImpAnestesiaInfiltrada?: string;
   anestImpBetametasona?: string;
   doctors?: { doctor: { id: string; nombre: string; apellido: string } }[];
+  nurses?: { nurse: { id: string; nombre: string; apellido: string } }[];
   hairTypes?: { hairType: { id: string; name: string } }[];
   createdAt: string;
 }
@@ -276,6 +277,7 @@ export function useLinkProcedureSession() {
       api.post(`/procedures/${id}/session`, { withId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['procedures'] });
+      queryClient.invalidateQueries({ queryKey: ['patient'] });
     },
   });
 }
@@ -287,6 +289,7 @@ export function useUnlinkProcedureSession() {
     mutationFn: (id: string) => api.delete(`/procedures/${id}/session`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['procedures'] });
+      queryClient.invalidateQueries({ queryKey: ['patient'] });
     },
   });
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GoogleCalendarService } from '../google-calendar/google-calendar.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
@@ -44,6 +44,26 @@ export class AppointmentsService {
     }
 
     return appointment;
+  }
+
+  async dashboard(timeMin: string, timeMax: string) {
+    const start = new Date(timeMin);
+    const end = new Date(timeMax);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start || end.getTime() - start.getTime() > 90000000) {
+      throw new BadRequestException('Rango de día inválido');
+    }
+    const include = { patient: { select: { id: true, nombre: true, apellido: true } }, doctor: { select: USER_PUBLIC_SELECT } };
+    const [today, upcoming] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: { startDatetime: { gte: start, lt: end } },
+        orderBy: { startDatetime: 'asc' }, include,
+      }),
+      this.prisma.appointment.findMany({
+        where: { startDatetime: { gte: new Date() }, status: { in: ['scheduled', 'confirmed', 'rescheduled'] } },
+        orderBy: { startDatetime: 'asc' }, take: 5, include,
+      }),
+    ]);
+    return { today, upcoming };
   }
 
   async findAll(page = 1, pageSize = 20, timeMin?: string, timeMax?: string) {

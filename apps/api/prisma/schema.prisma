@@ -40,6 +40,8 @@ model User {
   micropigmentationsAsDoctor Micropigmentation[]    @relation("DoctorMicropigmentations")
   hairmedicinesAsDoctor      Hairmedicine[]         @relation("DoctorHairmedicines")
   procedureReportDoctors     ProcedureReportDoctor[]
+  nursingAssignments         NursingAssignment[]
+  procedureReportNurses      ProcedureReportNurse[]
   auditLogs                  AuditLog[]
   remindersCreated           Reminder[]             @relation("ReminderCreatedBy")
   treatmentsRealizados       Treatment[]            @relation("TreatmentsRealizados")
@@ -115,6 +117,7 @@ model RolePermission {
 // ============================================================
 
 model Patient {
+  nursingAssignments    NursingAssignment[]
   id                    String    @id @default(uuid()) @db.Uuid
   nombre                String    @db.VarChar(100)
   apellido              String    @db.VarChar(100)
@@ -363,6 +366,7 @@ model ConsultationVariant {
 // ============================================================
 
 model ProcedureReport {
+  nurses                    ProcedureReportNurse[]
   id                        String    @id @default(uuid()) @db.Uuid
   patientId                 String    @map("patient_id") @db.Uuid
   procedureDate             DateTime  @map("procedure_date") @db.Date
@@ -424,6 +428,34 @@ model ProcedureReport {
   @@index([procedureDate])
   @@index([sessionGroupId])
   @@map("procedure_reports")
+}
+
+model NursingAssignment {
+  id         String    @id @default(uuid()) @db.Uuid
+  patientId  String    @map("patient_id") @db.Uuid
+  nurseId    String    @map("nurse_id") @db.Uuid
+  assignedBy String    @map("assigned_by") @db.Uuid
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  revokedAt  DateTime? @map("revoked_at")
+  revokedBy  String?   @map("revoked_by") @db.Uuid
+  patient    Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  nurse      User      @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, nurseId])
+  @@index([nurseId, revokedAt])
+  @@map("nursing_assignments")
+}
+
+model ProcedureReportNurse {
+  id          String          @id @default(uuid()) @db.Uuid
+  procedureId String          @map("procedure_id") @db.Uuid
+  nurseId     String          @map("nurse_id") @db.Uuid
+  procedure   ProcedureReport @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+  nurse       User            @relation(fields: [nurseId], references: [id])
+
+  @@unique([procedureId, nurseId])
+  @@index([nurseId])
+  @@map("procedure_report_nurses")
 }
 
 model OperatingRoom {
