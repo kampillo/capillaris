@@ -48,6 +48,7 @@ export interface ClinicalHistory {
     temperatura?: number;
     peso?: number;
     talla?: number;
+    tallaUnidad?: 'cm' | 'm' | null;
     description?: string;
   };
   createdAt: string;

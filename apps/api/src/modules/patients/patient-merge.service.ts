@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditWriterService } from '../../common/audit/audit-writer.service';
+import { patientValues } from './patient-values';
 import { MergePatientsDto } from './dto/merge-patients.dto';
 
 /**
@@ -28,7 +30,6 @@ const PATIENT_RELATIONS = [
   'treatment',
 ] as const;
 
-type PatientRelation = (typeof PATIENT_RELATIONS)[number];
 
 /**
  * Los delegados de Prisma son de tipos distintos y su unión no se estrecha
@@ -204,6 +205,12 @@ export class PatientMergeService {
     }
 
     const movidos = await this.prisma.$transaction(async (tx) => {
+      const currentSurvivor = await tx.patient.findUniqueOrThrow({ where: { id: survivorId } });
+      const currentAbsorbed = await tx.patient.findUniqueOrThrow({ where: { id: absorbedId } });
+      if (currentSurvivor.deletedAt || currentAbsorbed.deletedAt) throw new ConflictException('Los expedientes cambiaron; recarga antes de fusionar');
+      const resolved = patientValues(campos ?? {});
+      const before = Object.fromEntries(Object.keys(resolved).map(field => [field, (currentSurvivor as any)[field]]));
+      const snapshot = JSON.parse(JSON.stringify({ before, applied: resolved }));
       const idsPorRelacion: Record<string, string[]> = {};
 
       for (const relation of PATIENT_RELATIONS) {
@@ -229,7 +236,7 @@ export class PatientMergeService {
       if (campos && Object.keys(campos).length > 0) {
         await tx.patient.update({
           where: { id: survivorId },
-          data: { ...campos, updatedBy: userId ?? undefined },
+          data: { ...resolved, updatedBy: userId ?? undefined },
         });
       }
 
@@ -240,12 +247,13 @@ export class PatientMergeService {
           mergedIntoId: survivorId,
           mergedAt: new Date(),
           mergedRecordIds: idsPorRelacion,
+          mergedFieldSnapshot: snapshot,
           updatedBy: userId ?? undefined,
         },
       });
 
       return idsPorRelacion;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     await this.audit.write({
       action: 'MERGE',
@@ -303,6 +311,19 @@ export class PatientMergeService {
     >;
 
     const devueltos = await this.prisma.$transaction(async (tx) => {
+      const currentAbsorbed = await tx.patient.findUniqueOrThrow({ where: { id: absorbedId } });
+      if (currentAbsorbed.mergedIntoId !== survivorId) throw new ConflictException('La fusión cambió; recarga antes de deshacer');
+      const currentSurvivor = await tx.patient.findUniqueOrThrow({ where: { id: survivorId } });
+      if (currentSurvivor.deletedAt) throw new ConflictException('El expediente conservado ya no está activo; requiere revisión manual');
+      const snapshot = currentAbsorbed.mergedFieldSnapshot as { before: Record<string, unknown>; applied: Record<string, unknown> } | null;
+      if (snapshot) {
+        for (const [field, applied] of Object.entries(snapshot.applied)) {
+          if (JSON.stringify((currentSurvivor as any)[field]) !== JSON.stringify(applied)) throw new ConflictException('Un campo resuelto fue modificado después de la fusión; requiere revisión manual');
+        }
+        const restore = { ...snapshot.before };
+        if (typeof restore.fechaNacimiento === 'string') restore.fechaNacimiento = new Date(restore.fechaNacimiento);
+        await tx.patient.update({ where: { id: survivorId }, data: { ...restore, updatedBy: userId ?? undefined } });
+      }
       const conteos: Record<string, number> = {};
 
       for (const relation of PATIENT_RELATIONS) {
@@ -326,12 +347,13 @@ export class PatientMergeService {
           mergedIntoId: null,
           mergedAt: null,
           mergedRecordIds: Prisma.DbNull,
+          mergedFieldSnapshot: Prisma.DbNull,
           updatedBy: userId ?? undefined,
         },
       });
 
       return conteos;
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     await this.audit.write({
       action: 'UNMERGE',
@@ -340,7 +362,7 @@ export class PatientMergeService {
       newValues: { separadoDe: survivorId, registrosDevueltos: devueltos },
     });
 
-    return { ok: true, registrosDevueltos: devueltos };
+    return { ok: true, registrosDevueltos: devueltos, demographicsRestored: absorbed.mergedFieldSnapshot !== null, requiresManualReview: absorbed.mergedFieldSnapshot === null };
   }
 }
 

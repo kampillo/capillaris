@@ -18,6 +18,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  normalizeDriveFolderUrl,
   PatientType,
   Gender,
   MaritalStatus,
@@ -34,6 +35,10 @@ const patientSchema = z.object({
   celular: z.string().optional(),
   direccion: z.string().optional(),
   fechaNacimiento: z.string().optional(),
+  edadApproximada: z.boolean().optional(),
+  driveFolderUrl: z.string().max(1000).optional().refine(value => {
+    try { normalizeDriveFolderUrl(value); return true; } catch { return false; }
+  }, 'Usa el enlace HTTPS de una carpeta de Google Drive'),
   genero: z.string().optional(),
   estadoCivil: z.string().optional(),
   ocupacion: z.string().optional(),
@@ -328,6 +333,8 @@ export function PatientForm({
       apellido: '',
       email: '',
       celular: '',
+      driveFolderUrl: '',
+      edadApproximada: false,
       tipoPaciente: PatientType.LEAD,
       pais: 'Mexico',
       ...defaultValues,
@@ -345,9 +352,9 @@ export function PatientForm({
   const consentMkt = watch('consentMarketing') || false;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="flex min-w-0 flex-col gap-5 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
       {/* Datos personales */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={User} title="Datos personales" required />
         <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -419,6 +426,11 @@ export function PatientForm({
               className="max-w-[260px]"
               toDate={new Date()}
             />
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" {...register('edadApproximada')} />
+              Fecha aproximada, pendiente de confirmar
+            </label>
+            <p className="text-xs text-text-secondary">Desmarca únicamente cuando la fecha esté confirmada con el paciente. Las estimaciones históricas se conservan.</p>
           </div>
 
           {/* Género */}
@@ -476,7 +488,7 @@ export function PatientForm({
       </section>
 
       {/* Dirección */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={MapPin} title="Dirección" />
         <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
           <div className="space-y-1.5 sm:col-span-3">
@@ -533,7 +545,7 @@ export function PatientForm({
       </section>
 
       {/* Clasificación */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={Tag} title="Clasificación" />
         <div className="grid gap-5">
           <div className="space-y-2">
@@ -581,8 +593,16 @@ export function PatientForm({
         </div>
       </section>
 
+      <section className="rounded-xl border border-border bg-surface p-5">
+        <SectionHeader icon={FileCheck} title="Fotos en Google Drive" />
+        <Label htmlFor="driveFolderUrl">Enlace a la carpeta existente del paciente</Label>
+        <Input id="driveFolderUrl" {...register('driveFolderUrl')} placeholder="https://drive.google.com/drive/folders/…" className="mt-2" />
+        {errors.driveFolderUrl && <p role="alert" className="mt-1 text-sm text-destructive">{errors.driveFolderUrl.message}</p>}
+        <p className="mt-2 text-xs text-text-secondary">Se abre con la cuenta de Google del usuario y conserva los permisos de la carpeta.</p>
+      </section>
+
       {/* Consentimientos y notas */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={FileCheck} title="Consentimientos y notas" />
         <div className="flex flex-col gap-4">
           <div className="grid gap-3 sm:grid-cols-2">

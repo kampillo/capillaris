@@ -30,7 +30,7 @@ Stack:
    ```env
    NODE_ENV=production
    PORT=3001
-   DATABASE_URL=postgresql://neondb_owner:...@ep-broad-snow-...neon.tech/neondb?sslmode=require
+   # DATABASE_URL: referencia al secreto DATABASE_URL configurado en el entorno de despliegue.
    JWT_SECRET=<el secret generado>
    JWT_EXPIRATION=24h
    CORS_ORIGIN=https://capillaris-web.vercel.app

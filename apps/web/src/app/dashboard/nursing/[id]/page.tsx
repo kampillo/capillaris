@@ -1,7 +1,8 @@
 'use client';
 
+import { procedureTotals } from '@capillaris/shared';
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/patients/patient-context-link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -49,6 +50,7 @@ function ProcedureEditor({ patientId, report, catalog, onDone }: { patientId: st
   ]));
   const [doctorIds, setDoctorIds] = useState(report?.doctors?.map(d => d.doctor.id) ?? []);
   const [hairTypeIds, setHairTypeIds] = useState(report?.hairTypes?.map(h => h.hairType.id) ?? []);
+  const doctorOptions = [...new Map([...catalog.doctors, ...(report?.doctors?.map(d => d.doctor) ?? [])].map(d => [d.id, d])).values()];
   const save = useMutation({ mutationFn: () => {
     const payload: Record<string, unknown> = { procedureDate: values.procedureDate, descripcion: values.descripcion, doctorIds, hairTypeIds };
     if (!report) payload.patientId = patientId;
@@ -67,7 +69,7 @@ function ProcedureEditor({ patientId, report, catalog, onDone }: { patientId: st
     {report?.sessionGroupId && <p className="text-sm">La fecha está vinculada a una sesión. Un médico o administrador debe separar los días para cambiarla.</p>}
     <div className="grid gap-4 sm:grid-cols-2">{fields.map(field => <label key={field.key} className="block text-sm">{field.label}<input className={control} type={field.type} min={field.type === 'number' ? 0 : undefined} step={field.step ?? (field.type === 'number' ? '1' : undefined)} value={values[field.key]} onChange={e => set(field.key, e.target.value)} /></label>)}</div>
     <label className="block">Quirófano<select className={control} value={values.operatingRoomId} onChange={e => set('operatingRoomId', e.target.value)}><option value="">Sin selección</option>{catalog.operatingRooms.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label>
-    <fieldset><legend className="font-medium">Médicos responsables</legend><div className="flex flex-wrap gap-3">{catalog.doctors.map(d => <label className="flex min-h-11 items-center gap-2" key={d.id}><input type="checkbox" checked={doctorIds.includes(d.id)} onChange={e => setDoctorIds(old => e.target.checked ? [...old, d.id] : old.filter(id => id !== d.id))} />{d.nombre} {d.apellido}</label>)}</div></fieldset>
+    <fieldset><legend className="font-medium">Médicos participantes en este día</legend><div className="flex flex-wrap gap-3">{doctorOptions.map(d => <label className="flex min-h-11 items-center gap-2" key={d.id}><input type="checkbox" checked={doctorIds.includes(d.id)} onChange={e => setDoctorIds(old => e.target.checked ? [...old, d.id] : old.filter(id => id !== d.id))} />{d.nombre} {d.apellido}{!catalog.doctors.some(active => active.id === d.id) ? ' (histórico)' : ''}</label>)}</div></fieldset>
     <fieldset><legend className="font-medium">Zonas / tipos del catálogo</legend><div className="flex flex-wrap gap-3">{catalog.hairTypes.map(h => <label className="flex min-h-11 items-center gap-2" key={h.id}><input type="checkbox" checked={hairTypeIds.includes(h.id)} onChange={e => setHairTypeIds(old => e.target.checked ? [...old, h.id] : old.filter(id => id !== h.id))} />{h.name}</label>)}</div></fieldset>
     <label className="block">Descripción<textarea rows={4} className={control} value={values.descripcion} onChange={e => set('descripcion', e.target.value)} /></label>
     {save.isError && <p role="alert" className="text-destructive">{save.error.message}</p>}
@@ -80,8 +82,8 @@ function Participants({ report, nurses }: { report: Report; nurses: Person[] }) 
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const options = [...new Map([...nurses, ...report.nurses.map(n => n.nurse)].map(n => [n.id, n])).values()];
-  const save = useMutation({ mutationFn: () => api.put(`/nursing/procedures/${report.id}/participants`, { nurseIds: selected }), onSuccess: () => { qc.invalidateQueries({ queryKey: ['nursing-detail'] }); qc.invalidateQueries({ queryKey: ['reports'] }); setEditing(false); } });
-  return <div className="mt-3 border-t pt-3"><p className="font-medium">Enfermería participante</p>
+  const save = useMutation({ mutationFn: () => api.put(`/nursing/procedures/${report.id}/participants`, { nurseIds: selected }), onSuccess: () => { qc.invalidateQueries({ queryKey: ['nursing-detail'] }); qc.invalidateQueries({ queryKey: ['procedures'] }); qc.invalidateQueries({ queryKey: ['reports'] }); setEditing(false); } });
+  return <div className="mt-3 border-t pt-3"><p className="font-medium">Enfermería participante en este día</p>
     <p className="text-sm">{report.nurses.map(n => `${n.nurse.nombre} ${n.nurse.apellido}`).join(' · ') || 'Sin participantes registrados'}</p>
     {editing ? <div className="space-y-2">{options.map(n => <label className="flex min-h-11 items-center gap-2" key={n.id}><input type="checkbox" checked={selected.includes(n.id)} onChange={e => setSelected(old => e.target.checked ? [...old, n.id] : old.filter(id => id !== n.id))} />{n.nombre} {n.apellido}</label>)}<button className="min-h-11 px-3 underline" disabled={save.isPending} onClick={() => save.mutate()}>Guardar participantes</button><button className="min-h-11 px-3" onClick={() => setEditing(false)}>Cancelar</button></div> : <button className="min-h-11 underline" onClick={() => { setSelected(report.nurses.map(n => n.nurse.id)); setEditing(true); }}>Registrar participantes</button>}
     {save.isError && <p role="alert" className="text-destructive">{save.error.message}</p>}
@@ -97,17 +99,28 @@ export default function NursingPatientPage({ params }: { params: { id: string } 
   const catalog = useQuery<Catalog>({ queryKey: ['nursing-catalog', user?.id], queryFn: () => api.get('/nursing/catalog'), enabled: authorized });
   if (!authorized) return null;
   if (detail.isError) return <p role="alert">{detail.error.message}. <Link className="underline" href={isNurse ? '/dashboard/nursing' : '/dashboard/patients'}>Volver</Link></p>;
-  if (!detail.data) return <p>Cargando paciente asignado…</p>;
+  if (!detail.data) return <p>Cargando procedimientos del paciente…</p>;
   const { patient, procedures, nurses } = detail.data;
-  const count = new Set(procedures.map(p => p.sessionGroupId ?? p.id)).size;
+  const groups = new Map<string, Report[]>();
+  for (const report of procedures) {
+    const key = report.sessionGroupId ?? report.id;
+    groups.set(key, [...(groups.get(key) ?? []), report]);
+  }
+  const count = groups.size;
   return <div className="space-y-5">
-    <Link className="underline" href={isNurse ? '/dashboard/nursing' : `/dashboard/patients/${params.id}`}>← {isNurse ? 'Mis pacientes' : 'Volver al expediente'}</Link>
+    <Link className="underline" href={isNurse ? '/dashboard/nursing' : `/dashboard/patients/${params.id}`}>← {isNurse ? 'Buscar paciente' : 'Volver al expediente'}</Link>
     <div><h1 className="cap-h2">{patient.nombre} {patient.apellido}</h1><p className="text-sm text-text-secondary">Nacimiento: {patient.fechaNacimiento ? formatDateLong(patient.fechaNacimiento) : 'No registrado'}{patient.edadApproximada ? ' (aproximado)' : ''}</p><p>{count} procedimiento(s) · {procedures.length} reporte(s) diario(s)</p></div>
     <p className="text-sm">La participación clínica se registra por separado de quién captura o edita el reporte. No se asigna automáticamente.</p>
     {editor ? catalog.data ? <ProcedureEditor key={editor === 'new' ? 'new' : editor.id} patientId={params.id} report={editor === 'new' ? undefined : editor} catalog={catalog.data} onDone={() => setEditor(null)} /> : <p role="alert">{catalog.isError ? 'No se pudo cargar el catálogo. Recarga antes de editar.' : 'Cargando catálogo…'}</p> : <button className="min-h-11 rounded bg-brand px-4 text-white" onClick={() => setEditor('new')}>Nuevo procedimiento</button>}
+    {!editor && [...groups].filter(([, days]) => days.length > 1).map(([id, days]) => {
+      const totals = days.map(procedureTotals);
+      const follicles = totals.some(t => t.follicles != null) ? totals.reduce((sum, t) => sum + (t.follicles ?? 0), 0) : null;
+      const hairs = totals.some(t => t.hairs != null) ? totals.reduce((sum, t) => sum + (t.hairs ?? 0), 0) : null;
+      return <section key={id} className="rounded-lg border-2 border-brand/30 bg-brand-soft p-4"><h2 className="font-semibold">Resumen de intervención · {days.length} días</h2><p>Folículos: {follicles ?? 'Sin registrar'} · Pelos: {hairs ?? 'Sin registrar'}</p><p className="text-sm">{totals.filter(t => t.follicles == null).length} día(s) sin total. Los reportes y la participación se conservan por día.</p></section>;
+    })}
     {!editor && procedures.map(report => <article key={report.id} className="rounded-lg border bg-surface p-5">
       <div className="flex flex-wrap justify-between gap-3"><h2 className="font-semibold">{formatDateLong(report.procedureDate)}{report.sessionDay ? ` · Día ${report.sessionDay}` : ''}</h2><button className="min-h-11 px-3 underline" onClick={() => setEditor(report)}>Editar reporte</button></div>
-      <p>Folículos: {report.totalFoliculos ?? 'Sin registrar'}</p><p className="whitespace-pre-wrap">{report.descripcion}</p>
+      <p>Folículos: {procedureTotals(report).follicles ?? 'Sin registrar'} · Pelos: {procedureTotals(report).hairs ?? 'Sin registrar'} · Coeficiente: {procedureTotals(report).coefficient?.toFixed(2) ?? 'Sin registrar'}</p><p className="whitespace-pre-wrap">{report.descripcion}</p>
       <p className="mt-2 text-sm">Médicos: {report.doctors?.map(d => `${d.doctor.nombre} ${d.doctor.apellido}`).join(' · ') || 'Sin registrar'}</p>
       <Participants report={report} nurses={nurses} />
       <p className="mt-3 text-xs text-text-secondary">Capturó: {report.capturedBy ? `${report.capturedBy.nombre} ${report.capturedBy.apellido}` : 'Sin registro histórico'}{report.editedBy ? ` · Última edición: ${report.editedBy.nombre} ${report.editedBy.apellido}` : ''}</p>

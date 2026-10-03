@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Bell, User, LogOut, Settings, Menu, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { usePendingReminders } from '@/hooks/use-reminders';
 import { Avatar } from '@/components/clinic/avatar';
@@ -61,7 +62,8 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try { await api.post('/auth/logout', {}); } catch { /* still close local session if offline */ }
     logout();
     router.push('/login');
   };
@@ -69,18 +71,18 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 border-b border-border',
+        'sticky top-0 z-30 h-[var(--dashboard-header-height,4.5rem)] shrink-0 border-b border-border',
         'bg-background/85 backdrop-blur-md',
         'print:hidden',
       )}
     >
-      <div className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-7">
+      <div className="flex h-full items-center justify-between gap-3 px-4 sm:gap-4 sm:px-6 lg:px-7">
         <div className="flex min-w-0 items-center gap-2.5">
           {onMenuClick && (
             <button
               type="button"
               onClick={onMenuClick}
-              className="flex rounded p-1.5 text-foreground lg:hidden"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-foreground lg:hidden"
               aria-label="Abrir menú"
             >
               <Menu className="h-5 w-5" />
@@ -106,7 +108,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
             href="/dashboard/reminders"
             aria-label="Recordatorios"
             className={cn(
-              'relative flex h-9 w-9 items-center justify-center rounded-md border border-transparent text-text-secondary transition',
+              'relative flex h-11 w-11 items-center justify-center rounded-md border border-transparent text-text-secondary transition',
               'hover:bg-surface-3 hover:text-foreground',
             )}
           >
@@ -121,7 +123,10 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
           {/* User menu */}
           <div className="relative" ref={menuRef}>
             <button
-              className="flex items-center gap-2 rounded-full p-1 pr-1 transition-colors hover:bg-surface-2 sm:pr-3"
+              type="button"
+              aria-label="Abrir menú de usuario"
+              aria-expanded={showMenu}
+              className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full p-1 transition-colors hover:bg-surface-2 sm:pr-3"
               onClick={() => setShowMenu(!showMenu)}
             >
               {user && (
@@ -148,14 +153,14 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 <div className="border-t border-border pt-1">
                   <Link
                     href="/dashboard/profile"
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-surface-2"
+                    className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-surface-2"
                     onClick={() => setShowMenu(false)}
                   >
                     <User className="h-4 w-4 text-text-secondary" /> Mi Perfil
                   </Link>
                   <Link
                     href="/dashboard/settings"
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-surface-2"
+                    className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-surface-2"
                     onClick={() => setShowMenu(false)}
                   >
                     <Settings className="h-4 w-4 text-text-secondary" /> Configuración
@@ -163,7 +168,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 </div>
                 <div className="mt-1 border-t border-border pt-1">
                   <button
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
+                    className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
                     onClick={handleLogout}
                   >
                     <LogOut className="h-4 w-4" /> Cerrar Sesión

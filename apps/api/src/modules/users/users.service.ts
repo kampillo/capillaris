@@ -112,7 +112,8 @@ export class UsersService {
     await this.findOne(id);
     return this.prisma.user.update({
       where: { id },
-      data: { isActive: false },
+      data: { isActive: false, authVersion: { increment: 1 } },
+      select: { id: true, nombre: true, apellido: true, email: true, isActive: true },
     });
   }
 
@@ -121,6 +122,7 @@ export class UsersService {
     return this.prisma.user.update({
       where: { id },
       data: { isActive: true },
+      select: { id: true, nombre: true, apellido: true, email: true, isActive: true },
     });
   }
 }

@@ -1,5 +1,7 @@
 # Checklist revisado de cierre y continuidad de Capillaris
 
+> Corte histórico. Desde el 21/09/2026 el usuario pidió revisar el sistema por etapas y **no publicar todavía**. Consultar la [dirección vigente](direccion-de-trabajo.md) y el [diagnóstico inicial](diagnostico-mapa-sistema-2026-09-21.md). No usar este checklist como autorización de despliegue ni como estado actualizado de enfermería/Tratamientos o del flujo CRM.
+
 Corte: 11 de septiembre de 2026. Revisión del código local, documentos originales, pruebas automatizadas y consultas de lectura a Neon develop. No certifica el estado de producción, aceptación del cliente, pagos ni servicios externos.
 
 ## Conclusión

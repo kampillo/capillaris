@@ -39,7 +39,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       }
       default: {
         this.logger.error(
-          `Prisma error ${exception.code}: ${exception.message}`,
+          `Prisma error ${exception.code}`,
         );
       }
     }
@@ -60,7 +60,7 @@ export class PrismaValidationFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
-    this.logger.error(`Prisma validation error: ${exception.message}`);
+    this.logger.error('Prisma validation error');
 
     response.status(HttpStatus.BAD_REQUEST).json({
       statusCode: HttpStatus.BAD_REQUEST,

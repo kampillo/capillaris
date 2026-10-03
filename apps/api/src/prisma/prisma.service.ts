@@ -60,7 +60,7 @@ export class PrismaService
       try {
         await this.writeAudit(params, result, oldValues);
       } catch (err) {
-        this.logger.error('Audit write failed', err as Error);
+        this.logger.error('Audit write failed');
       }
 
       return result;
@@ -129,7 +129,7 @@ export class PrismaService
         action = 'UPDATE_MANY';
         newVals = {
           count: result?.count,
-          where: params.args?.where,
+          where: maskSensitive(params.args?.where),
           data: maskSensitive(params.args?.data),
         };
         break;

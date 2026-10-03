@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateStockMovementDto } from './dto/create-stock-movement.dto';
 
@@ -37,60 +37,23 @@ export class InventoryService {
   }
 
   async getLowStock() {
-    const lowStockProducts = await this.prisma.product.findMany({
-      where: {
-        isActive: true,
-        stockBalance: {
-          currentQuantity: {
-            lte: 0, // Will be compared to minStockAlert in app logic
-          },
-        },
-      },
-      include: {
-        stockBalance: true,
-        category: true,
-      },
-    });
-
-    return lowStockProducts;
+    const products = await this.prisma.product.findMany({ where: { isActive: true }, include: { stockBalance: true, category: true } });
+    return products.filter(product => (product.stockBalance?.currentQuantity ?? 0) <= product.minStockAlert);
   }
 
   async createMovement(dto: CreateStockMovementDto, userId?: string) {
-    const product = await this.prisma.product.findUnique({
-      where: { id: dto.productId },
-      include: { stockBalance: true },
-    });
-
-    if (!product) {
-      throw new NotFoundException(`Product with ID ${dto.productId} not found`);
-    }
-
-    // Create movement and update balance in a transaction
-    return this.prisma.$transaction(async (tx: any) => {
-      const movement = await tx.stockMovement.create({
-        data: {
-          ...dto,
-          createdBy: userId,
-        } as any,
-      });
-
-      const quantityChange =
-        dto.movementType === 'entrada' ? dto.quantity : -dto.quantity;
-
-      await tx.stockBalance.upsert({
-        where: { productId: dto.productId },
-        update: {
-          currentQuantity: {
-            increment: quantityChange,
-          },
-        },
-        create: {
-          productId: dto.productId,
-          currentQuantity: Math.max(0, quantityChange),
-        },
-      });
-
-      return movement;
+    if (!['entrada', 'salida'].includes(dto.movementType) || !Number.isInteger(dto.quantity) || dto.quantity < 1) throw new BadRequestException('Usa una entrada o salida con cantidad positiva');
+    const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
+    if (!product || !product.isActive) throw new NotFoundException('Producto no disponible');
+    return this.prisma.$transaction(async tx => {
+      if (dto.movementType === 'entrada') {
+        await tx.stockBalance.upsert({ where: { productId: dto.productId }, update: { currentQuantity: { increment: dto.quantity } }, create: { productId: dto.productId, currentQuantity: dto.quantity } });
+      } else {
+        // The condition and decrement are one SQL update, including concurrent exits.
+        const changed = await tx.stockBalance.updateMany({ where: { productId: dto.productId, currentQuantity: { gte: dto.quantity } }, data: { currentQuantity: { decrement: dto.quantity } } });
+        if (changed.count !== 1) throw new BadRequestException('Existencias insuficientes para registrar la salida');
+      }
+      return tx.stockMovement.create({ data: { ...dto, createdBy: userId } });
     });
   }
 

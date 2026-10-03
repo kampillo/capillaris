@@ -5,6 +5,7 @@ import {
   IsUUID,
   IsBoolean,
   IsNumber,
+  IsIn,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -141,6 +142,8 @@ export class PhysicalExplorationDto {
   @IsOptional()
   @IsNumber()
   talla?: number;
+
+  @IsOptional() @IsIn(['cm', 'm']) tallaUnidad?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

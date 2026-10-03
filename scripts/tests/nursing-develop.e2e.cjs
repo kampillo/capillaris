@@ -45,11 +45,10 @@ async function main() {
   for (const route of ['/patients', '/appointments', '/inventory', '/reports/procedures', '/users', '/catalog/doctors', '/nursing/staff']) await request(nurse.token, 'GET', route, undefined, 403);
   await request(nurse.token, 'POST', '/patients', {}, 403);
   await request(nurse.token, 'POST', '/auth/register', {}, 403);
-  await request(nurse.token, 'GET', `/nursing/patients/${patientId}`, undefined, 403);
+  await request(nurse.token, 'GET', `/nursing/patients/${patientId}`);
   assert.deepEqual(await request(nurse.token, 'GET', '/nursing/patients'), []);
-  console.log('PASS: no global patient, agenda, inventory, report or account access; unassigned patient blocked');
-  await request(admin.token, 'POST', `/nursing/patients/${patientId}/assignments`, { nurseId: nurse.id }, 201);
-  const list = await request(nurse.token, 'GET', '/nursing/patients');
+  console.log('PASS: no global patient, agenda, inventory, report or account access; procedures accessible without assignments');
+  const list = await request(nurse.token, 'GET', '/nursing/patients?query=PRUEBA%20FICTICIA');
   assert.deepEqual(list.map(p => p.id), [patientId]);
   const detail = await request(nurse.token, 'GET', `/nursing/patients/${patientId}`);
   assert.equal('email' in detail.patient, false);
@@ -71,24 +70,22 @@ async function main() {
   assert.equal(stored.totalFoliculos, 2); assert.equal(stored.doctors.length, 0); assert.equal(stored.anestExtFechaInicial, null);
   await request(nurse.token, 'PUT', `/nursing/patients/${patientId}/procedures/${randomUUID()}`, {}, 404);
   await request(nurse.token, 'DELETE', `/procedures/${procedures[0]}`, undefined, 403);
-  await request(nurse.token, 'POST', `/nursing/patients/${patientId}/assignments`, { nurseId: nurse.id }, 403);
+  await request(nurse.token, 'POST', `/nursing/patients/${patientId}/assignments`, { nurseId: nurse.id }, 404);
   await request(nurse.token, 'PUT', `/nursing/procedures/${procedures[0]}/participants`, { nurseIds: [admin.id] }, 400);
-  console.log('PASS: assigned-only create/edit, persisted values, separate authors/participants; deletion and self-assignment blocked');
+  console.log('PASS: create/edit without assignment, persisted values, separate authors/participants; deletion and legacy assignment unavailable');
   await request(admin.token, 'POST', `/procedures/${procedures[0]}/session`, { withId: procedures[1] }, 201);
   const august = await request(admin.token, 'GET', '/reports/procedures?startDate=2090-08-01&endDate=2090-08-31');
   assert.equal(august.totalProcedures, 1); assert.equal(august.totalFollicles, 3);
   assert.deepEqual(august.byNurse, [{ name: nurse.name, count: 1 }]);
   const september = await request(admin.token, 'GET', '/reports/procedures?startDate=2090-09-01&endDate=2090-09-30');
   assert.equal(september.totalProcedures, 0); assert.deepEqual(september.byNurse, []);
-  await request(admin.token, 'POST', `/nursing/patients/${patientId}/assignments/revoke`, { nurseId: nurse.id }, 201);
-  await request(nurse.token, 'GET', `/nursing/patients/${patientId}`, undefined, 403);
-  await request(nurse.token, 'PUT', `/nursing/patients/${patientId}/procedures/${procedures[0]}`, { totalFoliculos: 99 }, 403);
-  await request(nurse.token, 'PUT', `/nursing/procedures/${procedures[0]}/participants`, { nurseIds: [] }, 403);
+  await request(admin.token, 'POST', `/nursing/patients/${patientId}/assignments/revoke`, { nurseId: nurse.id }, 404);
+  await request(nurse.token, 'GET', `/nursing/patients/${patientId}`);
   assert.equal(await db.procedureReportNurse.count({ where: { nurseId: nurse.id } }), 2);
   assert.deepEqual((await request(admin.token, 'GET', '/reports/procedures?startDate=2090-08-01&endDate=2090-08-31')).byNurse, august.byNurse);
   await db.user.update({ where: { id: nurse.id }, data: { isActive: false } });
   await request(nurse.token, 'GET', '/auth/me', undefined, 401);
-  console.log('PASS: unique participation in first-day month, historical participation survives revocation, disabled account blocked immediately');
+  console.log('PASS: unique participation in first-day month, old assignment endpoints retired, disabled account blocked immediately');
 }
 main().catch(e => { console.error(e.message); process.exitCode = 1; }).finally(async () => {
   try {

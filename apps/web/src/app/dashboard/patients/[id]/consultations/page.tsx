@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/patients/patient-context-link';
 import {
   ChevronLeft,
   Plus,

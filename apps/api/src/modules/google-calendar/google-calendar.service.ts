@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { google, calendar_v3 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
+import { createHash, randomBytes } from 'node:crypto';
 
 @Injectable()
 export class GoogleCalendarService {
@@ -20,15 +21,31 @@ export class GoogleCalendarService {
     );
   }
 
-  getAuthUrl(): string {
+  async getAuthUrl(userId: string): Promise<string> {
+    const state = randomBytes(32).toString('base64url');
+    const digest = createHash('sha256').update(state).digest('hex');
+    await this.prisma.googleOAuthState.deleteMany({ where: { expiresAt: { lte: new Date() } } });
+    await this.prisma.googleOAuthState.create({ data: { digest, userId, expiresAt: new Date(Date.now() + 10 * 60 * 1000) } });
     return this.oauth2Client.generateAuthUrl({
+      state,
       access_type: 'offline',
       prompt: 'consent',
       scope: ['https://www.googleapis.com/auth/calendar'],
     });
   }
 
-  async handleCallback(code: string, userId: string) {
+  async handleCallback(code: string, state: string) {
+    if (!code || !state || !/^[A-Za-z0-9_-]{43}$/.test(state)) {
+      throw new BadRequestException('Autorización Google inválida o vencida');
+    }
+    const digest = createHash('sha256').update(state).digest('hex');
+    const record = await this.prisma.googleOAuthState.findUnique({ where: { digest } });
+    if (!record) throw new BadRequestException('Autorización Google inválida o vencida');
+    const claimed = await this.prisma.googleOAuthState.deleteMany({ where: { digest, expiresAt: { gt: new Date() } } });
+    if (claimed.count !== 1) throw new BadRequestException('Autorización Google inválida o vencida');
+    const user = await this.prisma.user.findUnique({ where: { id: record.userId }, select: { isActive: true, deletedAt: true } });
+    if (!user?.isActive || user.deletedAt) throw new BadRequestException('Usuario no disponible');
+    const userId = record.userId;
     const { tokens } = await this.oauth2Client.getToken(code);
 
     await this.prisma.googleToken.upsert({

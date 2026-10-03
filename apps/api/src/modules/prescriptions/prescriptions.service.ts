@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
@@ -14,6 +15,8 @@ export class PrescriptionsService {
     return this.prisma.prescription.create({
       data: {
         ...prescriptionData,
+        prescriptionDate: new Date(prescriptionData.prescriptionDate),
+        expiresAt: prescriptionData.expiresAt ? new Date(prescriptionData.expiresAt) : undefined,
         createdBy: userId,
         items: items
           ? {
@@ -82,17 +85,26 @@ export class PrescriptionsService {
 
     return this.prisma.$transaction(async (tx) => {
       if (items !== undefined) {
-        await tx.prescriptionItem.deleteMany({ where: { prescriptionId: id } });
-        if (items.length > 0) {
-          await tx.prescriptionItem.createMany({
-            data: items.map((item) => ({ ...item, prescriptionId: id })),
-          });
+        const existing = await tx.prescriptionItem.findMany({ where: { prescriptionId: id } });
+        const byId = new Map(existing.map(item => [item.id, item]));
+        const ids = items.flatMap(item => item.id ? [item.id] : []);
+        if (new Set(ids).size !== ids.length || ids.some(itemId => !byId.has(itemId))) throw new BadRequestException('Los medicamentos no corresponden a esta receta');
+        const removed = existing.filter(item => !ids.includes(item.id));
+        if (removed.some(item => item.dispensed)) throw new BadRequestException('No se puede eliminar un medicamento dispensado');
+        for (const item of items) {
+          const { id: itemId, ...data } = item;
+          if (!itemId) { await tx.prescriptionItem.create({ data: { ...data, prescriptionId: id } }); continue; }
+          const old = byId.get(itemId)!;
+          if (old.dispensed && Object.entries(data).some(([field, value]) => value !== undefined && value !== (old as any)[field])) throw new BadRequestException('No se puede modificar un medicamento dispensado');
+          if (!old.dispensed) await tx.prescriptionItem.update({ where: { id: itemId }, data });
         }
+        if (removed.length) await tx.prescriptionItem.deleteMany({ where: { prescriptionId: id, id: { in: removed.map(item => item.id) } } });
       }
       return tx.prescription.update({
         where: { id },
         data: {
           ...prescriptionData,
+          expiresAt: prescriptionData.expiresAt ? new Date(prescriptionData.expiresAt) : undefined,
           updatedBy: userId,
         } as any,
         include: {
@@ -101,7 +113,7 @@ export class PrescriptionsService {
           doctor: { select: USER_PUBLIC_SELECT },
         },
       });
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   async remove(id: string) {

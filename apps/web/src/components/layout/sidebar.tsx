@@ -113,7 +113,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1.5 text-sidebar-fg transition hover:bg-white/5 lg:hidden"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-sidebar-fg transition hover:bg-white/5 lg:hidden"
             aria-label="Cerrar menú"
           >
             <X className="h-5 w-5" />
@@ -146,7 +146,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   href={item.href}
                   onClick={onClose}
                   className={cn(
-                    'mb-0.5 flex items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-sm transition-all',
+                    'mb-0.5 flex min-h-11 items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-sm transition-all',
                     active
                       ? 'border-sidebar-active bg-white/[0.08] pl-2.5 font-medium text-white'
                       : 'border-transparent text-sidebar-fg hover:bg-white/[0.04] hover:text-white',
@@ -183,7 +183,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <button
               type="button"
               onClick={handleLogout}
-              className="rounded p-1.5 text-sidebar-fg transition hover:bg-white/5"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-sidebar-fg transition hover:bg-white/5"
               aria-label="Cerrar sesión"
             >
               <LogOut className="h-3.5 w-3.5" />
@@ -212,14 +212,15 @@ function SidebarSearch({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="px-3.5 pb-3">
-      <div className="flex w-full items-center gap-2.5 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-sidebar-fg transition focus-within:bg-white/10 hover:bg-white/10">
+      <div className="flex min-h-11 w-full items-center gap-2.5 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-sidebar-fg transition focus-within:bg-white/10 hover:bg-white/10">
         <Search className="h-3.5 w-3.5 shrink-0" />
         <input
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="Buscar paciente…"
-          className="flex-1 bg-transparent text-sm text-sidebar-fg outline-none placeholder:text-sidebar-fg-muted"
+          aria-label="Buscar paciente"
+          className="min-w-0 flex-1 bg-transparent text-base text-sidebar-fg outline-none placeholder:text-sidebar-fg-muted sm:text-sm"
         />
       </div>
     </form>
@@ -241,7 +242,7 @@ export function MobileSidebar({ open, onClose }: { open: boolean; onClose: () =>
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden"
         onClick={onClose}
       />
-      <aside className="animate-slide-in fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col lg:hidden">
+      <aside className="animate-slide-in fixed inset-y-0 left-0 z-50 flex w-[248px] max-w-[calc(100vw-2rem)] flex-col bg-sidebar pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] lg:hidden">
         <SidebarContent onClose={onClose} />
       </aside>
     </>

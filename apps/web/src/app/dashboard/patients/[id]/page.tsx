@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link, { usePatientContextHref } from '@/components/patients/patient-context-link';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
@@ -81,14 +81,14 @@ const QUICK_ACTIONS = [
   { icon: Scissors, label: 'Procedimientos', path: 'procedures' },
   { icon: Syringe, label: 'Tratamientos', path: 'treatments' },
   { icon: FileText, label: 'Prescripciones', path: 'prescriptions' },
-  { icon: Images, label: 'Antes / Después', path: 'images' },
+  { icon: Images, label: 'Fotos en Drive', path: 'images' },
 ];
 
 function InfoItem({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="space-y-1">
-      <dt className="cap-eyebrow">{label}</dt>
-      <dd className="text-sm text-foreground">{value || '—'}</dd>
+    <div className="min-w-0 space-y-1">
+      <dt className="cap-eyebrow text-[13px]">{label}</dt>
+      <dd className="text-base text-foreground [overflow-wrap:anywhere] sm:text-sm">{value || '—'}</dd>
     </div>
   );
 }
@@ -111,6 +111,7 @@ export default function PatientDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
+  const backToList = usePatientContextHref('/dashboard/patients');
   const { data: patient, isLoading, error } = usePatient(params.id);
   const { data: consultations } = useConsultationsByPatient(params.id);
   const canEditPatient = useHasRole('admin', 'doctor', 'receptionist');
@@ -132,7 +133,7 @@ export default function PatientDetailPage({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push('/dashboard/patients')}
+          onClick={() => router.push(backToList)}
         >
           Volver a pacientes
         </Button>
@@ -144,7 +145,7 @@ export default function PatientDetailPage({
 
   const metaParts: string[] = [];
   const age = calcAge(patient.fechaNacimiento);
-  if (age !== null) metaParts.push(`${age} ${age === 1 ? 'año' : 'años'}`);
+  if (age !== null) metaParts.push(`${patient.edadApproximada ? '≈ ' : ''}${age} ${age === 1 ? 'año' : 'años'}`);
   const nacimiento = formatDateLong(patient.fechaNacimiento);
   if (nacimiento) metaParts.push(nacimiento);
   if (patient.genero) metaParts.push(capitalize(patient.genero));
@@ -152,7 +153,7 @@ export default function PatientDetailPage({
   const stats = [
     { label: 'Citas', value: patient._count?.appointments ?? '—' },
     { label: 'Consultas', value: patient._count?.medicalConsultations ?? '—' },
-    { label: 'Procedimientos', value: patient.procedureCount ?? '—' },
+    { label: 'Intervenciones', value: patient.procedureCount ?? '—' },
     { label: 'Prescripciones', value: patient._count?.prescriptions ?? '—' },
   ];
 
@@ -170,22 +171,22 @@ export default function PatientDetailPage({
       {/* Back */}
       <Link
         href="/dashboard/patients"
-        className="inline-flex w-fit items-center gap-1 text-xs text-text-secondary transition-colors hover:text-foreground"
+        className="inline-flex min-h-11 w-fit items-center gap-1 text-sm text-text-secondary transition-colors hover:text-foreground"
       >
         <ChevronLeft className="h-3.5 w-3.5" /> Volver a pacientes
       </Link>
 
       {/* Patient header card */}
       <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs">
-        <div className="flex flex-wrap items-start gap-5 p-6">
+        <div className="flex flex-wrap items-start gap-4 p-4 sm:gap-5 sm:p-6">
           <Avatar name={`${patient.nombre} ${patient.apellido}`} size={72} />
-          <div className="min-w-[240px] flex-1">
+          <div className="min-w-0 flex-1">
             <div className="mb-1.5 flex flex-wrap items-center gap-2.5">
-              <h2 className="cap-h2">
+              <h2 className="cap-h2 [overflow-wrap:anywhere]">
                 {patient.nombre} {patient.apellido}
               </h2>
               <span
-                className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+                className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[13px] font-medium"
                 style={{
                   background: type.bg,
                   color: type.color,
@@ -199,42 +200,42 @@ export default function PatientDetailPage({
                 {type.label}
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[13px] text-text-secondary">
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-sm text-text-secondary [overflow-wrap:anywhere]">
               {metaParts.map((m, i) => (
                 <span key={i}>{m}</span>
               ))}
               {patient.ciudad && (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3 w-3" /> {patient.ciudad}
+                <span className="inline-flex max-w-full items-start gap-1">
+                  <MapPin className="mt-1 h-3 w-3 shrink-0" /> <span className="min-w-0">{patient.ciudad}</span>
                 </span>
               )}
               {patient.celular && (
-                <span className="inline-flex items-center gap-1">
-                  <Phone className="h-3 w-3" /> {patient.celular}
+                <span className="inline-flex max-w-full items-start gap-1">
+                  <Phone className="mt-1 h-3 w-3 shrink-0" /> <span className="min-w-0">{patient.celular}</span>
                 </span>
               )}
               {patient.email && (
-                <span className="inline-flex items-center gap-1 truncate">
-                  <Mail className="h-3 w-3" /> {patient.email}
+                <span className="inline-flex max-w-full items-start gap-1">
+                  <Mail className="mt-1 h-3 w-3 shrink-0" /> <span className="min-w-0">{patient.email}</span>
                 </span>
               )}
             </div>
             {patient.createdAt && (
-              <p className="mt-1 text-[11px] text-text-tertiary">
+              <p className="mt-1 text-[13px] text-text-secondary">
                 Registrado el {formatInstantDate(patient.createdAt)}
               </p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             {canEditPatient && (
-              <Button variant="outline" size="sm" className="gap-1.5" asChild>
+              <Button variant="outline" size="sm" className="min-h-11 gap-1.5" asChild>
                 <Link href={`/dashboard/patients/${patient.id}/edit`}>
                   <Edit className="h-3.5 w-3.5" /> Editar
                 </Link>
               </Button>
             )}
             {canManageAppointments && (
-              <Button size="sm" className="gap-1.5" asChild>
+              <Button size="sm" className="min-h-11 gap-1.5" asChild>
                 <Link href={`/dashboard/appointments/new?patientId=${patient.id}`}>
                   <Calendar className="h-3.5 w-3.5" /> Agendar cita
                 </Link>
@@ -248,7 +249,7 @@ export default function PatientDetailPage({
           {stats.map((s, i) => (
             <div
               key={i}
-              className="border-r border-border px-5 py-4 last:border-r-0 sm:[&:nth-child(2)]:border-r-0 sm:[&:nth-child(3)]:border-r-0 sm:[&:not(:last-child)]:border-r"
+              className="min-w-0 border-r border-border px-4 py-4 last:border-r-0 sm:px-5 sm:[&:nth-child(2)]:border-r-0 sm:[&:nth-child(3)]:border-r-0 sm:[&:not(:last-child)]:border-r"
             >
               <div className="cap-eyebrow mb-1">{s.label}</div>
               <div className="cap-mono text-xl font-medium">{s.value}</div>
@@ -263,12 +264,12 @@ export default function PatientDetailPage({
           <Link
             key={a.path}
             href={`/dashboard/patients/${patient.id}/${a.path}`}
-            className="group flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-xs transition-all hover:border-brand-soft hover:bg-brand-softer"
+            className="group flex min-h-11 min-w-0 flex-col items-start gap-2 rounded-xl border border-border bg-surface px-4 py-3 shadow-xs transition-all hover:border-brand-soft hover:bg-brand-softer sm:flex-row sm:items-center sm:gap-3"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-soft text-brand-dark transition-colors group-hover:bg-brand group-hover:text-white">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand-dark transition-colors group-hover:bg-brand group-hover:text-white">
               <a.icon className="h-4 w-4" />
             </div>
-            <span className="text-xs font-medium text-foreground">
+            <span className="min-w-0 text-sm font-medium text-foreground [overflow-wrap:anywhere]">
               {a.label}
             </span>
           </Link>
@@ -279,17 +280,17 @@ export default function PatientDetailPage({
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Main info */}
-        <div className="flex flex-col gap-5 lg:col-span-2">
-          <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <div className="flex min-w-0 flex-col gap-5 lg:col-span-2">
+          <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
             <h3 className="cap-eyebrow mb-4">Información personal</h3>
-            <dl className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <InfoItem label="Nombre" value={patient.nombre} />
               <InfoItem label="Apellido" value={patient.apellido} />
               <InfoItem label="Email" value={patient.email} />
               <InfoItem label="Celular" value={patient.celular} />
               <InfoItem
                 label="Fecha de nacimiento"
-                value={formatFechaNacimiento(patient.fechaNacimiento)}
+                value={formatFechaNacimiento(patient.fechaNacimiento) ? `${formatFechaNacimiento(patient.fechaNacimiento)}${patient.edadApproximada ? ' (aproximada)' : ''}` : null}
               />
               <InfoItem label="Género" value={capitalize(patient.genero)} />
               <InfoItem
@@ -300,9 +301,9 @@ export default function PatientDetailPage({
             </dl>
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+          <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
             <h3 className="cap-eyebrow mb-4">Dirección</h3>
-            <dl className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <InfoItem label="Dirección" value={patient.direccion} />
               <InfoItem label="Ciudad" value={patient.ciudad} />
               <InfoItem label="Estado" value={patient.estado} />
@@ -310,9 +311,9 @@ export default function PatientDetailPage({
             </dl>
           </section>
 
-          <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+          <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
             <h3 className="cap-eyebrow mb-4">Clasificación</h3>
-            <dl className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <InfoItem
                 label="Canal de origen"
                 value={capitalize(patient.origenCanal)}
@@ -332,7 +333,7 @@ export default function PatientDetailPage({
                 <Separator className="my-4" />
                 <div className="space-y-1.5">
                   <dt className="cap-eyebrow">Notas internas</dt>
-                  <dd className="whitespace-pre-wrap text-sm text-foreground">
+                  <dd className="whitespace-pre-wrap text-base text-foreground [overflow-wrap:anywhere] sm:text-sm">
                     {patient.notasInternas}
                   </dd>
                 </div>
@@ -342,7 +343,7 @@ export default function PatientDetailPage({
         </div>
 
         {/* Sidebar */}
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5">
           <section className="rounded-xl border border-border bg-surface p-5 shadow-xs">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Mapa capilar</h3>
@@ -422,13 +423,13 @@ export default function PatientDetailPage({
           />
           <SidebarCard
             icon={Scissors}
-            title="Procedimientos"
+            title="Reportes diarios"
             items={(patient.procedureReports as any[] ?? []).slice(0, 4).map((p: any) => ({
               id: p.id,
-              title: p.procedureType || 'Procedimiento',
+              title: p.procedureType || 'Reporte diario',
               date: formatDateOnly(p.procedureDate),
             }))}
-            emptyText="Sin procedimientos"
+            emptyText="Sin reportes diarios"
           />
           <SidebarCard
             icon={FileText}

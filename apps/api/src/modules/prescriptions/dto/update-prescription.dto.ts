@@ -1,5 +1,6 @@
 import {
   IsOptional,
+  IsUUID,
   IsString,
   IsDateString,
   IsArray,
@@ -8,6 +9,10 @@ import {
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { CreatePrescriptionItemDto } from './create-prescription.dto';
+
+export class UpdatePrescriptionItemDto extends CreatePrescriptionItemDto {
+  @IsOptional() @IsUUID() id?: string;
+}
 
 export class UpdatePrescriptionDto {
   @ApiPropertyOptional()
@@ -25,10 +30,10 @@ export class UpdatePrescriptionDto {
   @IsDateString()
   expiresAt?: string;
 
-  @ApiPropertyOptional({ type: [CreatePrescriptionItemDto] })
+  @ApiPropertyOptional({ type: [UpdatePrescriptionItemDto] })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreatePrescriptionItemDto)
-  items?: CreatePrescriptionItemDto[];
+  @Type(() => UpdatePrescriptionItemDto)
+  items?: UpdatePrescriptionItemDto[];
 }

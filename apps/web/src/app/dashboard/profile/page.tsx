@@ -15,13 +15,15 @@ import { api } from '@/lib/api';
 import { roleDisplayName } from '@/lib/roles';
 
 export default function ProfilePage() {
-  const { user, login, token } = useAuthStore();
+  const { user, login, token, logout } = useAuthStore();
 
   const [nombre, setNombre] = useState(user?.nombre || '');
   const [apellido, setApellido] = useState(user?.apellido || '');
   const [email, setEmail] = useState(user?.email || '');
 
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [saving, setSaving] = useState(false);
@@ -38,7 +40,7 @@ export default function ProfilePage() {
     setSuccess('');
 
     try {
-      await api.put(`/users/${user.id}`, {
+      await api.put('/auth/me', {
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         email: email.trim(),
@@ -59,8 +61,12 @@ export default function ProfilePage() {
     setPwError('');
     setPwSuccess('');
 
-    if (newPassword.length < 6) {
-      setPwError('La contraseña debe tener al menos 6 caracteres');
+    if (newPassword.length < 12) {
+      setPwError('La contraseña debe tener al menos 12 caracteres');
+      return;
+    }
+    if (!/\S/u.test(newPassword)) {
+      setPwError('La contraseña no puede contener sólo espacios');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -69,14 +75,17 @@ export default function ProfilePage() {
     }
 
     try {
-      await api.put(`/users/${user?.id}`, {
-        password: newPassword,
-      });
-      setPwSuccess('Contraseña actualizada correctamente');
+      setSavingPassword(true);
+      await api.put('/auth/password', { currentPassword, newPassword });
+      setPwSuccess('Contraseña actualizada. Vuelve a iniciar sesión; se cerraron las sesiones anteriores.');
+      logout();
+      window.location.href = '/login';
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
       setPwError(err?.message || 'Error al cambiar contraseña');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -174,12 +183,17 @@ export default function ProfilePage() {
                 <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">{pwSuccess}</div>
               )}
               <div className="space-y-1.5">
+                <Label htmlFor="current-password">Contraseña actual</Label>
+                <Input id="current-password" type="password" autoComplete="current-password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
                 <Label>Nueva contraseña</Label>
                 <Input
                   type="password"
+                  autoComplete="new-password" minLength={12} required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 12 caracteres"
                   className="h-11"
                 />
               </div>
@@ -187,13 +201,14 @@ export default function ProfilePage() {
                 <Label>Confirmar contraseña</Label>
                 <Input
                   type="password"
+                  autoComplete="new-password" required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repetir contraseña"
                   className="h-11"
                 />
               </div>
-              <Button type="submit" className="h-11 font-medium">Cambiar Contraseña</Button>
+              <Button disabled={savingPassword} type="submit" className="h-11 font-medium">Cambiar Contraseña</Button>
             </form>
           </CardContent>
         </Card>

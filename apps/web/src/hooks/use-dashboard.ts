@@ -16,6 +16,8 @@ interface ProceduresReport {
   proceduresDelta: number | null;
   averageFollicles: number | null;
   totalFollicles: number | null;
+  proceduresWithFollicles: number;
+  proceduresWithoutFollicles: number;
   byDoctor: { name: string; count: number }[];
   byNurse: { name: string; count: number }[];
 }
@@ -68,35 +70,39 @@ function buildParams(startDate?: string, endDate?: string) {
 
 const STALE = 60 * 1000;
 
-export function usePatientsReport(startDate?: string, endDate?: string) {
+export function usePatientsReport(startDate?: string, endDate?: string, enabled = true) {
   return useQuery<PatientsReport>({
     queryKey: ['reports', 'patients', startDate, endDate],
     queryFn: () => api.get('/reports/patients', { params: buildParams(startDate, endDate) }),
     staleTime: STALE,
+    enabled,
   });
 }
 
-export function useProceduresReport(startDate?: string, endDate?: string) {
+export function useProceduresReport(startDate?: string, endDate?: string, enabled = true) {
   return useQuery<ProceduresReport>({
     queryKey: ['reports', 'procedures', startDate, endDate],
     queryFn: () => api.get('/reports/procedures', { params: buildParams(startDate, endDate) }),
     staleTime: STALE,
+    enabled,
   });
 }
 
-export function useAppointmentsReport(startDate?: string, endDate?: string) {
+export function useAppointmentsReport(startDate?: string, endDate?: string, enabled = true) {
   return useQuery<AppointmentsReport>({
     queryKey: ['reports', 'appointments', startDate, endDate],
     queryFn: () => api.get('/reports/appointments', { params: buildParams(startDate, endDate) }),
     staleTime: STALE,
+    enabled,
   });
 }
 
-export function usePrescriptionsReport(startDate?: string, endDate?: string) {
+export function usePrescriptionsReport(startDate?: string, endDate?: string, enabled = true) {
   return useQuery<PrescriptionsReport>({
     queryKey: ['reports', 'prescriptions', startDate, endDate],
     queryFn: () => api.get('/reports/prescriptions', { params: buildParams(startDate, endDate) }),
     staleTime: STALE,
+    enabled,
   });
 }
 
@@ -108,18 +114,20 @@ export function useInventoryReport(startDate?: string, endDate?: string) {
   });
 }
 
-export function useSourcesReport(startDate?: string, endDate?: string) {
+export function useSourcesReport(startDate?: string, endDate?: string, enabled = true) {
   return useQuery<SourcesReport>({
     queryKey: ['reports', 'sources', startDate, endDate],
     queryFn: () => api.get('/reports/sources', { params: buildParams(startDate, endDate) }),
     staleTime: STALE,
+    enabled,
   });
 }
 
-export function useClinicalReport(startDate?: string, endDate?: string) {
+export function useClinicalReport(startDate?: string, endDate?: string, enabled = true) {
   return useQuery<ClinicalReport>({
     queryKey: ['reports', 'clinical', startDate, endDate],
     queryFn: () => api.get('/reports/clinical', { params: buildParams(startDate, endDate) }),
     staleTime: STALE,
+    enabled,
   });
 }

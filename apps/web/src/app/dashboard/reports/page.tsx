@@ -42,7 +42,7 @@ import {
   useSourcesReport,
   useClinicalReport,
 } from '@/hooks/use-dashboard';
-import { useRequireRole } from '@/hooks/use-has-role';
+import { useHasRole, useRequireRole } from '@/hooks/use-has-role';
 import { parseDateOnly, toLocalDateKey, todayInput } from '@/lib/dates';
 
 type Preset = 'month' | '30d' | 'quarter' | 'year' | 'custom';
@@ -116,6 +116,7 @@ const PIE_PALETTE = ['#2C7E69', '#7A6B9F', '#4A6B8F', '#B8763A', '#B84545', '#10
 
 export default function ReportsPage() {
   const authorized = useRequireRole('admin', 'doctor', 'inventory_manager');
+  const clinicalAccess = useHasRole('admin', 'doctor');
   const [preset, setPreset] = useState<Preset>('month');
   const [startDate, setStartDate] = useState(startOfMonth());
   const [endDate, setEndDate] = useState(todayInput());
@@ -130,13 +131,13 @@ export default function ReportsPage() {
     else if (preset === 'year') setStartDate(startOfYear());
   }, [preset]);
 
-  const { data: patientsRpt } = usePatientsReport(startDate, endDate);
-  const { data: proceduresRpt } = useProceduresReport(startDate, endDate);
-  const { data: appointmentsRpt } = useAppointmentsReport(startDate, endDate);
-  const { data: prescriptionsRpt } = usePrescriptionsReport(startDate, endDate);
+  const { data: patientsRpt } = usePatientsReport(startDate, endDate, clinicalAccess);
+  const { data: proceduresRpt } = useProceduresReport(startDate, endDate, clinicalAccess);
+  const { data: appointmentsRpt } = useAppointmentsReport(startDate, endDate, clinicalAccess);
+  const { data: prescriptionsRpt } = usePrescriptionsReport(startDate, endDate, clinicalAccess);
   const { data: inventoryRpt } = useInventoryReport(startDate, endDate);
-  const { data: sourcesRpt } = useSourcesReport(startDate, endDate);
-  const { data: clinicalRpt } = useClinicalReport(startDate, endDate);
+  const { data: sourcesRpt } = useSourcesReport(startDate, endDate, clinicalAccess);
+  const { data: clinicalRpt } = useClinicalReport(startDate, endDate, clinicalAccess);
 
   // Pie data: patient types
   const patientTypeData = useMemo(
@@ -171,6 +172,7 @@ export default function ReportsPage() {
   );
 
   if (!authorized) return null;
+  if (!clinicalAccess) return <div className="space-y-4"><h2 className="cap-h2">Reportes de inventario</h2><div className="grid gap-4 sm:grid-cols-2"><KpiCard label="Productos" value={inventoryRpt?.totalProducts ?? '—'} icon={Boxes} /><KpiCard label="Existencias bajas" value={inventoryRpt?.lowStockCount ?? '—'} icon={AlertTriangle} /></div></div>;
 
   return (
     <div className="space-y-8">
@@ -506,7 +508,7 @@ export default function ReportsPage() {
           <KpiCard
             label="Folículos totales"
             value={
-              proceduresRpt?.totalFollicles
+              proceduresRpt?.totalFollicles != null
                 ? proceduresRpt.totalFollicles.toLocaleString('es-MX')
                 : '—'
             }

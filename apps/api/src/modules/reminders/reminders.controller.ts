@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { CreateReminderDto, UpdateReminderDto } from './dto/reminder.dto';
 import { RemindersService } from './reminders.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -27,17 +28,7 @@ export class RemindersController {
   @Roles('admin', 'doctor', 'receptionist')
   @ApiOperation({ summary: 'Create a new reminder' })
   create(
-    @Body()
-    body: {
-      patientId: string;
-      reminderType: string;
-      scheduledFor: string;
-      channel?: string;
-      relatedEntityType?: string;
-      relatedEntityId?: string;
-      messageTemplate?: string;
-      messageVariables?: Record<string, unknown>;
-    },
+    @Body() body: CreateReminderDto,
     @CurrentUser('id') userId: string,
   ) {
     return this.remindersService.create(body, userId);
@@ -69,7 +60,7 @@ export class RemindersController {
   @ApiOperation({ summary: 'Update a reminder status' })
   update(
     @Param('id') id: string,
-    @Body() body: { status?: string; sentAt?: string; errorMessage?: string },
+    @Body() body: UpdateReminderDto,
   ) {
     return this.remindersService.update(id, body);
   }

@@ -4,6 +4,7 @@ import {
   IsEmail,
   IsBoolean,
   IsDateString,
+  MaxLength,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -27,6 +28,12 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsString()
   celular?: string;
+
+  @ApiPropertyOptional({ description: 'Enlace a la carpeta existente en Google Drive' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  driveFolderUrl?: string | null;
 
   @ApiPropertyOptional({ example: 'Calle Reforma 123, CDMX' })
   @IsOptional()

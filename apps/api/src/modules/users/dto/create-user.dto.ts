@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   MinLength,
+  Matches,
   IsBoolean,
   IsDateString,
   IsUUID,
@@ -29,6 +30,7 @@ export class CreateUserDto {
   @ApiProperty({ example: 'securePassword123' })
   @IsString()
   @MinLength(6)
+  @Matches(/\S/u, { message: 'La contraseña no puede contener sólo espacios' })
   password: string;
 
   @ApiPropertyOptional({ example: '+52 55 1234 5678' })

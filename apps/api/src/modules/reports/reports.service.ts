@@ -1,29 +1,33 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { procedureTotals } from '@capillaris/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
 type Range = { start?: Date; end?: Date };
 
 function parseRange(startDate?: string, endDate?: string): Range {
-  return {
-    start: startDate ? new Date(startDate) : undefined,
-    end: endDate ? new Date(endDate) : undefined,
+  const parse = (value: string | undefined, end: boolean) => {
+    if (!value) return undefined;
+    const date = new Date(value);
+    const dayOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+    if (!Number.isFinite(date.getTime()) || (dayOnly && date.toISOString().slice(0, 10) !== value)) throw new BadRequestException('Fecha del reporte inválida');
+    return end ? new Date(date.getTime() + (dayOnly ? 86400000 : 1)) : date;
   };
+  const range = { start: parse(startDate, false), end: parse(endDate, true) };
+  if (range.start && range.end && range.start >= range.end) throw new BadRequestException('Rango del reporte inválido');
+  return range;
 }
 
 function getPreviousRange(r: Range): Range | null {
   if (!r.start || !r.end) return null;
   const ms = r.end.getTime() - r.start.getTime();
-  return {
-    start: new Date(r.start.getTime() - ms - 86400000),
-    end: new Date(r.start.getTime() - 86400000),
-  };
+  return { start: new Date(r.start.getTime() - ms), end: r.start };
 }
 
 function dateFilter(field: string, r: Range): any {
   if (!r.start && !r.end) return {};
   const f: any = {};
   if (r.start) f.gte = r.start;
-  if (r.end) f.lte = r.end;
+  if (r.end) f.lt = r.end;
   return { [field]: f };
 }
 
@@ -90,7 +94,7 @@ export class ReportsService {
     const where = dateFilter('procedureDate', r);
     const select = {
       id: true, patientId: true, sessionGroupId: true, procedureDate: true,
-      totalFoliculos: true,
+      totalFoliculos: true, cb1: true, cb2: true, cb3: true, cb4: true,
       doctors: { select: { doctor: { select: { id: true, nombre: true, apellido: true } } } },
       nurses: { select: { nurse: { select: { id: true, nombre: true, apellido: true } } } },
     } as const;
@@ -112,11 +116,11 @@ export class ReportsService {
       sessions.set(key, members);
     }
     const inRange = (date: number, range: Range) =>
-      (!range.start || date >= range.start.getTime()) && (!range.end || date <= range.end.getTime());
+      (!range.start || date >= range.start.getTime()) && (!range.end || date < range.end.getTime());
     const interventions = [...sessions.values()].map(members => ({
       start: Math.min(...members.map(m => m.procedureDate.getTime())),
-      follicles: members.some(m => m.totalFoliculos !== null)
-        ? members.reduce((sum, m) => sum + (m.totalFoliculos ?? 0), 0) : null,
+      follicles: members.some(m => procedureTotals(m).follicles !== null)
+        ? members.reduce((sum, m) => sum + (procedureTotals(m).follicles ?? 0), 0) : null,
       doctors: new Map(members.flatMap(m => m.doctors.map(d => [d.doctor.id, d.doctor] as const))),
       nurses: new Map(members.flatMap(m => (m.nurses ?? []).map(n => [n.nurse.id, n.nurse] as const))),
     }));
@@ -152,6 +156,8 @@ export class ReportsService {
       proceduresDelta: delta(totalProcedures, previousTotal),
       averageFollicles: totalFollicles === null ? null : totalFollicles / follicleValues.length,
       totalFollicles,
+      proceduresWithFollicles: follicleValues.length,
+      proceduresWithoutFollicles: current.length - follicleValues.length,
       byDoctor,
       byNurse,
     };

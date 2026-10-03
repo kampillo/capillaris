@@ -1,5 +1,55 @@
 # Enfermería: acceso individual y participación
 
+**Dirección vigente:** commit local en `develop` autorizado el 3 de octubre; no publicar ni declarar aceptado el proyecto. Ver [restricciones y plan de trabajo](direccion-de-trabajo.md). Las pruebas de septiembre descritas abajo son históricas y no sustituyen la validación pendiente de roles de los cambios posteriores. Las menciones a publicación requieren autorización expresa futura.
+
+## Estado vigente del desarrollo local — 21 de septiembre de 2026
+
+Última comprobación: a petición del usuario se inició el checkout habitual contra Neon **develop**, se verificó el ingreso del administrador y se aplicó allí la migración del rol Tratamientos. Ver [QA sobre develop y limpieza](qa-develop-enfermeria-2026-09-21.md). Producción permanece sin cambios en este bloque; las menciones siguientes a «no aplicada en Neon» describen el cierre previo, antes de esta autorización.
+
+Actualización posterior: se amplió el QA manual a petición del usuario. Ver [reporte manual y estado del entorno local](qa-manual-enfermeria-2026-09-21.md). En esa segunda revisión se reiniciaron los servicios aislados y quedaron disponibles en el puerto 3300; el cierre de servicios descrito más abajo corresponde a la primera verificación.
+
+El bloque de acceso quirúrgico sin asignación y el área separada de Tratamientos están implementados y verificados localmente. **No se han publicado.** Esta sección reemplaza las reglas de asignación descritas en el registro histórico de abajo; no describe el estado actualmente desplegado.
+
+- **Enfermería quirúrgica (`nurse`)**: búsqueda mínima por nombre/apellido de cualquier paciente no eliminado, sin asignación previa. Puede consultar, crear y editar reportes de procedimientos y seleccionar participantes por día. No puede crear pacientes, abrir el expediente completo, agenda, inventario, reportes, administración ni borrar o agrupar/separar procedimientos.
+- **Tratamientos (`treatment_staff`)**: área independiente para buscar pacientes, consultar el historial unificado y crear/editar aplicaciones de medicina capilar y micropigmentación. Utiliza los campos clínicos existentes; no necesita rol médico. No puede acceder a cirugía ni a los módulos generales, prescribir, modificar diagnósticos o eliminar tratamientos.
+- **Identidad y participación**: la cuenta autenticada determina quién capturó o editó; los médicos y enfermeros participantes se seleccionan expresamente por reporte diario. En Tratamientos, “Realizado por” se registra por separado de la autoría. No se infiere participación a partir del acceso o de la captura.
+- **Histórico**: se mantienen las asignaciones antiguas como historial, pero dejan de otorgar acceso. Las selecciones históricas de personal o tipos inactivos permanecen al editar, sin permitir nuevas selecciones inactivas. No se reasignaron autores, cuentas ni registros reales.
+- **Seguridad**: denegación por defecto en API y control de navegación. Las cuentas con roles mixtos que incluyan un rol restringido siguen restringidas; ambos roles restringidos juntos permiten las dos áreas, no administración. Cada petición verifica el estado actual de la cuenta. Las escrituras validan paciente, propiedad del registro y campos permitidos; no aceptan autores enviados por el navegador.
+- **Reportes existentes**: se conserva participación única por intervención y atribución al mes del primer día. No se modificaron fórmulas de folículos, cabellos ni reportes.
+
+### Migración y activación pendientes
+
+La nueva migración `20260921090000_treatment_staff_role` añade únicamente el rol Tratamientos, de forma idempotente. Fue probada junto con las otras once migraciones en una base PostgreSQL vacía y temporal local. **No se aplicó a Neon ni producción.** No activa ni modifica cuentas existentes.
+
+Para activar este bloque faltan aceptación del cliente, autorización de publicación y definición de qué personas tendrán cada rol individual. No mezclar roles restringidos con administración esperando obtener acceso completo. La migración debe preceder a la asignación del nuevo rol. La cuenta histórica compartida no se modificó.
+
+### Evidencia de cierre
+
+- 31/31 pruebas automatizadas aprobadas: `node --test scripts/tests/*.test.cjs`.
+- Comprobación de tipos API y web aprobada, esta última con `--incremental false`.
+- Instalación limpia, generación de Prisma y compilación completa API/web aprobadas en una copia temporal sin archivos de secretos. Node 24.18.0; Next.js 14.2.35. Avisos no bloqueantes de dependencias obsoletas y Browserslist; no se actualizaron dependencias en este bloque.
+- Prueba real HTTP → Nest/JWT → Prisma → PostgreSQL → lectura y auditoría aprobada mediante `scripts/tests/clinical-workspaces.local.e2e.cjs`. Valida roles aislados/mixtos, módulos prohibidos, cuenta desactivada, búsqueda mínima, cirugía sin asignación, edición por otra persona, participantes independientes por día, agrupación, autoría y tratamiento PRP/DUT/MICRO; sesión mayor de tres, limpieza de campos y conservación histórica. También rechaza cambios de propiedad, autoría falsificada, responsables inválidos y operaciones no autorizadas.
+- Navegador contra compilación de producción local: login de enfermería, búsqueda sin asignación, edición de reporte y participantes del primer día conservando el segundo; agenda por URL redirige al área permitida. Login de Tratamientos, historial MICRO, creación de sesión PRP número cinco, edición, recarga y persistencia, con autoría separada del responsable. URL de cirugía redirige al área de Tratamientos. Sin errores ni advertencias en la consola capturada.
+- Todo sobre datos y cuentas ficticias de una base exclusiva en `127.0.0.1:55439`, aplicación en 3300 y API en 3301. No se ejecutó la prueba antigua contra develop.
+- Al cerrar la verificación se cerró la sesión y pestaña QA, y se detuvieron web, API y PostgreSQL temporales. Los archivos temporales contienen únicamente la copia de código sin secretos y datos sintéticos; no se eliminaron archivos del usuario.
+- Guías de React/Next.js orientaron componentes y separación de acceso; la guía de verificación orientó la prueba completa navegador → API → base → resultado.
+
+La prueba local requiere una base **vacía** llamada `capillaris_enfermeria_test` en el puerto 55439 y rechaza otros destinos o una base con tablas. Ejemplo, con PostgreSQL local ya preparado:
+
+```sh
+CAPILLARIS_TEST_DATABASE_URL=postgresql://capillaris_test@127.0.0.1:55439/capillaris_enfermeria_test node scripts/tests/clinical-workspaces.local.e2e.cjs
+```
+
+`--serve` conserva la API en 3301 para revisión visual manual; no es un modo de publicación. Las credenciales que figuran en ese script son únicamente de las cuentas sintéticas de esta prueba local.
+
+### Fuera de este bloque
+
+Las diferencias de los cuatro formatos físicos están documentadas en [Comparación de formatos](comparacion-formatos-enfermeria-2026-09-21.md). No se agregaron placas, medicamentos/dosis, signos vitales seriados, campos extra de micropigmentación ni consentimientos nuevos. Tampoco se expone todavía una indicación médica vigente o alergias como contexto de Tratamientos: falta acordar su fuente clínica autorizada. No se comprobó la integridad de la importación histórica en una base real. CRM/Brevo/Kommo quedan fuera de este bloque.
+
+## Registro histórico — 11 de septiembre de 2026 (reglas anteriores)
+
+Lo siguiente conserva evidencia del trabajo anterior. Las reglas de asignación y pendientes de aquella fecha **no son las reglas del nuevo código local**; consultar arriba.
+
 Implementación local verificada el 11 de septiembre de 2026. Base: Neon **develop**, proyecto Capillaris (`holy-sea-52982481`), branch `br-green-dew-anwbw5sf`. No se desplegó ni migró producción.
 
 ## Operación

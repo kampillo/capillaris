@@ -112,12 +112,13 @@ export function StockMovementForm({
             <SelectContent>
               <SelectItem value="entrada">Entrada</SelectItem>
               <SelectItem value="salida">Salida</SelectItem>
-              <SelectItem value="ajuste">Ajuste</SelectItem>
+
             </SelectContent>
           </Select>
         </div>
       )}
 
+      <p className="text-xs text-muted-foreground">Para corregir existencias usa Entrada o Salida y la razón Ajuste manual. La cantidad indica cuánto agregar o retirar.</p>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Cantidad <span className="text-destructive">*</span></Label>

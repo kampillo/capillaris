@@ -20,6 +20,7 @@ model User {
   apellido           String    @db.VarChar(100)
   email              String    @unique @db.VarChar(255)
   passwordHash       String    @map("password_hash") @db.VarChar(255)
+  authVersion        Int       @default(0) @map("auth_version")
   celular            String?   @db.VarChar(20)
   cedulaProfesional  String?   @map("cedula_profesional") @db.VarChar(50)
   fechaNacimiento    DateTime? @map("fecha_nacimiento") @db.Date
@@ -46,6 +47,7 @@ model User {
   remindersCreated           Reminder[]             @relation("ReminderCreatedBy")
   treatmentsRealizados       Treatment[]            @relation("TreatmentsRealizados")
   googleToken                GoogleToken?
+  googleOAuthStates          GoogleOAuthState[]
 
   @@index([email])
   @@index([isActive])
@@ -124,6 +126,7 @@ model Patient {
   email                 String?   @db.VarChar(255)
   celular               String?   @db.VarChar(20)
   celularNormalized     String?   @map("celular_normalized") @db.VarChar(20)
+  driveFolderUrl        String?   @map("drive_folder_url") @db.VarChar(1000)
   direccion             String?   @db.Text
   fechaNacimiento       DateTime? @map("fecha_nacimiento") @db.Date
   edadApproximada       Boolean   @default(false) @map("edad_approximada")
@@ -151,6 +154,7 @@ model Patient {
   // Deshacer una fusión exige saberlo con exactitud — filtrar por fecha
   // devolvería también los registros que ya eran del expediente conservado.
   mergedRecordIds       Json?     @map("merged_record_ids")
+  mergedFieldSnapshot   Json?     @map("merged_field_snapshot")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
   deletedAt             DateTime? @map("deleted_at")
@@ -593,6 +597,7 @@ model PhysicalExploration {
   temperatura       Decimal? @db.Decimal(4, 1)
   peso              Decimal? @db.Decimal(5, 2)
   talla             Decimal? @db.Decimal(5, 2)
+  tallaUnidad       String?  @map("talla_unidad") @db.VarChar(2)
   description       String?  @db.Text
 
   // Relations
@@ -962,4 +967,14 @@ model GoogleToken {
   user User @relation(fields: [userId], references: [id])
 
   @@map("google_tokens")
+}
+
+// One-use, expiring server-side OAuth correlation; never a user ID in public state.
+model GoogleOAuthState {
+  digest    String   @id @db.VarChar(64)
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+  @@map("google_oauth_states")
 }

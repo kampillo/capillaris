@@ -6,6 +6,7 @@ import {
   IsDateString,
   IsInt,
   Min,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -49,5 +50,6 @@ export class CreateAppointmentDto {
   @ApiPropertyOptional({ example: 'scheduled' })
   @IsOptional()
   @IsString()
+  @IsIn(['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show', 'rescheduled'])
   status?: string;
 }

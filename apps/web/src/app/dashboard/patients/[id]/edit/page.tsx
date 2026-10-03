@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Link, { usePatientContextHref } from '@/components/patients/patient-context-link';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PatientForm } from '@/components/patients/patient-form';
@@ -16,6 +16,8 @@ export default function EditPatientPage({
   params: { id: string };
 }) {
   const router = useRouter();
+  const patientHref = usePatientContextHref(`/dashboard/patients/${params.id}`);
+  const backToList = usePatientContextHref('/dashboard/patients');
   const { data: patient, isLoading, error } = usePatient(params.id);
   const updateMutation = useUpdatePatient();
   const authorized = useRequireRole('admin', 'doctor', 'receptionist');
@@ -23,7 +25,7 @@ export default function EditPatientPage({
 
   const handleSubmit = async (data: PatientFormValues) => {
     const cleaned = Object.fromEntries(
-      Object.entries(data).filter(([, v]) => v !== '' && v !== undefined),
+      Object.entries(data).filter(([, v]) => v !== undefined).map(([key, value]) => [key, value === '' && !['nombre', 'apellido', 'tipoPaciente', 'pais'].includes(key) ? null : value]),
     );
 
     if (typeof cleaned.fechaNacimiento === 'string') {
@@ -37,7 +39,7 @@ export default function EditPatientPage({
         id: params.id,
         data: cleaned as any,
       });
-      router.push(`/dashboard/patients/${params.id}`);
+      router.push(patientHref);
     } catch {
       // captured in updateMutation.error
     }
@@ -58,7 +60,7 @@ export default function EditPatientPage({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => router.push('/dashboard/patients')}
+          onClick={() => router.push(backToList)}
         >
           Volver a pacientes
         </Button>
@@ -73,6 +75,8 @@ export default function EditPatientPage({
     celular: patient.celular || '',
     direccion: patient.direccion || '',
     fechaNacimiento: toDateInput(patient.fechaNacimiento),
+    edadApproximada: patient.edadApproximada ?? false,
+    driveFolderUrl: patient.driveFolderUrl ?? '',
     genero: patient.genero || '',
     estadoCivil: patient.estadoCivil || '',
     ocupacion: patient.ocupacion || '',
@@ -112,7 +116,7 @@ export default function EditPatientPage({
       <PatientForm
         defaultValues={defaultValues}
         onSubmit={handleSubmit}
-        onCancel={() => router.push(`/dashboard/patients/${params.id}`)}
+        onCancel={() => router.push(patientHref)}
         isLoading={updateMutation.isPending}
         submitLabel="Actualizar paciente"
       />

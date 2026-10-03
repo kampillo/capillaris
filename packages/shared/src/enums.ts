@@ -141,4 +141,5 @@ export enum UserRole {
   RECEPTIONIST = 'receptionist',
   INVENTORY_MANAGER = 'inventory_manager',
   NURSE = 'nurse',
+  TREATMENT_STAFF = 'treatment_staff',
 }

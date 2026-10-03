@@ -15,7 +15,7 @@ function service(rows) {
     if (where.OR) return where.OR.some(w => matches(row, w));
     if (where.sessionGroupId) return where.sessionGroupId.in.includes(row.sessionGroupId);
     const date = where.procedureDate;
-    return !date || ((!date.gte || row.procedureDate >= date.gte) && (!date.lte || row.procedureDate <= date.lte));
+    return !date || ((!date.gte || row.procedureDate >= date.gte) && (!date.lt || row.procedureDate < date.lt));
   }
   return new ReportsService({ procedureReport: {
     findMany: async ({ where }) => rows.filter(row => matches(row, where)),

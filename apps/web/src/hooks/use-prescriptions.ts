@@ -37,6 +37,8 @@ export interface Prescription {
 }
 
 export interface CreatePrescriptionItemData {
+  id?: string;
+  refillReminderDays?: number;
   productId?: string;
   medicineName: string;
   dosage?: string;

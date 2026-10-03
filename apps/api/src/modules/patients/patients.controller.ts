@@ -7,9 +7,12 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Response } from 'express';
+import { AuditWriterService } from '../../common/audit/audit-writer.service';
 import { PatientsService } from './patients.service';
 import { PatientMergeService } from './patient-merge.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
@@ -32,6 +35,7 @@ export class PatientsController {
   constructor(
     private readonly patientsService: PatientsService,
     private readonly mergeService: PatientMergeService,
+    private readonly audit: AuditWriterService,
   ) {}
 
   @Post()
@@ -72,11 +76,23 @@ export class PatientsController {
     return this.patientsService.search(searchDto);
   }
 
+  @Get('export')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Exportar todos los pacientes del filtro para conciliación, sin datos clínicos' })
+  async exportPatients(@Query() dto: SearchPatientsDto, @Res() res: Response) {
+    const workbook = await this.patientsService.exportPatients(dto);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="pacientes-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+    res.setHeader('Cache-Control', 'no-store');
+    await this.audit.write({ action: 'EXPORT', entityType: 'patient_reconciliation', newValues: { format: 'xlsx' } });
+    res.send(workbook);
+  }
+
   @Get(':id')
   @Roles('admin', 'doctor', 'receptionist', 'inventory_manager')
   @ApiOperation({ summary: 'Get a patient by ID' })
-  findOne(@Param('id') id: string) {
-    return this.patientsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser('roles') roles: string[]) {
+    return this.patientsService.findOneForRoles(id, roles);
   }
 
   @Put(':id')

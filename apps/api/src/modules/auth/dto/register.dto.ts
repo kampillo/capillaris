@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -23,5 +23,6 @@ export class RegisterDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
+  @Matches(/\S/u, { message: 'La contraseña no puede contener sólo espacios' })
   password: string;
 }

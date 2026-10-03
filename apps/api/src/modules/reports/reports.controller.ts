@@ -14,6 +14,7 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('patients')
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Patients report (KPIs + monthly series)' })
   getPatientsReport(
     @Query('startDate') startDate?: string,
@@ -23,6 +24,7 @@ export class ReportsController {
   }
 
   @Get('procedures')
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Procedures report (KPIs + by doctor)' })
   getProceduresReport(
     @Query('startDate') startDate?: string,
@@ -32,6 +34,7 @@ export class ReportsController {
   }
 
   @Get('appointments')
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Appointments report (status distribution + rates)' })
   getAppointmentsReport(
     @Query('startDate') startDate?: string,
@@ -41,6 +44,7 @@ export class ReportsController {
   }
 
   @Get('prescriptions')
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Prescriptions report (issued + active)' })
   getPrescriptionsReport(
     @Query('startDate') startDate?: string,
@@ -59,6 +63,7 @@ export class ReportsController {
   }
 
   @Get('sources')
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Patient sources / channels (marketing)' })
   getSourcesReport(
     @Query('startDate') startDate?: string,
@@ -68,6 +73,7 @@ export class ReportsController {
   }
 
   @Get('clinical')
+  @Roles('admin', 'doctor')
   @ApiOperation({ summary: 'Clinical insights (variants + donor zones)' })
   getClinicalReport(
     @Query('startDate') startDate?: string,

@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, Max, IsIn } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -34,6 +34,7 @@ export class SearchPatientsDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(200)
   pageSize?: number;
 
   @ApiPropertyOptional({ enum: PATIENT_SORT_FIELDS })

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
@@ -8,7 +8,11 @@ import {
   PatientSortField,
 } from './dto/search-patients.dto';
 
+import { patientValues } from './patient-values';
+import { createWorkbook } from '../../common/exports/xlsx';
+
 type SortOrder = 'asc' | 'desc';
+const PATIENT_LIST_SELECT = { id: true, nombre: true, apellido: true, email: true, celular: true, fechaNacimiento: true, edadApproximada: true, tipoPaciente: true, origenCanal: true, ciudad: true, estado: true, pais: true, createdAt: true, updatedAt: true } as const;
 
 const SORT_ORDERBY_PRISMA: Record<
   PatientSortField,
@@ -33,7 +37,7 @@ function resolveSort(
   sortBy?: PatientSortField,
   sortOrder?: SortOrder,
 ): { field: PatientSortField; dir: SortOrder } {
-  const field: PatientSortField = sortBy ?? 'createdAt';
+  const field: PatientSortField = sortBy && sortBy in SORT_RAW_SQL ? sortBy : 'createdAt';
   const dir: SortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
   return { field, dir };
 }
@@ -45,7 +49,7 @@ export class PatientsService {
   async create(createPatientDto: CreatePatientDto, userId?: string) {
     return this.prisma.patient.create({
       data: {
-        ...createPatientDto,
+        ...patientValues(createPatientDto),
         createdBy: userId,
       } as any,
     });
@@ -57,8 +61,9 @@ export class PatientsService {
     sortBy?: PatientSortField,
     sortOrder?: SortOrder,
   ) {
-    const p = page && !isNaN(page) ? page : 1;
-    const ps = pageSize && !isNaN(pageSize) ? pageSize : 20;
+    const p = Number(page ?? 1);
+    const ps = Number(pageSize ?? 20);
+    if (!Number.isInteger(p) || p < 1 || !Number.isInteger(ps) || ps < 1 || ps > 200) throw new BadRequestException('Paginación inválida');
     const skip = (p - 1) * ps;
     const { field, dir } = resolveSort(sortBy, sortOrder);
 
@@ -67,6 +72,7 @@ export class PatientsService {
         where: { deletedAt: null },
         skip,
         take: ps,
+        select: PATIENT_LIST_SELECT,
         orderBy: SORT_ORDERBY_PRISMA[field](dir),
       }),
       this.prisma.patient.count({ where: { deletedAt: null } }),
@@ -81,6 +87,13 @@ export class PatientsService {
         totalPages: Math.ceil(total / ps),
       },
     };
+  }
+
+  async findOneForRoles(id: string, roles: string[]) {
+    if (roles.some(role => ['admin', 'doctor', 'receptionist'].includes(role))) return this.findOne(id);
+    const patient = await this.prisma.patient.findFirst({ where: { id, deletedAt: null }, select: { id: true, nombre: true, apellido: true, email: true, celular: true } });
+    if (!patient) throw new NotFoundException('Paciente no encontrado');
+    return patient;
   }
 
   async findOne(id: string) {
@@ -114,22 +127,8 @@ export class PatientsService {
     return { ...patient, procedureCount };
   }
 
-  async search(searchDto: SearchPatientsDto) {
-    const {
-      query,
-      tipoPaciente,
-      page = 1,
-      pageSize = 20,
-      sortBy,
-      sortOrder,
-    } = searchDto;
-    const skip = (page - 1) * pageSize;
-    const { field, dir } = resolveSort(sortBy, sortOrder);
-    const orderBySql = Prisma.raw(
-      SORT_RAW_SQL[field].replaceAll('{{dir}}', dir.toUpperCase()),
-    );
-
-    const tokens = (query ?? '').trim().split(/\s+/).filter(Boolean);
+  private searchWhere(searchDto: SearchPatientsDto): Prisma.Sql {
+    const tokens = (searchDto.query ?? '').trim().split(/\s+/).filter(Boolean);
 
     const conditions: Prisma.Sql[] = [Prisma.sql`deleted_at IS NULL`];
 
@@ -152,11 +151,51 @@ export class PatientsService {
       conditions.push(Prisma.sql`(${Prisma.join(tokenConditions, ' OR ')})`);
     }
 
-    if (tipoPaciente) {
-      conditions.push(Prisma.sql`tipo_paciente = ${tipoPaciente}`);
+    if (searchDto.tipoPaciente) {
+      conditions.push(Prisma.sql`tipo_paciente = ${searchDto.tipoPaciente}`);
     }
 
-    const whereClause = Prisma.join(conditions, ' AND ');
+    return Prisma.join(conditions, ' AND ');
+
+  }
+
+  async exportPatients(searchDto: SearchPatientsDto) {
+    const where = this.searchWhere(searchDto);
+    const exportedAt = new Date().toISOString();
+    const patients = await this.prisma.$transaction(async tx => {
+      const totals = await tx.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint AS count FROM patients WHERE ${where}`;
+      if (Number(totals[0]?.count ?? 0) > 20000) throw new BadRequestException('La exportación supera 20000 pacientes; aplica un filtro');
+      const ids = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM patients WHERE ${where} ORDER BY nombre ASC, apellido ASC, id ASC`;
+      return tx.patient.findMany({ where: { id: { in: ids.map(row => row.id) } }, orderBy: [{ nombre: 'asc' }, { apellido: 'asc' }, { id: 'asc' }], select: {
+        id: true, legacyId: true, nombre: true, apellido: true, email: true, celular: true, celularNormalized: true,
+        fechaNacimiento: true, edadApproximada: true, tipoPaciente: true, origenCanal: true, ciudad: true, estado: true,
+        pais: true, createdAt: true, updatedAt: true,
+      } });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+    const columns = ['ID sistema', 'ID histórico', 'Nombre', 'Apellido', 'Email', 'Teléfono original', 'Teléfono normalizado', 'Fecha nacimiento', 'Calidad fecha', 'Tipo', 'Origen', 'Ciudad', 'Estado', 'País', 'Creado UTC', 'Actualizado UTC'];
+    const rows = patients.map(p => [p.id, p.legacyId?.toString() ?? '', p.nombre, p.apellido, p.email, p.celular, p.celularNormalized,
+      p.fechaNacimiento?.toISOString().slice(0, 10), !p.fechaNacimiento ? 'Sin registrar' : p.edadApproximada ? 'Aproximada' : 'Confirmada', p.tipoPaciente, p.origenCanal,
+      p.ciudad, p.estado, p.pais, p.createdAt.toISOString(), p.updatedAt.toISOString()]);
+    return createWorkbook([
+      { name: 'Conciliación', rows: [['Exportado UTC', exportedAt], ['Pacientes incluidos', patients.length], ['Búsqueda', searchDto.query ?? ''], ['Tipo', searchDto.tipoPaciente ?? 'Todos'], ['Alcance', 'Todos los resultados del filtro; excluye expedientes eliminados o absorbidos. Sin notas clínicas.'], ['Identidad', 'Los ID conservan su origen. Esta exportación no fusiona registros ni presupone igualdad con el CRM.']] },
+      { name: 'Pacientes', rows: [columns, ...rows], autoFilter: true },
+    ]);
+  }
+
+  async search(searchDto: SearchPatientsDto) {
+    const {
+      page = 1,
+      pageSize = 20,
+      sortBy,
+      sortOrder,
+    } = searchDto;
+    const skip = (page - 1) * pageSize;
+    const { field, dir } = resolveSort(sortBy, sortOrder);
+    const orderBySql = Prisma.raw(
+      SORT_RAW_SQL[field].replaceAll('{{dir}}', dir.toUpperCase()) + ', id ASC',
+    );
+
+    const whereClause = this.searchWhere(searchDto);
 
     const idRows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM patients
@@ -173,7 +212,7 @@ export class PatientsService {
 
     const ids = idRows.map((r) => r.id);
     const unordered = ids.length
-      ? await this.prisma.patient.findMany({ where: { id: { in: ids } } })
+      ? await this.prisma.patient.findMany({ where: { id: { in: ids } }, select: PATIENT_LIST_SELECT })
       : [];
     const byId = new Map(unordered.map((p) => [p.id, p]));
     const data = ids.map((id) => byId.get(id)).filter(Boolean);
@@ -194,7 +233,7 @@ export class PatientsService {
     return this.prisma.patient.update({
       where: { id },
       data: {
-        ...updatePatientDto,
+        ...patientValues(updatePatientDto),
         updatedBy: userId,
       } as any,
     });

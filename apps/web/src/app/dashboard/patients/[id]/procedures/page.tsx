@@ -1,7 +1,8 @@
 'use client';
 
+import { procedureTotals } from '@capillaris/shared';
 import { useState, useMemo } from 'react';
-import Link from 'next/link';
+import Link from '@/components/patients/patient-context-link';
 import {
   ChevronLeft,
   Plus,
@@ -287,19 +288,10 @@ function TarjetaSesion({
     );
   }
 
-  const foliculos = sesion.dias.reduce((n, d) => {
-    const suma = (d.cb1 ?? 0) + (d.cb2 ?? 0) + (d.cb3 ?? 0) + (d.cb4 ?? 0);
-    return n + (d.totalFoliculos ?? suma);
-  }, 0);
-  const pelos = sesion.dias.reduce(
-    (n, d) =>
-      n + (d.cb1 ?? 0) + (d.cb2 ?? 0) * 2 + (d.cb3 ?? 0) * 3 + (d.cb4 ?? 0) * 4,
-    0,
-  );
-  const sumaCb = sesion.dias.reduce(
-    (n, d) => n + (d.cb1 ?? 0) + (d.cb2 ?? 0) + (d.cb3 ?? 0) + (d.cb4 ?? 0),
-    0,
-  );
+  const totals = sesion.dias.map(procedureTotals);
+  const foliculos = totals.some(t => t.follicles != null) ? totals.reduce((sum, t) => sum + (t.follicles ?? 0), 0) : null;
+  const pelos = totals.reduce((sum, t) => sum + (t.hairs ?? 0), 0);
+  const sumaCb = sesion.dias.reduce((sum, day) => sum + [day.cb1, day.cb2, day.cb3, day.cb4].reduce<number>((n, v) => n + (v ?? 0), 0), 0);
 
   return (
     <section className="rounded-xl border-2 border-brand/30 bg-brand-softer/40 p-1.5">
@@ -317,7 +309,7 @@ function TarjetaSesion({
           <div>
             <div className="cap-eyebrow">Total folículos</div>
             <div className="cap-mono text-xl font-semibold text-brand-dark">
-              {foliculos.toLocaleString()}
+              {foliculos?.toLocaleString() ?? 'Sin registrar'}
             </div>
           </div>
           {pelos > 0 && (
@@ -438,12 +430,10 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
   const cb3 = procedure.cb3 ?? 0;
   const cb4 = procedure.cb4 ?? 0;
   const folicullesSum = cb1 + cb2 + cb3 + cb4;
-  const hairCount = cb1 + cb2 * 2 + cb3 * 3 + cb4 * 4;
-  const displayTotal = procedure.totalFoliculos ?? folicullesSum;
-  // Se calcula sobre la suma de CB, no sobre totalFoliculos: el total puede
-  // capturarse a mano y no siempre cuadra con la distribución.
-  const coeficiente =
-    folicullesSum > 0 ? (hairCount / folicullesSum).toFixed(2) : null;
+  const totals = procedureTotals(procedure);
+  const displayTotal = totals.follicles;
+  const hairCount = totals.hairs;
+  const coeficiente = totals.coefficient?.toFixed(2);
 
   const anesthesiaRows: Array<{
     label: string;
@@ -507,9 +497,9 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
             </span>
           )}
         </div>
-        {(displayTotal > 0 || hairCount > 0) && (
+        {(displayTotal != null || hairCount != null) && (
           <div className="flex items-start gap-6 text-right">
-            {displayTotal > 0 && (
+            {displayTotal != null && (
               <div>
                 <div className="cap-eyebrow">Total folículos</div>
                 <div className="cap-mono text-xl font-semibold text-brand-dark">
@@ -517,7 +507,7 @@ function ProcedureCard({ procedure }: { procedure: ProcedureReport }) {
                 </div>
               </div>
             )}
-            {hairCount > 0 && (
+            {hairCount != null && (
               <div>
                 <div className="cap-eyebrow">Total pelos</div>
                 <div className="cap-mono text-xl font-semibold text-brand-dark">
@@ -1271,16 +1261,16 @@ export default function PatientProceduresPage({
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="cap-h2 mb-1">Procedimientos</h2>
+          <h2 className="cap-h2 mb-1">Intervenciones</h2>
           <p className="text-[13px] text-text-secondary">
             {procedures
-              ? `${sesiones.length} procedimiento${sesiones.length === 1 ? '' : 's'} · ${procedures.length} reporte${procedures.length === 1 ? '' : 's'} diario${procedures.length === 1 ? '' : 's'}`
+              ? `${sesiones.length} ${sesiones.length === 1 ? 'intervención' : 'intervenciones'} · ${procedures.length} ${procedures.length === 1 ? 'reporte diario' : 'reportes diarios'}`
               : 'Cargando...'}
           </p>
         </div>
         {!showForm && canWrite && (
           <Button size="sm" className="gap-1.5" onClick={() => setShowForm(true)}>
-            <Plus className="h-3.5 w-3.5" /> Nuevo procedimiento
+            <Plus className="h-3.5 w-3.5" /> Nuevo reporte diario
           </Button>
         )}
       </div>

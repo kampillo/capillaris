@@ -1,5 +1,6 @@
 'use client';
 
+import { prescriptionItemPayload } from '@/lib/prescription-items';
 import { useState, useMemo } from 'react';
 import {
   Search,
@@ -280,15 +281,7 @@ export function PrescriptionForm({
         prescriptionDate: fechaEmision,
         notas: notas.trim() || undefined,
         status: defaultValues?.status ?? 'active',
-        items: validItems.map(({ key, ...rest }) => ({
-          ...rest,
-          medicineName: rest.medicineName.trim(),
-          dosage: rest.dosage?.trim() || undefined,
-          frequency: rest.frequency?.trim() || undefined,
-          durationDays: rest.durationDays || undefined,
-          instructions: rest.instructions?.trim() || undefined,
-          productId: rest.productId || undefined,
-        })),
+        items: validItems.map(prescriptionItemPayload),
       });
     } catch (err: any) {
       setError(err?.message || 'Error al guardar');

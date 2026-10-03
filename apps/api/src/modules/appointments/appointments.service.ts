@@ -12,10 +12,19 @@ export class AppointmentsService {
     private readonly googleCalendarService: GoogleCalendarService,
   ) {}
 
+  private dateValues(startValue: string | Date, endValue: string | Date) {
+    const startDatetime = new Date(startValue);
+    const endDatetime = new Date(endValue);
+    if (!Number.isFinite(startDatetime.getTime()) || !Number.isFinite(endDatetime.getTime()) || endDatetime <= startDatetime) throw new BadRequestException('La cita debe terminar después de su inicio');
+    return { startDatetime, endDatetime, durationMinutes: Math.round((endDatetime.getTime() - startDatetime.getTime()) / 60000) };
+  }
+
   async create(createAppointmentDto: CreateAppointmentDto, userId?: string) {
+    const dates = this.dateValues(createAppointmentDto.startDatetime, createAppointmentDto.endDatetime);
     const appointment = await this.prisma.appointment.create({
       data: {
         ...createAppointmentDto,
+        ...dates,
         createdBy: userId,
       } as any,
       include: {
@@ -118,11 +127,13 @@ export class AppointmentsService {
   }
 
   async update(id: string, updateAppointmentDto: UpdateAppointmentDto, userId?: string) {
-    await this.findOne(id);
+    const current = await this.findOne(id);
+    const dates = this.dateValues(updateAppointmentDto.startDatetime ?? current.startDatetime, updateAppointmentDto.endDatetime ?? current.endDatetime);
     const appointment = await this.prisma.appointment.update({
       where: { id },
       data: {
         ...updateAppointmentDto,
+        ...dates,
         updatedBy: userId,
       } as any,
       include: {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -83,22 +83,16 @@ export class RemindersService {
     return reminder;
   }
 
-  async update(id: string, data: { status?: string; sentAt?: string; errorMessage?: string }) {
-    await this.findOne(id);
-    return this.prisma.reminder.update({
-      where: { id },
-      data: {
-        ...data,
-        sentAt: data.sentAt ? new Date(data.sentAt) : undefined,
-      } as any,
-    });
+  async update(id: string, data: { status: string }) {
+    if (!['pending', 'cancelled'].includes(data.status)) throw new BadRequestException('Estado de recordatorio inválido');
+    const current = await this.findOne(id);
+    if (['sent', 'processing'].includes(current.status)) throw new BadRequestException('El recordatorio ya fue enviado o está en proceso');
+    const changed = await this.prisma.reminder.updateMany({ where: { id, status: current.status }, data: { status: data.status, sentAt: null, errorMessage: null } });
+    if (changed.count !== 1) throw new BadRequestException('El recordatorio cambió; recarga la página');
+    return this.findOne(id);
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prisma.reminder.update({
-      where: { id },
-      data: { status: 'cancelled' },
-    });
+    return this.update(id, { status: 'cancelled' });
   }
 }

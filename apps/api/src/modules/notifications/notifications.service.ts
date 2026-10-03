@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import * as nodemailer from 'nodemailer';
 
+function escapeHtml(value: string) { return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
 export interface NotificationPayload {
   to: string;
   subject: string;
@@ -35,31 +37,27 @@ export class NotificationsService {
       this.logger.log(`Email transporter configured: ${host}:${port}`);
     } else {
       this.logger.warn(
-        'SMTP not configured (missing SMTP_HOST/SMTP_USER/SMTP_PASS). Email notifications will be logged only.',
+        'SMTP not configured (missing SMTP_HOST/SMTP_USER/SMTP_PASS). Email notifications will fail until configured.',
       );
     }
   }
 
   async sendNotification(payload: NotificationPayload): Promise<boolean> {
-    this.logger.log(
-      `Sending ${payload.channel} notification to ${payload.to}: ${payload.subject}`,
-    );
+    if (!['internal', 'email'].includes(payload.channel)) throw new Error('Canal de notificación no implementado');
 
     if (payload.channel === 'email') {
       return this.sendEmail(payload);
     }
 
     // Internal: log for now (consumed via reminders API)
-    this.logger.log(`[INTERNAL] ${payload.subject}: ${payload.body}`);
+    this.logger.log('Recordatorio interno disponible');
     return true;
   }
 
   private async sendEmail(payload: NotificationPayload): Promise<boolean> {
     if (!this.transporter) {
-      this.logger.warn(
-        `Email not sent (SMTP not configured): to=${payload.to} subject=${payload.subject}`,
-      );
-      return true; // Don't fail — just log
+      this.logger.warn('Email no enviado: SMTP no configurado');
+      return false;
     }
 
     const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@capillaris.com';
@@ -74,9 +72,8 @@ export class NotificationsService {
       this.logger.log(`Email sent: ${info.messageId}`);
       return true;
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Email send failed: ${msg}`);
-      throw new Error(`Error al enviar email: ${msg}`);
+      this.logger.error('Email send failed');
+      throw new Error('No se pudo entregar el email');
     }
   }
 
@@ -87,7 +84,7 @@ export class NotificationsService {
       <head><meta charset="utf-8"></head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #f8f9fa; border-radius: 8px; padding: 24px; margin-bottom: 20px;">
-          <h2 style="margin: 0 0 8px; color: #1a1a1a;">${subject}</h2>
+          <h2 style="margin: 0 0 8px; color: #1a1a1a;">${escapeHtml(subject)}</h2>
           <div style="color: #4a4a4a; line-height: 1.6;">${body}</div>
         </div>
         <p style="font-size: 12px; color: #999; text-align: center;">
@@ -116,10 +113,14 @@ export class NotificationsService {
     );
 
     for (const reminder of pendingReminders) {
+      const claimed = await this.prisma.reminder.updateMany({ where: { id: reminder.id, status: 'pending' }, data: { status: 'processing' } });
+      if (claimed.count !== 1) continue;
       try {
         const recipientEmail = reminder.patient.email;
-        const recipientPhone = reminder.patient.celular;
+
         const channel = reminder.channel as 'internal' | 'email';
+        if (!['internal', 'email'].includes(channel)) throw new Error('Canal no implementado');
+        if (channel === 'email' && !recipientEmail) throw new Error('El paciente no tiene email');
 
         // Build message from template + variables
         let messageBody = reminder.messageTemplate || 'Tiene un recordatorio programado.';
@@ -132,16 +133,18 @@ export class NotificationsService {
 
         const subject = `Recordatorio: ${this.getReminderTypeLabel(reminder.reminderType)}`;
 
-        await this.sendNotification({
-          to: channel === 'email' ? (recipientEmail || recipientPhone || '') : '',
+        const sent = await this.sendNotification({
+          to: channel === 'email' ? recipientEmail! : '',
           subject,
           body: `
-            <p>Estimado/a <strong>${reminder.patient.nombre} ${reminder.patient.apellido}</strong>,</p>
-            <p>${messageBody}</p>
+            <p>Estimado/a <strong>${escapeHtml(reminder.patient.nombre)} ${escapeHtml(reminder.patient.apellido)}</strong>,</p>
+            <p>${escapeHtml(messageBody)}</p>
           `,
           channel,
           patientId: reminder.patientId,
         });
+
+        if (!sent) throw new Error('No se entregó la notificación');
 
         await this.prisma.reminder.update({
           where: { id: reminder.id },

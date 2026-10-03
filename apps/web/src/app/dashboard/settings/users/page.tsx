@@ -122,6 +122,10 @@ export default function UsersManagementPage() {
       setFormError('Nombre, apellido, email y contraseña son requeridos');
       return;
     }
+    if (!/\S/u.test(password)) {
+      setFormError('La contraseña no puede contener sólo espacios');
+      return;
+    }
     if (!roleId) {
       setFormError('Debes seleccionar un rol');
       return;

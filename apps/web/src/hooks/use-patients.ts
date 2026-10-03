@@ -8,6 +8,7 @@ export interface Patient {
   email?: string;
   celular?: string;
   direccion?: string;
+  driveFolderUrl?: string | null;
   fechaNacimiento?: string;
   edadApproximada?: boolean;
   genero?: string;

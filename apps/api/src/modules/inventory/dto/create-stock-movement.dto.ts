@@ -5,6 +5,7 @@ import {
   IsUUID,
   IsInt,
   Min,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -14,9 +15,10 @@ export class CreateStockMovementDto {
   @IsNotEmpty()
   productId: string;
 
-  @ApiProperty({ example: 'entrada', description: 'entrada | salida | ajuste' })
+  @ApiProperty({ example: 'entrada', description: 'entrada | salida; usa la dirección explícita para corregir existencias' })
   @IsString()
   @IsNotEmpty()
+  @IsIn(['entrada', 'salida'])
   movementType: string;
 
   @ApiProperty({
@@ -25,6 +27,7 @@ export class CreateStockMovementDto {
   })
   @IsString()
   @IsNotEmpty()
+  @IsIn(['compra', 'prescripcion', 'procedimiento', 'ajuste_manual', 'merma', 'devolucion'])
   reason: string;
 
   @ApiProperty({ example: 10 })

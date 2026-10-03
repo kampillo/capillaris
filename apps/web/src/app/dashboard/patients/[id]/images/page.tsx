@@ -1,43 +1,24 @@
-'use client';
-
-import Link from 'next/link';
-import { ArrowLeft, ImageIcon } from 'lucide-react';
+ 'use client';
+import Link from '@/components/patients/patient-context-link';
+import { usePatient } from '@/hooks/use-patients';
+import { useHasRole, useRequireRole } from '@/hooks/use-has-role';
+import { normalizeDriveFolderUrl } from '@capillaris/shared';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
-
-export default function PatientImagesPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" asChild>
-          <Link href={`/dashboard/patients/${params.id}`}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Imágenes</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Galería de imágenes del paciente
-          </p>
-        </div>
-      </div>
-
-      <Card className="shadow-sm">
-        <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">La galería de imágenes estará disponible próximamente</p>
-          <p className="text-xs text-muted-foreground">Subida de fotos, categorías y comparación antes/después</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
+export default function PatientDrivePage({ params }: { params: { id: string } }) {
+  const allowed = useRequireRole('admin', 'doctor', 'receptionist');
+  const canEdit = useHasRole('admin', 'doctor', 'receptionist');
+  const { data: patient, isLoading, error } = usePatient(params.id);
+  if (!allowed) return null;
+  let folder: string | null = null;
+  try { folder = normalizeDriveFolderUrl(patient?.driveFolderUrl); } catch { /* malformed legacy link cannot be opened */ }
+  return <div className="space-y-4">
+    <Link href={`/dashboard/patients/${params.id}`} className="text-sm underline">Volver al paciente</Link>
+    <h2 className="cap-h2">Fotos en Google Drive</h2>
+    {isLoading ? <p>Cargando carpeta…</p> : error ? <p role="alert" className="text-destructive">No se pudo cargar el enlace de la carpeta.</p> : <>
+      <p>{patient?.nombre} {patient?.apellido}</p>
+      <p className="text-sm text-text-secondary">Usa tu cuenta de Google. El acceso depende de los permisos existentes de la carpeta.</p>
+      {folder ? <Button asChild><a href={folder} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">Abrir carpeta de fotos</a></Button> : <p>No hay una carpeta vinculada.</p>}
+      {canEdit && <Button variant="outline" asChild><Link href={`/dashboard/patients/${params.id}/edit`}>Editar enlace de Drive</Link></Button>}
+    </>}
+  </div>;
 }

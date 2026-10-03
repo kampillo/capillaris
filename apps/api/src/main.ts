@@ -32,8 +32,7 @@ async function bootstrap() {
     new PrismaValidationFilter(),
   );
 
-  // CORS — accepts comma-separated list. Vercel preview deploys (*.vercel.app)
-  // are allowed automatically.
+  // Every browser origin, including preview deployments, must be explicit.
   const corsConfig = configService.get<string>(
     'app.corsOrigin',
     'http://localhost:3000,http://127.0.0.1:3000',
@@ -43,8 +42,7 @@ async function bootstrap() {
     origin: (origin, cb) => {
       if (!origin) return cb(null, true);
       if (corsList.includes(origin)) return cb(null, true);
-      if (/\.vercel\.app$/.test(new URL(origin).hostname)) return cb(null, true);
-      return cb(new Error(`CORS blocked: ${origin}`));
+      return cb(new Error('CORS origin not allowed'));
     },
     credentials: true,
   });
@@ -52,7 +50,8 @@ async function bootstrap() {
   // API prefix
   app.setGlobalPrefix('api/v1');
 
-  // Swagger
+  // API documentation is only published in development.
+  if (process.env.NODE_ENV !== 'production') {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Capillaris API')
     .setDescription('Capillaris Medical CRM - REST API')
@@ -62,11 +61,12 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
+  }
 
   // Bind to 0.0.0.0 so the container is reachable from outside (Railway, etc.)
   await app.listen(port, '0.0.0.0');
   console.log(`Capillaris API running on port ${port}`);
-  console.log(`Swagger docs at /api/docs`);
+  if (process.env.NODE_ENV !== 'production') console.log('Swagger docs at /api/docs');
 }
 
 bootstrap();

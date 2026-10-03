@@ -2,6 +2,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v
 
 interface FetchOptions extends RequestInit {
   params?: Record<string, string>;
+  responseType?: 'json' | 'blob';
 }
 
 function getAuthToken(): string | null {
@@ -13,7 +14,7 @@ async function request<T>(
   endpoint: string,
   options: FetchOptions = {},
 ): Promise<T> {
-  const { params, headers: customHeaders, ...rest } = options;
+  const { params, responseType, headers: customHeaders, ...rest } = options;
 
   let url = `${BASE_URL}${endpoint}`;
 
@@ -58,10 +59,13 @@ async function request<T>(
     return undefined as T;
   }
 
-  return response.json();
+  return responseType === 'blob' ? response.blob() as Promise<T> : response.json();
 }
 
 export const api = {
+  download(endpoint: string, options?: FetchOptions): Promise<Blob> {
+    return request<Blob>(endpoint, { ...options, method: 'GET', responseType: 'blob' });
+  },
   get<T>(endpoint: string, options?: FetchOptions): Promise<T> {
     return request<T>(endpoint, { ...options, method: 'GET' });
   },

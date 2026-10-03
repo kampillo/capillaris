@@ -26,11 +26,8 @@ export class GoogleCalendarController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get Google OAuth authorization URL' })
-  getAuthUrl(@CurrentUser('id') userId: string) {
-    const url = this.googleCalendarService.getAuthUrl();
-    // Append user ID as state parameter so we know who to associate the token with
-    const authUrl = `${url}&state=${userId}`;
-    return { url: authUrl };
+  async getAuthUrl(@CurrentUser('id') userId: string) {
+    return { url: await this.googleCalendarService.getAuthUrl(userId) };
   }
 
   @Get('callback')
@@ -38,11 +35,11 @@ export class GoogleCalendarController {
   @ApiOperation({ summary: 'Google OAuth callback' })
   async callback(
     @Query('code') code: string,
-    @Query('state') userId: string,
+    @Query('state') state: string,
     @Res() res: Response,
   ) {
-    await this.googleCalendarService.handleCallback(code, userId);
-    const frontendUrl = this.configService.get('app.corsOrigin') || 'http://localhost:3000';
+    await this.googleCalendarService.handleCallback(code, state);
+    const frontendUrl = (this.configService.get<string>('app.corsOrigin') || 'http://localhost:3000').split(',')[0].trim();
     res.redirect(`${frontendUrl}/dashboard/settings?google=connected`);
   }
 

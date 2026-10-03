@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+import Link from '@/components/patients/patient-context-link';
 import {
   ChevronLeft,
   Plus,
@@ -32,6 +32,17 @@ import { usePatient } from '@/hooks/use-patients';
 import { useHasRole } from '@/hooks/use-has-role';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+const HISTORY_SECTIONS = [
+  ['heredofamiliares', 'Heredofamiliares'],
+  ['habitos', 'Hábitos'],
+  ['patologicos', 'Patológicos'],
+  ['previos', 'Tratamientos previos'],
+  ['motivo', 'Motivo'],
+  ['exploracion', 'Exploración'],
+  ['diagnostico', 'Diagnóstico'],
+  ['plan', 'Plan'],
+] as const;
 
 // ── Templates ──────────────────────────────────────────────
 
@@ -103,9 +114,9 @@ function appendTemplate(current: string, template: string) {
   return current + '\n' + template;
 }
 
-function computeBMI(pesoKg: number, tallaCm: number) {
-  if (!pesoKg || !tallaCm) return null;
-  const m = tallaCm / 100;
+function computeBMI(pesoKg: number, talla: number, unit?: string | null) {
+  if (!pesoKg || !talla || !['cm', 'm'].includes(unit ?? '')) return null;
+  const m = unit === 'cm' ? talla / 100 : talla;
   return pesoKg / (m * m);
 }
 
@@ -160,7 +171,7 @@ function SectionHeader({
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
         <Icon className="h-4 w-4" />
       </div>
-      <h3 className="cap-eyebrow">
+      <h3 className="cap-eyebrow text-[13px] leading-5">
         {title}
         {required && <span className="ml-1 text-destructive">*</span>}
       </h3>
@@ -179,7 +190,7 @@ function TemplateChip({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-[11px] text-text-secondary transition-colors hover:bg-surface-3 hover:text-foreground"
+      className="min-h-11 rounded-full border border-border bg-surface-2 px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-3 hover:text-foreground"
     >
       {children}
     </button>
@@ -216,7 +227,7 @@ function BoolListEditor<T extends Record<string, any>>({
           onClick={onNegadosAll}
           aria-pressed={negados}
           className={cn(
-            'rounded-sm border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors',
+            'min-h-11 rounded-sm border px-3 py-2 text-sm font-semibold transition-colors',
             negados
               ? 'border-destructive bg-destructive/10 text-destructive'
               : 'border-border-strong bg-surface text-text-secondary hover:bg-surface-2',
@@ -235,7 +246,7 @@ function BoolListEditor<T extends Record<string, any>>({
                 disabled={negados}
                 aria-pressed={active}
                 className={cn(
-                  'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
+                  'min-h-11 rounded-sm border px-3 py-2 text-sm font-medium transition-colors',
                   negados
                     ? 'cursor-not-allowed border-border bg-surface-2 text-text-tertiary/60'
                     : active
@@ -250,6 +261,7 @@ function BoolListEditor<T extends Record<string, any>>({
         </div>
       </div>
       <Input
+        aria-label={otrosPlaceholder ?? 'Otros'}
         placeholder={otrosPlaceholder ?? 'Otros...'}
         value={(values[otrosKey] as string) ?? ''}
         onChange={(e) => onToggle(`__otros__:${String(otrosKey)}:${e.target.value}`)}
@@ -296,7 +308,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
 
   const bmi =
     pe?.peso && pe?.talla
-      ? computeBMI(Number(pe.peso), Number(pe.talla))
+      ? computeBMI(Number(pe.peso), Number(pe.talla), pe.tallaUnidad)
       : null;
   const bmiCat = bmi != null ? bmiCategory(bmi) : null;
 
@@ -312,13 +324,10 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
             })}
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
-          <FileText className="h-3.5 w-3.5" /> PDF
-        </Button>
       </div>
 
       {ir && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader icon={Dna} title="Antecedentes heredofamiliares" />
           {ir.negados ? (
             <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
@@ -342,7 +351,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
       )}
 
       {np && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader
             icon={Cigarette}
             title="Antecedentes personales no patológicos"
@@ -363,7 +372,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
       )}
 
       {history.personalesPatologicos && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader
             icon={HeartPulse}
             title="Antecedentes personales patológicos"
@@ -375,7 +384,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
       )}
 
       {pt && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader icon={History} title="Tratamientos previos" />
           {pt.negados ? (
             <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
@@ -401,7 +410,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
       )}
 
       {history.padecimientoActual && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader icon={ClipboardList} title="Motivo de consulta" />
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
             {history.padecimientoActual}
@@ -410,9 +419,9 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
       )}
 
       {pe && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader icon={Stethoscope} title="Exploración física" />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
             {pe.fc != null && (
               <div className="rounded-md border border-border bg-surface-2 p-3">
                 <div className="cap-eyebrow mb-1">FC</div>
@@ -451,13 +460,13 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
               <div className="rounded-md border border-border bg-surface-2 p-3">
                 <div className="cap-eyebrow mb-1">Talla</div>
                 <div className="cap-mono text-sm font-medium">
-                  {pe.talla} cm
+                  {pe.talla} {pe.tallaUnidad || '(unidad sin confirmar)'}
                 </div>
               </div>
             )}
             {bmi != null && bmiCat && (
               <div
-                className="col-span-2 rounded-md border p-3"
+                className="rounded-md border p-3 sm:col-span-2"
                 style={{
                   background: bmiCat.bg,
                   borderColor: bmiCat.border,
@@ -495,7 +504,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
       )}
 
       {history.diagnostico && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader icon={Microscope} title="Diagnóstico" />
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
             {history.diagnostico}
@@ -504,7 +513,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
       )}
 
       {history.tratamiento && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader icon={Pill} title="Plan de tratamiento" />
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
             {history.tratamiento}
@@ -574,9 +583,29 @@ function HistoryForm({
       pe_temperatura: numStr(pe?.temperatura),
       pe_peso: numStr(pe?.peso),
       pe_talla: numStr(pe?.talla),
+      pe_tallaUnidad: pe?.tallaUnidad || '',
       pe_description: pe?.description ?? '',
     };
   });
+
+  const initialSnapshot = useRef(JSON.stringify(form));
+  const hasUnsavedChanges = JSON.stringify(form) !== initialSnapshot.current;
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const [actionsHeight, setActionsHeight] = useState(136);
+
+  useEffect(() => {
+    const actions = actionsRef.current;
+    if (!actions) return;
+    const measure = () => setActionsHeight(actions.getBoundingClientRect().height);
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(actions);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
 
   const set = (key: string, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -617,7 +646,7 @@ function HistoryForm({
   // Live BMI
   const peso = parseFloat(form.pe_peso) || 0;
   const talla = parseFloat(form.pe_talla) || 0;
-  const bmi = peso && talla ? computeBMI(peso, talla) : null;
+  const bmi = peso && talla ? computeBMI(peso, talla, form.pe_tallaUnidad) : null;
   const bmiCat = bmi != null ? bmiCategory(bmi) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -673,6 +702,7 @@ function HistoryForm({
           : undefined,
         peso: form.pe_peso ? Number(form.pe_peso) : undefined,
         talla: form.pe_talla ? Number(form.pe_talla) : undefined,
+        tallaUnidad: form.pe_tallaUnidad || null,
         description: form.pe_description || undefined,
       };
     }
@@ -694,9 +724,16 @@ function HistoryForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} style={{ paddingBottom: `calc(${actionsHeight}px + 1.5rem)` }} className="flex min-w-0 flex-col gap-5 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
+      <nav aria-label="Secciones de historia" className="sticky top-[calc(var(--dashboard-header-height,0px)+0.75rem)] z-20 flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-surface p-2 shadow-xs">
+        {HISTORY_SECTIONS.map(([id, label]) => (
+          <a key={id} href={`#history-${id}`} className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-brand-softer hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand">
+            {label}
+          </a>
+        ))}
+      </nav>
       {/* Antecedentes heredofamiliares */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="history-heredofamiliares" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={Dna} title="Antecedentes heredofamiliares" />
         <BoolListEditor
           fields={INHERIT_FIELDS}
@@ -710,7 +747,7 @@ function HistoryForm({
       </section>
 
       {/* Antecedentes personales no patológicos */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="history-habitos" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader
           icon={Cigarette}
           title="Antecedentes personales no patológicos"
@@ -726,7 +763,7 @@ function HistoryForm({
                   onClick={() => handleBoolChange(f.key)}
                   aria-pressed={active}
                   className={cn(
-                    'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
+                    'min-h-11 rounded-sm border px-3 py-2 text-sm font-medium transition-colors',
                     active
                       ? 'border-brand bg-brand-soft text-brand-dark'
                       : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
@@ -738,6 +775,7 @@ function HistoryForm({
             })}
           </div>
           <Input
+            aria-label="Otros hábitos"
             placeholder="Otros hábitos..."
             value={form.np_otros}
             onChange={(e) => set('np_otros', e.target.value)}
@@ -747,13 +785,14 @@ function HistoryForm({
       </section>
 
       {/* Antecedentes personales patológicos */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="history-patologicos" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader
           icon={HeartPulse}
           title="Antecedentes personales patológicos"
         />
         <div className="space-y-2">
           <Textarea
+            aria-label="Antecedentes personales patológicos"
             value={form.personalesPatologicos}
             onChange={(e) => set('personalesPatologicos', e.target.value)}
             rows={3}
@@ -779,7 +818,7 @@ function HistoryForm({
       </section>
 
       {/* Tratamientos previos */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="history-previos" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={History} title="Tratamientos previos" />
         <BoolListEditor
           fields={PREVTREAT_FIELDS}
@@ -793,10 +832,11 @@ function HistoryForm({
       </section>
 
       {/* Motivo de consulta */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="history-motivo" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={ClipboardList} title="Motivo de consulta" />
         <div className="space-y-2">
           <Textarea
+            aria-label="Motivo de consulta"
             value={form.padecimientoActual}
             onChange={(e) => set('padecimientoActual', e.target.value)}
             rows={3}
@@ -822,12 +862,13 @@ function HistoryForm({
       </section>
 
       {/* Exploración física */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="history-exploracion" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={Stethoscope} title="Exploración física" />
-        <div className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 md:grid-cols-3">
           <div className="space-y-1.5">
-            <Label>FC (bpm)</Label>
+            <Label htmlFor="history-pe-fc">FC (bpm)</Label>
             <Input
+              id="history-pe-fc"
               type="number"
               value={form.pe_fc}
               onChange={(e) => set('pe_fc', e.target.value)}
@@ -835,8 +876,9 @@ function HistoryForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>TA (mmHg)</Label>
+            <Label htmlFor="history-pe-ta">TA (mmHg)</Label>
             <Input
+              id="history-pe-ta"
               placeholder="120/80"
               value={form.pe_ta}
               onChange={(e) => set('pe_ta', e.target.value)}
@@ -844,8 +886,9 @@ function HistoryForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>FR (rpm)</Label>
+            <Label htmlFor="history-pe-fr">FR (rpm)</Label>
             <Input
+              id="history-pe-fr"
               type="number"
               value={form.pe_fr}
               onChange={(e) => set('pe_fr', e.target.value)}
@@ -853,8 +896,9 @@ function HistoryForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Temperatura (°C)</Label>
+            <Label htmlFor="history-pe-temperature">Temperatura (°C)</Label>
             <Input
+              id="history-pe-temperature"
               type="number"
               step="0.1"
               value={form.pe_temperatura}
@@ -863,8 +907,9 @@ function HistoryForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Peso (kg)</Label>
+            <Label htmlFor="history-pe-weight">Peso (kg)</Label>
             <Input
+              id="history-pe-weight"
               type="number"
               step="0.1"
               value={form.pe_peso}
@@ -873,8 +918,10 @@ function HistoryForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Talla (cm)</Label>
+            <Label htmlFor="history-pe-height">Talla</Label>
+            <select aria-label="Unidad de talla" className="h-11 w-full rounded border px-2" value={form.pe_tallaUnidad} onChange={e => set('pe_tallaUnidad', e.target.value)}><option value="">Unidad sin confirmar</option><option value="cm">Centímetros</option><option value="m">Metros</option></select>
             <Input
+              id="history-pe-height"
               type="number"
               step="0.1"
               value={form.pe_talla}
@@ -924,8 +971,9 @@ function HistoryForm({
         )}
 
         <div className="mt-5 space-y-1.5">
-          <Label>Descripción</Label>
+          <Label htmlFor="history-pe-description">Descripción</Label>
           <Textarea
+            id="history-pe-description"
             value={form.pe_description}
             onChange={(e) => set('pe_description', e.target.value)}
             rows={2}
@@ -936,10 +984,11 @@ function HistoryForm({
       </section>
 
       {/* Diagnóstico */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="history-diagnostico" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={Microscope} title="Diagnóstico" />
         <div className="space-y-2">
           <Textarea
+            aria-label="Diagnóstico"
             value={form.diagnostico}
             onChange={(e) => set('diagnostico', e.target.value)}
             rows={3}
@@ -962,10 +1011,11 @@ function HistoryForm({
       </section>
 
       {/* Plan de tratamiento */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="history-plan" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
         <SectionHeader icon={Pill} title="Plan de tratamiento" />
         <div className="space-y-2">
           <Textarea
+            aria-label="Plan de tratamiento"
             value={form.tratamiento}
             onChange={(e) => set('tratamiento', e.target.value)}
             rows={3}
@@ -987,27 +1037,29 @@ function HistoryForm({
         </div>
       </section>
 
-      {mutation.isError && (
-        <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-          {mutation.error?.message ||
-            (isEdit
-              ? 'Error al actualizar historia clínica'
-              : 'Error al crear historia clínica')}
-        </div>
-      )}
-
-      <div className="flex justify-end gap-3">
+      <div ref={actionsRef} className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg lg:left-[248px]">
+        <div className="mx-auto flex max-w-[1424px] flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p role="status" aria-live="polite" className={cn('text-sm font-medium', hasUnsavedChanges ? 'text-brand-dark' : 'text-text-secondary')}>
+              {mutation.isPending ? 'Guardando...' : hasUnsavedChanges ? 'Cambios pendientes' : 'Sin cambios pendientes'}
+            </p>
+            {mutation.isError && <p role="alert" className="mt-1 text-sm text-destructive [overflow-wrap:anywhere]">
+              {mutation.error?.message || (isEdit ? 'Error al actualizar historia clínica' : 'Error al crear historia clínica')}
+            </p>}
+          </div>
+          <div className="flex w-full gap-3 sm:w-auto">
         <Button
           type="button"
           variant="outline"
-          className="h-11"
+          className="h-11 flex-1 sm:flex-none"
           onClick={onCancel}
+          disabled={mutation.isPending}
         >
           Cancelar
         </Button>
         <Button
           type="submit"
-          className="h-11 px-8 font-medium"
+          className="h-11 flex-1 px-4 font-medium sm:flex-none sm:px-8"
           disabled={mutation.isPending}
         >
           {mutation.isPending
@@ -1016,6 +1068,8 @@ function HistoryForm({
               ? 'Guardar cambios'
               : 'Guardar historia'}
         </Button>
+          </div>
+        </div>
       </div>
     </form>
   );
@@ -1052,7 +1106,7 @@ export default function PatientHistoryPage({
     <div className="flex flex-col gap-5">
       <Link
         href={`/dashboard/patients/${params.id}`}
-        className="inline-flex w-fit items-center gap-1 text-xs text-text-secondary transition-colors hover:text-foreground"
+        className="inline-flex min-h-11 w-fit items-center gap-1 text-sm text-text-secondary transition-colors hover:text-foreground"
       >
         <ChevronLeft className="h-3.5 w-3.5" /> Volver al paciente
       </Link>
@@ -1060,7 +1114,7 @@ export default function PatientHistoryPage({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="cap-eyebrow mb-1">Historia clínica</div>
-          <h2 className="cap-h2 mb-1 truncate">
+          <h2 className="cap-h2 mb-1 [overflow-wrap:anywhere]">
             {patientName ?? 'Cargando paciente...'}
           </h2>
           <p className="text-[13px] text-text-secondary">

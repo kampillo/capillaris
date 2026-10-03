@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Link, { usePatientContextHref } from '@/components/patients/patient-context-link';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PrescriptionForm } from '@/components/prescriptions/prescription-form';
@@ -13,13 +13,13 @@ export default function NewPatientPrescriptionPage() {
   const params = useParams();
   const router = useRouter();
   const patientId = (params?.id as string) || '';
+  const back = usePatientContextHref(`/dashboard/patients/${patientId}/prescriptions`);
 
   const { data: patient } = usePatient(patientId);
   const createMutation = useCreatePrescription();
   const authorized = useRequireRole('admin', 'doctor');
   if (!authorized) return null;
 
-  const back = `/dashboard/patients/${patientId}/prescriptions`;
   const patientLabel = patient
     ? `${patient.nombre} ${patient.apellido}`
     : undefined;

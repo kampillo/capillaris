@@ -265,7 +265,7 @@ export default function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime() - 1;
   const { data: patientsReport } = usePatientsReport(monthStart, new Date(monthEnd).toISOString());
-  const { data: proceduresReport } = useProceduresReport(start, end);
+  const { data: proceduresReport, error: proceduresError, isLoading: loadingProcedures, refetch: retryProcedures } = useProceduresReport(start, end);
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
   const { data: appointmentsData, isLoading: loadingAppointments, error: appointmentsError, refetch: retryAppointments } = useDashboardAppointments(dayStart, dayEnd);
@@ -354,15 +354,15 @@ export default function DashboardPage() {
         <KpiCard
           label="Folículos implantados"
           value={
-            proceduresReport
-              ? (proceduresReport.totalFollicles ?? 0).toLocaleString('es-MX')
-              : '—'
+            proceduresError ? 'Error de carga' : loadingProcedures ? 'Cargando…' : proceduresReport?.totalFollicles == null ? 'Sin registrar' : proceduresReport.totalFollicles.toLocaleString('es-MX')
           }
-          delta="Este mes"
+          delta={proceduresReport ? `Este mes · ${proceduresReport.proceduresWithFollicles} con total · ${proceduresReport.proceduresWithoutFollicles} sin total` : 'Este mes'}
           icon={Target}
           hue="hsl(var(--accent-lilac))"
         />
       </div>
+
+      {proceduresError && <p role="alert" className="text-sm text-destructive">No se pudo cargar el reporte de procedimientos. <button onClick={() => retryProcedures()} className="underline">Reintentar</button></p>}
 
       {/* Main grid */}
       <div className="order-2 grid gap-4 lg:order-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

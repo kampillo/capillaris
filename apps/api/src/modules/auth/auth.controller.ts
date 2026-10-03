@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Put,
   Body,
   HttpCode,
   HttpStatus,
@@ -10,6 +11,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagg
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -40,7 +42,7 @@ export class AuthController {
   }
 
   @Get('me')
-  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager', 'nurse')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager', 'nurse', 'treatment_staff')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
   @ApiResponse({ status: 200, description: 'Perfil del usuario con roles y permisos' })
@@ -49,8 +51,22 @@ export class AuthController {
     return this.authService.getProfile(userId);
   }
 
+  @Put('me')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager', 'nurse', 'treatment_staff')
+  @ApiBearerAuth()
+  updateProfile(@CurrentUser('id') userId: string, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(userId, dto);
+  }
+
+  @Put('password')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager', 'nurse', 'treatment_staff')
+  @ApiBearerAuth()
+  changePassword(@CurrentUser('id') userId: string, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(userId, dto);
+  }
+
   @Post('logout')
-  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager', 'nurse')
+  @Roles('admin', 'doctor', 'receptionist', 'inventory_manager', 'nurse', 'treatment_staff')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Registrar cierre de sesión (auditoría)' })

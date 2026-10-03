@@ -41,7 +41,7 @@ export class AuditWriterService {
       });
     } catch (err) {
       // Never break the main flow because of an audit failure.
-      this.logger.error('Failed to write audit log', err as Error);
+      this.logger.error('Failed to write audit log');
     }
   }
 }
