@@ -1,15 +1,14 @@
 'use client';
 
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   User,
   MapPin,
   Tag,
   FileCheck,
   Megaphone,
-  Calendar,
+  StickyNote,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,42 +17,15 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  normalizeDriveFolderUrl,
   PatientType,
   Gender,
   MaritalStatus,
   Occupation,
   OriginChannel,
 } from '@capillaris/shared';
+import { patientFormOptions, type PatientFormValues } from './patient-form-config';
 
-// ── Schema ─────────────────────────────────────────────────
-
-const patientSchema = z.object({
-  nombre: z.string().min(1, 'El nombre es requerido'),
-  apellido: z.string().min(1, 'El apellido es requerido'),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
-  celular: z.string().optional(),
-  direccion: z.string().optional(),
-  fechaNacimiento: z.string().optional(),
-  edadApproximada: z.boolean().optional(),
-  driveFolderUrl: z.string().max(1000).optional().refine(value => {
-    try { normalizeDriveFolderUrl(value); return true; } catch { return false; }
-  }, 'Usa el enlace HTTPS de una carpeta de Google Drive'),
-  genero: z.string().optional(),
-  estadoCivil: z.string().optional(),
-  ocupacion: z.string().optional(),
-  tipoPaciente: z.string().optional(),
-  origenCanal: z.string().optional(),
-  referidoPor: z.string().optional(),
-  ciudad: z.string().optional(),
-  estado: z.string().optional(),
-  pais: z.string().optional(),
-  consentDataProcessing: z.boolean().optional(),
-  consentMarketing: z.boolean().optional(),
-  notasInternas: z.string().optional(),
-});
-
-export type PatientFormValues = z.infer<typeof patientSchema>;
+export type { PatientFormValues } from './patient-form-config';
 
 // ── Label maps ─────────────────────────────────────────────
 
@@ -137,27 +109,89 @@ const ORIGIN_LABELS: Record<string, string> = {
 
 const COUNTRY_PRESETS = ['Mexico', 'Estados Unidos', 'Guatemala', 'Colombia'];
 
-// ── UI primitives ──────────────────────────────────────────
+// ── Patient form primitives ────────────────────────────────
 
-function SectionHeader({
+function FormSection({
+  id,
   icon: Icon,
   title,
-  required,
+  description,
+  children,
 }: {
+  id: string;
   icon: React.ComponentType<{ className?: string }>;
   title: string;
-  required?: boolean;
+  description: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="mb-5 flex items-center gap-2.5">
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
-        <Icon className="h-4 w-4" />
+    <section
+      id={id}
+      aria-labelledby={`${id}-title`}
+      className="scroll-mt-[calc(var(--cap-header-height,72px)+1rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6"
+    >
+      <div className="mb-5 flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <h3 id={`${id}-title`} className="text-base font-semibold leading-6">{title}</h3>
+          <p className="mt-1 text-sm leading-5 text-text-secondary">{description}</p>
+        </div>
       </div>
-      <h3 className="cap-eyebrow">
-        {title}
-        {required && <span className="ml-1 text-destructive">*</span>}
-      </h3>
+      {children}
+    </section>
+  );
+}
+
+function FormField({
+  id,
+  label,
+  required,
+  help,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  required?: boolean;
+  help?: string;
+  error?: string;
+  children: (props: {
+    'aria-invalid': boolean;
+    'aria-describedby': string | undefined;
+    'aria-required': boolean | undefined;
+  }) => React.ReactNode;
+}) {
+  const describedBy = [help && `${id}-help`, error && `${id}-error`].filter(Boolean).join(' ') || undefined;
+  return (
+    <div className="min-w-0 space-y-2">
+      <Label htmlFor={id} className="block text-sm leading-5">
+        {label}{required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
+      </Label>
+      {children({
+        'aria-invalid': !!error,
+        'aria-describedby': describedBy,
+        'aria-required': required || undefined,
+      })}
+      {help && <p id={`${id}-help`} className="text-sm leading-5 text-text-secondary">{help}</p>}
+      {error && <p id={`${id}-error`} role="alert" className="text-sm leading-5 text-destructive">{error}</p>}
     </div>
+  );
+}
+
+function ChoiceGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset className="min-w-0 space-y-2">
+      <legend className="text-sm font-medium leading-5">{label}</legend>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </fieldset>
   );
 }
 
@@ -165,10 +199,12 @@ function ChoicePill({
   active,
   onClick,
   children,
+  tone,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  tone?: { color: string; bg: string; border: string };
 }) {
   return (
     <button
@@ -176,92 +212,27 @@ function ChoicePill({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
+        'inline-flex min-h-11 items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait',
         active
           ? 'border-brand bg-brand-soft text-brand-dark'
           : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
       )}
+      style={active && tone ? { color: tone.color, background: tone.bg, borderColor: tone.border } : undefined}
     >
       {children}
-    </button>
-  );
-}
-
-function TypePill({
-  active,
-  tone,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  tone: { color: string; bg: string; border: string };
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
-        !active && 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
-      )}
-      style={
-        active
-          ? { color: tone.color, background: tone.bg, borderColor: tone.border }
-          : undefined
-      }
-    >
-      {active && (
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ background: tone.color }}
-        />
-      )}
-      {children}
-    </button>
-  );
-}
-
-function SwitchToggle({
-  active,
-  onClick,
-  ariaLabel,
-}: {
-  active: boolean;
-  onClick: () => void;
-  ariaLabel: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      role="switch"
-      aria-checked={active}
-      aria-label={ariaLabel}
-      className={cn(
-        'relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors',
-        active ? 'bg-brand' : 'bg-surface-3',
-      )}
-    >
-      <span
-        className={cn(
-          'block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform',
-          active ? 'translate-x-[22px]' : 'translate-x-0.5',
-        )}
-      />
     </button>
   );
 }
 
 function ConsentCard({
+  id,
   icon: Icon,
   title,
   description,
   active,
   onClick,
 }: {
+  id: string;
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
@@ -269,48 +240,51 @@ function ConsentCard({
   onClick: () => void;
 }) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={active}
+      aria-labelledby={`${id}-label`}
+      aria-describedby={`${id}-help`}
       onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
       className={cn(
-        'flex cursor-pointer items-center gap-4 rounded-xl border p-4 transition-colors',
-        active
-          ? 'border-brand bg-brand-softer'
-          : 'border-border bg-surface hover:bg-surface-2',
+        'flex w-full items-start gap-3 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait',
+        active ? 'border-brand bg-brand-softer' : 'border-border-strong bg-surface hover:bg-surface-2',
       )}
     >
-      <div
-        className={cn(
-          'flex h-9 w-9 shrink-0 items-center justify-center rounded-md',
-          active ? 'bg-brand text-white' : 'bg-surface-2 text-text-secondary',
-        )}
-      >
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">{title}</div>
-        <div className="text-[11px] text-text-tertiary">{description}</div>
-      </div>
-      <SwitchToggle active={active} onClick={onClick} ariaLabel={title} />
-    </div>
+      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-dark" />
+      <span className="min-w-0 flex-1">
+        <span id={`${id}-label`} className="block text-sm font-medium leading-5">{title}</span>
+        <span id={`${id}-help`} className="mt-1 block text-sm leading-5 text-text-secondary">{description}</span>
+      </span>
+      <span aria-hidden="true" className="flex shrink-0 flex-col items-center gap-1">
+        <span className={cn('relative h-6 w-11 rounded-full transition-colors', active ? 'bg-brand' : 'bg-surface-3')}>
+          <span className={cn('absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform', active && 'translate-x-5')} />
+        </span>
+        <span className="text-sm text-text-secondary">{active ? 'Sí' : 'No'}</span>
+      </span>
+    </button>
   );
 }
+
+const FORM_SECTIONS = [
+  ['patient-identidad', 'Identidad y contacto'],
+  ['patient-direccion', 'Dirección'],
+  ['patient-clasificacion', 'Clasificación'],
+  ['patient-documentos', 'Documentos'],
+  ['patient-notas', 'Notas'],
+] as const;
 
 // ── Form ───────────────────────────────────────────────────
 
 interface PatientFormProps {
   defaultValues?: Partial<PatientFormValues>;
-  onSubmit: (data: PatientFormValues) => void;
+  onSubmit: (data: PatientFormValues) => void | Promise<void>;
   onCancel?: () => void;
   isLoading?: boolean;
   submitLabel?: string;
+  submitError?: string;
 }
 
 export function PatientForm({
@@ -319,27 +293,15 @@ export function PatientForm({
   onCancel,
   isLoading,
   submitLabel = 'Guardar',
+  submitError,
 }: PatientFormProps) {
   const {
     register,
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
-  } = useForm<PatientFormValues>({
-    resolver: zodResolver(patientSchema),
-    defaultValues: {
-      nombre: '',
-      apellido: '',
-      email: '',
-      celular: '',
-      driveFolderUrl: '',
-      edadApproximada: false,
-      tipoPaciente: PatientType.LEAD,
-      pais: 'Mexico',
-      ...defaultValues,
-    },
-  });
+    formState: { errors, isDirty, isSubmitting },
+  } = useForm<PatientFormValues>(patientFormOptions(defaultValues));
 
   const tipoPaciente = watch('tipoPaciente') || '';
   const genero = watch('genero') || '';
@@ -350,312 +312,158 @@ export function PatientForm({
   const pais = watch('pais') || '';
   const consentData = watch('consentDataProcessing') || false;
   const consentMkt = watch('consentMarketing') || false;
+  const saving = !!isLoading || isSubmitting;
+  const status = saving
+    ? 'Guardando paciente…'
+    : submitError
+      ? 'Error al guardar. Tus cambios siguen en el formulario.'
+      : isDirty
+        ? 'Cambios sin guardar'
+        : defaultValues ? 'Sin cambios pendientes' : 'Completa los datos y guarda al terminar.';
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex min-w-0 flex-col gap-5 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
-      {/* Datos personales */}
-      <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={User} title="Datos personales" required />
-        <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="nombre">
-              Nombre <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="nombre"
-              {...register('nombre')}
-              className="h-11"
-              placeholder="Nombre del paciente"
-            />
-            {errors.nombre && (
-              <p className="text-xs text-destructive">{errors.nombre.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="apellido">
-              Apellido <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="apellido"
-              {...register('apellido')}
-              className="h-11"
-              placeholder="Apellido del paciente"
-            />
-            {errors.apellido && (
-              <p className="text-xs text-destructive">
-                {errors.apellido.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              {...register('email')}
-              className="h-11"
-              placeholder="correo@ejemplo.com"
-            />
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="celular">Celular</Label>
-            <Input
-              id="celular"
-              {...register('celular')}
-              className="h-11"
-              placeholder="+52 55 1234 5678"
-            />
-          </div>
-
-          {/* Fecha de nacimiento */}
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="fechaNacimiento">
-              <Calendar className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
-              Fecha de nacimiento
-            </Label>
-            <DatePicker
-              id="fechaNacimiento"
-              value={fechaNacimiento}
-              onChange={(v) => setValue('fechaNacimiento', v)}
-              className="max-w-[260px]"
-              toDate={new Date()}
-            />
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" {...register('edadApproximada')} />
-              Fecha aproximada, pendiente de confirmar
-            </label>
-            <p className="text-xs text-text-secondary">Desmarca únicamente cuando la fecha esté confirmada con el paciente. Las estimaciones históricas se conservan.</p>
-          </div>
-
-          {/* Género */}
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="cap-eyebrow">Género</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.entries(GENDER_LABELS).map(([v, l]) => (
-                <ChoicePill
-                  key={v}
-                  active={genero === v}
-                  onClick={() => setValue('genero', genero === v ? '' : v)}
-                >
-                  {l}
-                </ChoicePill>
-              ))}
-            </div>
-          </div>
-
-          {/* Estado civil */}
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="cap-eyebrow">Estado civil</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.entries(MARITAL_STATUS_LABELS).map(([v, l]) => (
-                <ChoicePill
-                  key={v}
-                  active={estadoCivil === v}
-                  onClick={() =>
-                    setValue('estadoCivil', estadoCivil === v ? '' : v)
-                  }
-                >
-                  {l}
-                </ChoicePill>
-              ))}
-            </div>
-          </div>
-
-          {/* Ocupación */}
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="cap-eyebrow">Ocupación</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.entries(OCCUPATION_LABELS).map(([v, l]) => (
-                <ChoicePill
-                  key={v}
-                  active={ocupacion === v}
-                  onClick={() =>
-                    setValue('ocupacion', ocupacion === v ? '' : v)
-                  }
-                >
-                  {l}
-                </ChoicePill>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Dirección */}
-      <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={MapPin} title="Dirección" />
-        <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
-          <div className="space-y-1.5 sm:col-span-3">
-            <Label htmlFor="direccion">Dirección</Label>
-            <Input
-              id="direccion"
-              {...register('direccion')}
-              className="h-11"
-              placeholder="Calle, número, colonia..."
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="ciudad">Ciudad</Label>
-            <Input
-              id="ciudad"
-              {...register('ciudad')}
-              className="h-11"
-              placeholder="Ciudad"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="estado">Estado</Label>
-            <Input
-              id="estado"
-              {...register('estado')}
-              className="h-11"
-              placeholder="Estado"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="pais">País</Label>
-            <Input
-              id="pais"
-              {...register('pais')}
-              className="h-11"
-              placeholder="País"
-            />
-            <div className="flex flex-wrap gap-1">
-              {COUNTRY_PRESETS.map((p) => (
-                <ChoicePill
-                  key={p}
-                  active={pais === p}
-                  onClick={() => setValue('pais', p)}
-                >
-                  {p}
-                </ChoicePill>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Clasificación */}
-      <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={Tag} title="Clasificación" />
-        <div className="grid gap-5">
-          <div className="space-y-2">
-            <Label className="cap-eyebrow">Tipo de paciente</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.entries(PATIENT_TYPE_LABELS).map(([v, l]) => (
-                <TypePill
-                  key={v}
-                  active={tipoPaciente === v}
-                  tone={PATIENT_TYPE_TONES[v]}
-                  onClick={() => setValue('tipoPaciente', v)}
-                >
-                  {l}
-                </TypePill>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="cap-eyebrow">Canal de origen</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.entries(ORIGIN_LABELS).map(([v, l]) => (
-                <ChoicePill
-                  key={v}
-                  active={origenCanal === v}
-                  onClick={() =>
-                    setValue('origenCanal', origenCanal === v ? '' : v)
-                  }
-                >
-                  {l}
-                </ChoicePill>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1.5 max-w-md">
-            <Label htmlFor="referidoPor">Referido por</Label>
-            <Input
-              id="referidoPor"
-              {...register('referidoPor')}
-              className="h-11"
-              placeholder="Nombre de quien refiere"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-border bg-surface p-5">
-        <SectionHeader icon={FileCheck} title="Fotos en Google Drive" />
-        <Label htmlFor="driveFolderUrl">Enlace a la carpeta existente del paciente</Label>
-        <Input id="driveFolderUrl" {...register('driveFolderUrl')} placeholder="https://drive.google.com/drive/folders/…" className="mt-2" />
-        {errors.driveFolderUrl && <p role="alert" className="mt-1 text-sm text-destructive">{errors.driveFolderUrl.message}</p>}
-        <p className="mt-2 text-xs text-text-secondary">Se abre con la cuenta de Google del usuario y conserva los permisos de la carpeta.</p>
-      </section>
-
-      {/* Consentimientos y notas */}
-      <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={FileCheck} title="Consentimientos y notas" />
-        <div className="flex flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <ConsentCard
-              icon={FileCheck}
-              title="Procesamiento de datos"
-              description="Necesario para procesar historia clínica y expediente"
-              active={consentData}
-              onClick={() =>
-                setValue('consentDataProcessing', !consentData)
-              }
-            />
-            <ConsentCard
-              icon={Megaphone}
-              title="Comunicación comercial"
-              description="Campañas, promociones y recordatorios comerciales"
-              active={consentMkt}
-              onClick={() => setValue('consentMarketing', !consentMkt)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="notasInternas">Notas internas</Label>
-            <Textarea
-              id="notasInternas"
-              {...register('notasInternas')}
-              placeholder="Notas internas sobre el paciente..."
-              rows={3}
-              className="resize-none"
-            />
-          </div>
-        </div>
-      </section>
-
-      <div className="flex justify-end gap-3">
-        {onCancel && (
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11"
-            onClick={onCancel}
-          >
-            Cancelar
-          </Button>
-        )}
-        <Button
-          type="submit"
-          className="h-11 px-8 font-medium"
-          disabled={isLoading}
-        >
-          {isLoading ? 'Guardando...' : submitLabel}
-        </Button>
+    <form
+      noValidate
+      onSubmit={handleSubmit(onSubmit)}
+      aria-busy={saving}
+      className="flex min-w-0 flex-col gap-5 [&_input]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_textarea]:text-sm"
+    >
+      <div className="space-y-3">
+        <p className="text-sm text-text-secondary">Nombre y apellido son obligatorios. Los demás campos son opcionales.</p>
+        <nav aria-label="Secciones del formulario de paciente" className="flex flex-wrap gap-2">
+          {FORM_SECTIONS.map(([id, label]) => (
+            <a key={id} href={`#${id}`} className="inline-flex min-h-11 items-center rounded-md border border-border bg-surface px-3 text-sm text-text-secondary transition-colors hover:border-brand hover:text-brand-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              {label}
+            </a>
+          ))}
+        </nav>
       </div>
+
+      {Object.keys(errors).length > 0 && (
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          Revisa los campos marcados antes de guardar.
+        </p>
+      )}
+
+      {/* Keep fields focusable while the resolver reports validation errors. */}
+      <fieldset disabled={!!isLoading} className="min-w-0 space-y-5">
+        <legend className="sr-only">Datos del paciente</legend>
+        <FormSection id="patient-identidad" icon={User} title="Identidad y contacto" description="Datos personales y medios de contacto del paciente.">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+            <FormField id="nombre" label="Nombre" required error={errors.nombre?.message}>
+              {props => <Input id="nombre" {...register('nombre')} {...props} className="h-11" placeholder="Nombre del paciente" autoComplete="given-name" />}
+            </FormField>
+            <FormField id="apellido" label="Apellido" required error={errors.apellido?.message}>
+              {props => <Input id="apellido" {...register('apellido')} {...props} className="h-11" placeholder="Apellido del paciente" autoComplete="family-name" />}
+            </FormField>
+            <FormField id="email" label="Email" error={errors.email?.message}>
+              {props => <Input id="email" type="email" {...register('email')} {...props} className="h-11" placeholder="correo@ejemplo.com" autoComplete="email" />}
+            </FormField>
+            <FormField id="celular" label="Celular" error={errors.celular?.message}>
+              {props => <Input id="celular" {...register('celular')} {...props} className="h-11" placeholder="+52 55 1234 5678" type="tel" autoComplete="tel" />}
+            </FormField>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="fechaNacimiento" className="block text-sm leading-5">Fecha de nacimiento</Label>
+              <DatePicker id="fechaNacimiento" value={fechaNacimiento} onChange={v => setValue('fechaNacimiento', v, { shouldDirty: true })} className="sm:max-w-sm" toDate={new Date()} />
+              <label htmlFor="edadApproximada" className="flex min-h-11 cursor-pointer items-center gap-3 text-sm leading-5">
+                <input id="edadApproximada" type="checkbox" {...register('edadApproximada')} aria-describedby="edadApproximada-help" className="h-4 w-4 shrink-0 accent-brand" />
+                Fecha aproximada, pendiente de confirmar
+              </label>
+              <p id="edadApproximada-help" className="text-sm leading-5 text-text-secondary">Desmarca únicamente cuando la fecha esté confirmada con el paciente. Las estimaciones históricas se conservan.</p>
+            </div>
+            <ChoiceGroup label="Género">
+              {Object.entries(GENDER_LABELS).map(([v, l]) => <ChoicePill key={v} active={genero === v} onClick={() => setValue('genero', genero === v ? '' : v, { shouldDirty: true })}>{l}</ChoicePill>)}
+            </ChoiceGroup>
+            <ChoiceGroup label="Estado civil">
+              {Object.entries(MARITAL_STATUS_LABELS).map(([v, l]) => <ChoicePill key={v} active={estadoCivil === v} onClick={() => setValue('estadoCivil', estadoCivil === v ? '' : v, { shouldDirty: true })}>{l}</ChoicePill>)}
+            </ChoiceGroup>
+            <div className="sm:col-span-2">
+              <ChoiceGroup label="Ocupación">
+                {Object.entries(OCCUPATION_LABELS).map(([v, l]) => <ChoicePill key={v} active={ocupacion === v} onClick={() => setValue('ocupacion', ocupacion === v ? '' : v, { shouldDirty: true })}>{l}</ChoicePill>)}
+              </ChoiceGroup>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection id="patient-direccion" icon={MapPin} title="Dirección" description="Ubicación y dirección de contacto.">
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <FormField id="direccion" label="Dirección" error={errors.direccion?.message}>
+                {props => <Input id="direccion" {...register('direccion')} {...props} className="h-11" placeholder="Calle, número, colonia..." autoComplete="street-address" />}
+              </FormField>
+            </div>
+            <FormField id="ciudad" label="Ciudad" error={errors.ciudad?.message}>
+              {props => <Input id="ciudad" {...register('ciudad')} {...props} className="h-11" placeholder="Ciudad" autoComplete="address-level2" />}
+            </FormField>
+            <FormField id="estado" label="Estado" error={errors.estado?.message}>
+              {props => <Input id="estado" {...register('estado')} {...props} className="h-11" placeholder="Estado" autoComplete="address-level1" />}
+            </FormField>
+            <div className="space-y-2 sm:col-span-2">
+              <FormField id="pais" label="País" error={errors.pais?.message}>
+                {props => <Input id="pais" {...register('pais')} {...props} className="h-11 sm:max-w-sm" placeholder="País" autoComplete="country-name" />}
+              </FormField>
+              <div role="group" aria-label="Países frecuentes" className="flex flex-wrap gap-2">
+                {COUNTRY_PRESETS.map(p => <ChoicePill key={p} active={pais === p} onClick={() => setValue('pais', p, { shouldDirty: true })}>{p}</ChoicePill>)}
+              </div>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection id="patient-clasificacion" icon={Tag} title="Clasificación, origen y referencia" description="Estado del paciente y cómo llegó a la clínica.">
+          <div className="space-y-5">
+            <ChoiceGroup label="Tipo de paciente">
+              {Object.entries(PATIENT_TYPE_LABELS).map(([v, l]) => <ChoicePill key={v} active={tipoPaciente === v} tone={PATIENT_TYPE_TONES[v]} onClick={() => setValue('tipoPaciente', v, { shouldDirty: true })}>{l}</ChoicePill>)}
+            </ChoiceGroup>
+            <ChoiceGroup label="Canal de origen">
+              {Object.entries(ORIGIN_LABELS).map(([v, l]) => <ChoicePill key={v} active={origenCanal === v} onClick={() => setValue('origenCanal', origenCanal === v ? '' : v, { shouldDirty: true })}>{l}</ChoicePill>)}
+            </ChoiceGroup>
+            <div className="sm:max-w-md">
+              <FormField id="referidoPor" label="Referido por" error={errors.referidoPor?.message}>
+                {props => <Input id="referidoPor" {...register('referidoPor')} {...props} className="h-11" placeholder="Nombre de quien refiere" />}
+              </FormField>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection id="patient-documentos" icon={FileCheck} title="Documentos y consentimientos" description="Carpeta de fotos del paciente y autorizaciones otorgadas.">
+          <div className="space-y-6">
+            <FormField id="driveFolderUrl" label="Enlace a la carpeta existente de Google Drive" error={errors.driveFolderUrl?.message} help="Se abre con la cuenta de Google del usuario y conserva los permisos de la carpeta.">
+              {props => <Input id="driveFolderUrl" {...register('driveFolderUrl')} {...props} className="h-11" placeholder="https://drive.google.com/drive/folders/…" />}
+            </FormField>
+            <div className="space-y-3">
+              <p className="text-sm leading-5 text-text-secondary">Activa cada opción únicamente si el paciente otorgó ese consentimiento. Guarda para registrar el cambio.</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <ConsentCard id="consentDataProcessing" icon={FileCheck} title="Procesamiento de datos" description="Necesario para procesar historia clínica y expediente" active={consentData} onClick={() => setValue('consentDataProcessing', !consentData, { shouldDirty: true })} />
+                <ConsentCard id="consentMarketing" icon={Megaphone} title="Comunicación comercial" description="Campañas, promociones y recordatorios comerciales" active={consentMkt} onClick={() => setValue('consentMarketing', !consentMkt, { shouldDirty: true })} />
+              </div>
+            </div>
+          </div>
+        </FormSection>
+
+        <FormSection id="patient-notas" icon={StickyNote} title="Notas internas" description="Información adicional para el equipo de la clínica. Opcional.">
+          <FormField id="notasInternas" label="Notas internas" error={errors.notasInternas?.message}>
+            {props => <Textarea id="notasInternas" {...register('notasInternas')} {...props} placeholder="Notas internas sobre el paciente..." rows={4} className="resize-y" />}
+          </FormField>
+        </FormSection>
+
+        {submitError && (
+          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm leading-5 text-destructive">
+            <p className="font-medium">{submitError}</p>
+            <p className="mt-1">Los datos siguen en el formulario. Revisa el error e intenta guardar de nuevo.</p>
+          </div>
+        )}
+
+        <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <p role="status" aria-live="polite" className="text-sm leading-5 text-text-secondary">{status}</p>
+          <div className="flex shrink-0 gap-3">
+            {onCancel && <Button type="button" variant="outline" className="h-11 flex-1 sm:flex-none" onClick={onCancel} disabled={saving}>Cancelar</Button>}
+            <Button type="submit" className="h-11 flex-1 px-6 font-medium sm:flex-none" disabled={saving}>
+              {saving && <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />}
+              {saving ? 'Guardando…' : submitLabel}
+            </Button>
+          </div>
+        </div>
+      </fieldset>
     </form>
   );
 }

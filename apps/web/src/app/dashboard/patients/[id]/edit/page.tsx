@@ -92,26 +92,20 @@ export default function EditPatientPage({
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-5">
       <Link
         href={`/dashboard/patients/${params.id}`}
-        className="inline-flex w-fit items-center gap-1 text-xs text-text-secondary transition-colors hover:text-foreground"
+        className="inline-flex min-h-11 w-fit items-center gap-1 rounded-md text-sm text-text-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <ChevronLeft className="h-3.5 w-3.5" /> Volver al paciente
       </Link>
 
       <div>
         <h2 className="cap-h2 mb-1">Editar paciente</h2>
-        <p className="text-[13px] text-text-secondary">
+        <p className="break-words text-sm leading-6 text-text-secondary">
           {patient.nombre} {patient.apellido}
         </p>
       </div>
-
-      {updateMutation.isError && (
-        <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-          {updateMutation.error?.message || 'Error al actualizar el paciente'}
-        </div>
-      )}
 
       <PatientForm
         defaultValues={defaultValues}
@@ -119,6 +113,7 @@ export default function EditPatientPage({
         onCancel={() => router.push(patientHref)}
         isLoading={updateMutation.isPending}
         submitLabel="Actualizar paciente"
+        submitError={updateMutation.isError ? updateMutation.error?.message || 'Error al actualizar el paciente' : undefined}
       />
     </div>
   );

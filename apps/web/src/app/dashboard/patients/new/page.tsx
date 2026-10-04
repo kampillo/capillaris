@@ -35,33 +35,28 @@ export default function NewPatientPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-5">
       {/* Back */}
       <Link
         href="/dashboard/patients"
-        className="inline-flex w-fit items-center gap-1 text-xs text-text-secondary transition-colors hover:text-foreground"
+        className="inline-flex min-h-11 w-fit items-center gap-1 rounded-md text-sm text-text-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <ChevronLeft className="h-3.5 w-3.5" /> Volver a pacientes
       </Link>
 
       <div>
         <h2 className="cap-h2 mb-1">Nuevo paciente</h2>
-        <p className="text-[13px] text-text-secondary">
-          Registra un nuevo paciente en el sistema.
+        <p className="text-sm leading-6 text-text-secondary">
+          Registra los datos del paciente y revisa sus consentimientos antes de guardar.
         </p>
       </div>
-
-      {createMutation.isError && (
-        <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-          {createMutation.error?.message || 'Error al crear el paciente'}
-        </div>
-      )}
 
       <PatientForm
         onSubmit={handleSubmit}
         onCancel={() => router.push('/dashboard/patients')}
         isLoading={createMutation.isPending}
         submitLabel="Crear paciente"
+        submitError={createMutation.isError ? createMutation.error?.message || 'Error al crear el paciente' : undefined}
       />
     </div>
   );

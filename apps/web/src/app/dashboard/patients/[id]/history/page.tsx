@@ -16,6 +16,7 @@ import {
   Microscope,
   Cigarette,
   History,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -160,21 +161,23 @@ function bmiCategory(bmi: number): {
 function SectionHeader({
   icon: Icon,
   title,
-  required,
+  description,
+  headingId,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
-  required?: boolean;
+  description?: string;
+  headingId?: string;
 }) {
   return (
-    <div className="mb-5 flex items-center gap-2.5">
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
+    <div className="mb-5 flex items-start gap-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
         <Icon className="h-4 w-4" />
       </div>
-      <h3 className="cap-eyebrow text-[13px] leading-5">
-        {title}
-        {required && <span className="ml-1 text-destructive">*</span>}
-      </h3>
+      <div className="min-w-0">
+        <h3 id={headingId} className="text-base font-semibold leading-6">{title}</h3>
+        {description && <p className="mt-1 text-sm leading-5 text-text-secondary">{description}</p>}
+      </div>
     </div>
   );
 }
@@ -190,7 +193,7 @@ function TemplateChip({
     <button
       type="button"
       onClick={onClick}
-      className="min-h-11 rounded-full border border-border bg-surface-2 px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-3 hover:text-foreground"
+      className="min-h-11 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-3 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       {children}
     </button>
@@ -208,6 +211,7 @@ function BoolListEditor<T extends Record<string, any>>({
   negadosKey,
   onNegadosAll,
   otrosKey,
+  otrosLabel,
   otrosPlaceholder,
 }: {
   fields: readonly BoolField[];
@@ -216,9 +220,11 @@ function BoolListEditor<T extends Record<string, any>>({
   negadosKey: keyof T;
   onNegadosAll: () => void;
   otrosKey: keyof T;
+  otrosLabel: string;
   otrosPlaceholder?: string;
 }) {
   const negados = values[negadosKey] === true;
+  const otrosId = `history-${String(otrosKey)}`;
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -227,7 +233,7 @@ function BoolListEditor<T extends Record<string, any>>({
           onClick={onNegadosAll}
           aria-pressed={negados}
           className={cn(
-            'min-h-11 rounded-sm border px-3 py-2 text-sm font-semibold transition-colors',
+            'min-h-11 rounded-md border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             negados
               ? 'border-destructive bg-destructive/10 text-destructive'
               : 'border-border-strong bg-surface text-text-secondary hover:bg-surface-2',
@@ -246,7 +252,7 @@ function BoolListEditor<T extends Record<string, any>>({
                 disabled={negados}
                 aria-pressed={active}
                 className={cn(
-                  'min-h-11 rounded-sm border px-3 py-2 text-sm font-medium transition-colors',
+                  'min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   negados
                     ? 'cursor-not-allowed border-border bg-surface-2 text-text-tertiary/60'
                     : active
@@ -260,14 +266,17 @@ function BoolListEditor<T extends Record<string, any>>({
           })}
         </div>
       </div>
-      <Input
-        aria-label={otrosPlaceholder ?? 'Otros'}
-        placeholder={otrosPlaceholder ?? 'Otros...'}
-        value={(values[otrosKey] as string) ?? ''}
-        onChange={(e) => onToggle(`__otros__:${String(otrosKey)}:${e.target.value}`)}
-        disabled={negados}
-        className="h-10"
-      />
+      <div className="space-y-2">
+        <Label htmlFor={otrosId} className="block text-sm leading-5">{otrosLabel}</Label>
+        <Input
+          id={otrosId}
+          placeholder={otrosPlaceholder ?? 'Otros...'}
+          value={(values[otrosKey] as string) ?? ''}
+          onChange={(e) => onToggle(`__otros__:${String(otrosKey)}:${e.target.value}`)}
+          disabled={negados}
+          className="h-11"
+        />
+      </div>
     </div>
   );
 }
@@ -285,7 +294,7 @@ function BoolPill({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium',
+        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm font-medium',
         active
           ? 'border-brand/25 bg-brand-soft text-brand-dark'
           : 'border-border bg-surface-2 text-text-tertiary',
@@ -294,7 +303,7 @@ function BoolPill({
       {active && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
       {label}
       {!active && (
-        <span className="text-[10px] text-text-tertiary/80">· no</span>
+        <span className="text-sm text-text-tertiary">· no</span>
       )}
     </span>
   );
@@ -330,7 +339,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
         <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader icon={Dna} title="Antecedentes heredofamiliares" />
           {ir.negados ? (
-            <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
+            <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-sm font-semibold text-destructive">
               Todos negados
             </span>
           ) : (
@@ -342,8 +351,8 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
             </div>
           )}
           {ir.otros && (
-            <p className="mt-2 text-xs text-text-secondary">
-              <span className="cap-eyebrow mr-1">Otros</span>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              <span className="mr-1 text-sm font-medium">Otros</span>
               {ir.otros}
             </p>
           )}
@@ -363,8 +372,8 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
             <BoolPill label="Actividad física" value={np.actFisica} />
           </div>
           {np.otros && (
-            <p className="mt-2 text-xs text-text-secondary">
-              <span className="cap-eyebrow mr-1">Otros</span>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              <span className="mr-1 text-sm font-medium">Otros</span>
               {np.otros}
             </p>
           )}
@@ -387,7 +396,7 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
         <section className="rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
           <SectionHeader icon={History} title="Tratamientos previos" />
           {pt.negados ? (
-            <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
+            <span className="inline-flex items-center rounded-sm border border-destructive/25 bg-destructive/10 px-2 py-0.5 text-sm font-semibold text-destructive">
               Todos negados
             </span>
           ) : (
@@ -401,8 +410,8 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
             </div>
           )}
           {pt.otros && (
-            <p className="mt-2 text-xs text-text-secondary">
-              <span className="cap-eyebrow mr-1">Otros</span>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              <span className="mr-1 text-sm font-medium">Otros</span>
               {pt.otros}
             </p>
           )}
@@ -526,6 +535,14 @@ function HistoryView({ history }: { history: ClinicalHistory }) {
 
 // ── Form ───────────────────────────────────────────────────
 
+const PHYSICAL_FIELD_IDS: Record<string, string> = {
+  pe_fc: 'history-pe-fc',
+  pe_fr: 'history-pe-fr',
+  pe_temperatura: 'history-pe-temperature',
+  pe_peso: 'history-pe-weight',
+  pe_talla: 'history-pe-height',
+};
+
 function HistoryForm({
   patientId,
   existing,
@@ -588,6 +605,7 @@ function HistoryForm({
     };
   });
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const initialSnapshot = useRef(JSON.stringify(form));
   const hasUnsavedChanges = JSON.stringify(form) !== initialSnapshot.current;
   const actionsRef = useRef<HTMLDivElement>(null);
@@ -607,8 +625,22 @@ function HistoryForm({
     };
   }, []);
 
-  const set = (key: string, value: string | boolean) =>
+  const set = (key: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    const id = PHYSICAL_FIELD_IDS[key];
+    if (id) setFieldErrors(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const handleInvalid = (event: React.SyntheticEvent<HTMLFormElement>) => {
+    const field = event.target as HTMLInputElement;
+    if (field.id && field.validationMessage) {
+      setFieldErrors(prev => ({ ...prev, [field.id]: field.validationMessage }));
+    }
+  };
 
   // Special handler compatible with BoolListEditor (keeps toggle + otros writes in one callback)
   const handleBoolChange = (instruction: string) => {
@@ -724,7 +756,13 @@ function HistoryForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ paddingBottom: `calc(${actionsHeight}px + 1.5rem)` }} className="flex min-w-0 flex-col gap-5 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
+    <form
+      onSubmit={handleSubmit}
+      onInvalidCapture={handleInvalid}
+      aria-busy={mutation.isPending}
+      style={{ paddingBottom: `calc(${actionsHeight}px + 1.5rem)` }}
+      className="flex min-w-0 flex-col gap-5 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm"
+    >
       <nav aria-label="Secciones de historia" className="sticky top-[calc(var(--dashboard-header-height,0px)+0.75rem)] z-20 flex gap-1 overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-surface p-2 shadow-xs">
         {HISTORY_SECTIONS.map(([id, label]) => (
           <a key={id} href={`#history-${id}`} className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-brand-softer hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand">
@@ -732,320 +770,405 @@ function HistoryForm({
           </a>
         ))}
       </nav>
-      {/* Antecedentes heredofamiliares */}
-      <section id="history-heredofamiliares" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={Dna} title="Antecedentes heredofamiliares" />
-        <BoolListEditor
-          fields={INHERIT_FIELDS}
-          values={form}
-          onToggle={handleBoolChange}
-          negadosKey="ir_negados"
-          onNegadosAll={() => negadosAll('ir', INHERIT_FIELDS)}
-          otrosKey="ir_otros"
-          otrosPlaceholder="Otros antecedentes heredofamiliares..."
-        />
-      </section>
+      {Object.keys(fieldErrors).length > 0 && (
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm leading-5 text-destructive">
+          Revisa los campos marcados antes de guardar.
+        </p>
+      )}
+      {mutation.isError && (
+        <div id="history-save-error" role="alert" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm leading-5 text-destructive [overflow-wrap:anywhere]">
+          <p className="font-medium">{mutation.error?.message || (isEdit ? 'Error al actualizar historia clínica' : 'Error al crear historia clínica')}</p>
+          <p className="mt-1">Los datos siguen en el formulario. Revisa el error e intenta guardar de nuevo.</p>
+        </div>
+      )}
+      <fieldset disabled={mutation.isPending} className="min-w-0 space-y-5">
+        <legend className="sr-only">Datos de historia clínica</legend>
+        {/* Antecedentes heredofamiliares */}
+        <section id="history-heredofamiliares" aria-labelledby="history-heredofamiliares-title" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
+          <SectionHeader
+            icon={Dna}
+            title="Antecedentes heredofamiliares"
+            headingId="history-heredofamiliares-title"
+            description="Antecedentes familiares registrados en esta historia."
+          />
+          <BoolListEditor
+            fields={INHERIT_FIELDS}
+            values={form}
+            onToggle={handleBoolChange}
+            negadosKey="ir_negados"
+            onNegadosAll={() => negadosAll('ir', INHERIT_FIELDS)}
+            otrosKey="ir_otros"
+            otrosLabel="Otros antecedentes heredofamiliares"
+            otrosPlaceholder="Otros antecedentes heredofamiliares..."
+          />
+        </section>
 
-      {/* Antecedentes personales no patológicos */}
-      <section id="history-habitos" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader
-          icon={Cigarette}
-          title="Antecedentes personales no patológicos"
-        />
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-1.5">
-            {HABITS_FIELDS.map((f) => {
-              const active = form[f.key as keyof typeof form] === true;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => handleBoolChange(f.key)}
-                  aria-pressed={active}
-                  className={cn(
-                    'min-h-11 rounded-sm border px-3 py-2 text-sm font-medium transition-colors',
-                    active
-                      ? 'border-brand bg-brand-soft text-brand-dark'
-                      : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
-                  )}
+        {/* Antecedentes personales no patológicos */}
+        <section id="history-habitos" aria-labelledby="history-habitos-title" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
+          <SectionHeader
+            icon={Cigarette}
+            title="Antecedentes personales no patológicos"
+            headingId="history-habitos-title"
+            description="Hábitos y otros antecedentes personales registrados."
+          />
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              {HABITS_FIELDS.map((f) => {
+                const active = form[f.key as keyof typeof form] === true;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => handleBoolChange(f.key)}
+                    aria-pressed={active}
+                    className={cn(
+                      'min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                      active
+                        ? 'border-brand bg-brand-soft text-brand-dark'
+                        : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+            <Label htmlFor="history-np-otros" className="block text-sm leading-5">Otros hábitos</Label>
+            <Input
+              id="history-np-otros"
+              placeholder="Otros hábitos..."
+              value={form.np_otros}
+              onChange={(e) => set('np_otros', e.target.value)}
+              className="h-11"
+            />
+          </div>
+        </section>
+
+        {/* Antecedentes personales patológicos */}
+        <section id="history-patologicos" aria-labelledby="history-patologicos-title" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
+          <SectionHeader
+            icon={HeartPulse}
+            title="Antecedentes personales patológicos"
+            headingId="history-patologicos-title"
+            description="Descripción de los antecedentes personales."
+          />
+          <div className="space-y-2">
+            <Label htmlFor="history-pathological-notes" className="block text-sm leading-5">Descripción de antecedentes</Label>
+            <Textarea
+              id="history-pathological-notes"
+              aria-label="Antecedentes personales patológicos"
+              value={form.personalesPatologicos}
+              onChange={(e) => set('personalesPatologicos', e.target.value)}
+              rows={3}
+              placeholder="Enfermedades previas, cirugías, alergias medicamentosas..."
+              className="resize-y"
+            />
+            <p className="pt-1 text-sm font-medium text-text-secondary">Añadir texto frecuente</p>
+            <div role="group" aria-label="Añadir texto frecuente" className="flex flex-wrap gap-2">
+              {PATOLOGICOS_TEMPLATES.map((t) => (
+                <TemplateChip
+                  key={t}
+                  onClick={() =>
+                    set(
+                      'personalesPatologicos',
+                      appendTemplate(form.personalesPatologicos, t),
+                    )
+                  }
                 >
-                  {f.label}
-                </button>
-              );
-            })}
+                  {t}
+                </TemplateChip>
+              ))}
+            </div>
           </div>
-          <Input
-            aria-label="Otros hábitos"
-            placeholder="Otros hábitos..."
-            value={form.np_otros}
-            onChange={(e) => set('np_otros', e.target.value)}
-            className="h-10"
+        </section>
+
+        {/* Tratamientos previos */}
+        <section id="history-previos" aria-labelledby="history-previos-title" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
+          <SectionHeader
+            icon={History}
+            title="Tratamientos previos"
+            headingId="history-previos-title"
+            description="Tratamientos y procedimientos previos."
           />
-        </div>
-      </section>
-
-      {/* Antecedentes personales patológicos */}
-      <section id="history-patologicos" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader
-          icon={HeartPulse}
-          title="Antecedentes personales patológicos"
-        />
-        <div className="space-y-2">
-          <Textarea
-            aria-label="Antecedentes personales patológicos"
-            value={form.personalesPatologicos}
-            onChange={(e) => set('personalesPatologicos', e.target.value)}
-            rows={3}
-            placeholder="Enfermedades previas, cirugías, alergias medicamentosas..."
-            className="resize-none"
+          <BoolListEditor
+            fields={PREVTREAT_FIELDS}
+            values={form}
+            onToggle={handleBoolChange}
+            negadosKey="pt_negados"
+            onNegadosAll={() => negadosAll('pt', PREVTREAT_FIELDS)}
+            otrosKey="pt_otros"
+            otrosLabel="Otros tratamientos previos"
+            otrosPlaceholder="Otros tratamientos previos, dosis, tiempo..."
           />
-          <div className="flex flex-wrap gap-1.5">
-            {PATOLOGICOS_TEMPLATES.map((t) => (
-              <TemplateChip
-                key={t}
-                onClick={() =>
-                  set(
-                    'personalesPatologicos',
-                    appendTemplate(form.personalesPatologicos, t),
-                  )
-                }
-              >
-                {t}
-              </TemplateChip>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Tratamientos previos */}
-      <section id="history-previos" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={History} title="Tratamientos previos" />
-        <BoolListEditor
-          fields={PREVTREAT_FIELDS}
-          values={form}
-          onToggle={handleBoolChange}
-          negadosKey="pt_negados"
-          onNegadosAll={() => negadosAll('pt', PREVTREAT_FIELDS)}
-          otrosKey="pt_otros"
-          otrosPlaceholder="Otros tratamientos previos, dosis, tiempo..."
-        />
-      </section>
-
-      {/* Motivo de consulta */}
-      <section id="history-motivo" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={ClipboardList} title="Motivo de consulta" />
-        <div className="space-y-2">
-          <Textarea
-            aria-label="Motivo de consulta"
-            value={form.padecimientoActual}
-            onChange={(e) => set('padecimientoActual', e.target.value)}
-            rows={3}
-            placeholder="¿Por qué viene? Ej: caída de cabello progresiva, revaloración..."
-            className="resize-none"
+        {/* Motivo de consulta */}
+        <section id="history-motivo" aria-labelledby="history-motivo-title" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
+          <SectionHeader
+            icon={ClipboardList}
+            title="Motivo de consulta"
+            headingId="history-motivo-title"
+            description="Padecimiento actual y motivo de esta consulta."
           />
-          <div className="flex flex-wrap gap-1.5">
-            {PADECIMIENTO_TEMPLATES.map((t) => (
-              <TemplateChip
-                key={t}
-                onClick={() =>
-                  set(
-                    'padecimientoActual',
-                    appendTemplate(form.padecimientoActual, t),
-                  )
-                }
-              >
-                {t}
-              </TemplateChip>
-            ))}
+          <div className="space-y-2">
+            <Label htmlFor="history-reason-notes" className="block text-sm leading-5">Padecimiento actual</Label>
+            <Textarea
+              id="history-reason-notes"
+              aria-label="Motivo de consulta"
+              value={form.padecimientoActual}
+              onChange={(e) => set('padecimientoActual', e.target.value)}
+              rows={3}
+              placeholder="¿Por qué viene? Ej: caída de cabello progresiva, revaloración..."
+              className="resize-y"
+            />
+            <p className="pt-1 text-sm font-medium text-text-secondary">Añadir texto frecuente</p>
+            <div role="group" aria-label="Añadir texto frecuente" className="flex flex-wrap gap-2">
+              {PADECIMIENTO_TEMPLATES.map((t) => (
+                <TemplateChip
+                  key={t}
+                  onClick={() =>
+                    set(
+                      'padecimientoActual',
+                      appendTemplate(form.padecimientoActual, t),
+                    )
+                  }
+                >
+                  {t}
+                </TemplateChip>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Exploración física */}
-      <section id="history-exploracion" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={Stethoscope} title="Exploración física" />
-        <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 md:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="history-pe-fc">FC (bpm)</Label>
-            <Input
-              id="history-pe-fc"
-              type="number"
-              value={form.pe_fc}
-              onChange={(e) => set('pe_fc', e.target.value)}
-              className="cap-mono h-11"
-            />
+        {/* Exploración física */}
+        <section id="history-exploracion" aria-labelledby="history-exploracion-title" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
+          <SectionHeader
+            icon={Stethoscope}
+            title="Exploración física"
+            headingId="history-exploracion-title"
+            description="Signos vitales, medidas y hallazgos."
+          />
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="history-pe-fc">FC (bpm)</Label>
+              <Input
+                id="history-pe-fc"
+                aria-invalid={!!fieldErrors['history-pe-fc']}
+                aria-describedby={fieldErrors['history-pe-fc'] ? 'history-pe-fc-error' : undefined}
+                type="number"
+                value={form.pe_fc}
+                onChange={(e) => set('pe_fc', e.target.value)}
+                className="cap-mono h-11"
+              />
+              {fieldErrors['history-pe-fc'] && <p id="history-pe-fc-error" role="alert" className="text-sm leading-5 text-destructive">{fieldErrors['history-pe-fc']}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="history-pe-ta">TA (mmHg)</Label>
+              <Input
+                id="history-pe-ta"
+                placeholder="120/80"
+                value={form.pe_ta}
+                onChange={(e) => set('pe_ta', e.target.value)}
+                className="cap-mono h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="history-pe-fr">FR (rpm)</Label>
+              <Input
+                id="history-pe-fr"
+                aria-invalid={!!fieldErrors['history-pe-fr']}
+                aria-describedby={fieldErrors['history-pe-fr'] ? 'history-pe-fr-error' : undefined}
+                type="number"
+                value={form.pe_fr}
+                onChange={(e) => set('pe_fr', e.target.value)}
+                className="cap-mono h-11"
+              />
+              {fieldErrors['history-pe-fr'] && <p id="history-pe-fr-error" role="alert" className="text-sm leading-5 text-destructive">{fieldErrors['history-pe-fr']}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="history-pe-temperature">Temperatura (°C)</Label>
+              <Input
+                id="history-pe-temperature"
+                aria-invalid={!!fieldErrors['history-pe-temperature']}
+                aria-describedby={fieldErrors['history-pe-temperature'] ? 'history-pe-temperature-error' : undefined}
+                type="number"
+                step="0.1"
+                value={form.pe_temperatura}
+                onChange={(e) => set('pe_temperatura', e.target.value)}
+                className="cap-mono h-11"
+              />
+              {fieldErrors['history-pe-temperature'] && <p id="history-pe-temperature-error" role="alert" className="text-sm leading-5 text-destructive">{fieldErrors['history-pe-temperature']}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="history-pe-weight">Peso (kg)</Label>
+              <Input
+                id="history-pe-weight"
+                aria-invalid={!!fieldErrors['history-pe-weight']}
+                aria-describedby={fieldErrors['history-pe-weight'] ? 'history-pe-weight-error' : undefined}
+                type="number"
+                step="0.1"
+                value={form.pe_peso}
+                onChange={(e) => set('pe_peso', e.target.value)}
+                className="cap-mono h-11"
+              />
+              {fieldErrors['history-pe-weight'] && <p id="history-pe-weight-error" role="alert" className="text-sm leading-5 text-destructive">{fieldErrors['history-pe-weight']}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="history-pe-height">Talla</Label>
+              <Input
+                id="history-pe-height"
+                aria-invalid={!!fieldErrors['history-pe-height']}
+                aria-describedby={fieldErrors['history-pe-height'] ? 'history-pe-height-error' : undefined}
+                type="number"
+                step="0.1"
+                value={form.pe_talla}
+                onChange={(e) => set('pe_talla', e.target.value)}
+                className="cap-mono h-11"
+              />
+              {fieldErrors['history-pe-height'] && <p id="history-pe-height-error" role="alert" className="text-sm leading-5 text-destructive">{fieldErrors['history-pe-height']}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="history-pe-height-unit">Unidad de talla</Label>
+              <select id="history-pe-height-unit" aria-describedby="history-pe-height-unit-help" className="h-11 w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" value={form.pe_tallaUnidad} onChange={e => set('pe_tallaUnidad', e.target.value)}>
+                <option value="">Unidad sin confirmar</option>
+                <option value="cm">Centímetros</option>
+                <option value="m">Metros</option>
+              </select>
+              <p id="history-pe-height-unit-help" className="text-sm leading-5 text-text-secondary">La unidad sin confirmar se conserva y no genera un IMC.</p>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="history-pe-ta">TA (mmHg)</Label>
-            <Input
-              id="history-pe-ta"
-              placeholder="120/80"
-              value={form.pe_ta}
-              onChange={(e) => set('pe_ta', e.target.value)}
-              className="cap-mono h-11"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="history-pe-fr">FR (rpm)</Label>
-            <Input
-              id="history-pe-fr"
-              type="number"
-              value={form.pe_fr}
-              onChange={(e) => set('pe_fr', e.target.value)}
-              className="cap-mono h-11"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="history-pe-temperature">Temperatura (°C)</Label>
-            <Input
-              id="history-pe-temperature"
-              type="number"
-              step="0.1"
-              value={form.pe_temperatura}
-              onChange={(e) => set('pe_temperatura', e.target.value)}
-              className="cap-mono h-11"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="history-pe-weight">Peso (kg)</Label>
-            <Input
-              id="history-pe-weight"
-              type="number"
-              step="0.1"
-              value={form.pe_peso}
-              onChange={(e) => set('pe_peso', e.target.value)}
-              className="cap-mono h-11"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="history-pe-height">Talla</Label>
-            <select aria-label="Unidad de talla" className="h-11 w-full rounded border px-2" value={form.pe_tallaUnidad} onChange={e => set('pe_tallaUnidad', e.target.value)}><option value="">Unidad sin confirmar</option><option value="cm">Centímetros</option><option value="m">Metros</option></select>
-            <Input
-              id="history-pe-height"
-              type="number"
-              step="0.1"
-              value={form.pe_talla}
-              onChange={(e) => set('pe_talla', e.target.value)}
-              className="cap-mono h-11"
-            />
-          </div>
-        </div>
 
-        {bmi != null && bmiCat && (
-          <div
-            className="mt-5 flex items-center gap-3 rounded-md border p-3"
-            style={{ background: bmiCat.bg, borderColor: bmiCat.border }}
-          >
+          {bmi != null && bmiCat && (
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-md"
-              style={{
-                background: bmiCat.color,
-                color: 'white',
-              }}
+              className="mt-5 flex items-center gap-3 rounded-md border p-3"
+              style={{ background: bmiCat.bg, borderColor: bmiCat.border }}
             >
-              <Activity className="h-4 w-4" />
-            </div>
-            <div className="flex-1">
               <div
-                className="cap-eyebrow"
-                style={{ color: bmiCat.color }}
+                className="flex h-8 w-8 items-center justify-center rounded-md"
+                style={{
+                  background: bmiCat.color,
+                  color: 'white',
+                }}
               >
-                IMC calculado
+                <Activity className="h-4 w-4" />
               </div>
-              <div className="flex items-baseline gap-2">
-                <span
-                  className="cap-mono text-xl font-medium"
+              <div className="flex-1">
+                <div
+                  className="cap-eyebrow"
                   style={{ color: bmiCat.color }}
                 >
-                  {bmi.toFixed(1)}
-                </span>
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: bmiCat.color }}
-                >
-                  {bmiCat.label}
-                </span>
+                  IMC calculado
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span
+                    className="cap-mono text-xl font-medium"
+                    style={{ color: bmiCat.color }}
+                  >
+                    {bmi.toFixed(1)}
+                  </span>
+                  <span
+                    className="text-sm font-medium"
+                    style={{ color: bmiCat.color }}
+                  >
+                    {bmiCat.label}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="mt-5 space-y-1.5">
-          <Label htmlFor="history-pe-description">Descripción</Label>
-          <Textarea
-            id="history-pe-description"
-            value={form.pe_description}
-            onChange={(e) => set('pe_description', e.target.value)}
-            rows={2}
-            placeholder="Hallazgos relevantes de la exploración..."
-            className="resize-none"
-          />
-        </div>
-      </section>
-
-      {/* Diagnóstico */}
-      <section id="history-diagnostico" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={Microscope} title="Diagnóstico" />
-        <div className="space-y-2">
-          <Textarea
-            aria-label="Diagnóstico"
-            value={form.diagnostico}
-            onChange={(e) => set('diagnostico', e.target.value)}
-            rows={3}
-            placeholder="Diagnóstico clínico (tipo de alopecia, comorbilidades dermatológicas...)"
-            className="resize-none"
-          />
-          <div className="flex flex-wrap gap-1.5">
-            {DIAGNOSTICO_TEMPLATES.map((t) => (
-              <TemplateChip
-                key={t}
-                onClick={() =>
-                  set('diagnostico', appendTemplate(form.diagnostico, t))
-                }
-              >
-                {t}
-              </TemplateChip>
-            ))}
+          <div className="mt-5 space-y-2">
+            <Label htmlFor="history-pe-description">Descripción</Label>
+            <Textarea
+              id="history-pe-description"
+              value={form.pe_description}
+              onChange={(e) => set('pe_description', e.target.value)}
+              rows={2}
+              placeholder="Hallazgos relevantes de la exploración..."
+              className="resize-y"
+            />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Plan de tratamiento */}
-      <section id="history-plan" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
-        <SectionHeader icon={Pill} title="Plan de tratamiento" />
-        <div className="space-y-2">
-          <Textarea
-            aria-label="Plan de tratamiento"
-            value={form.tratamiento}
-            onChange={(e) => set('tratamiento', e.target.value)}
-            rows={3}
-            placeholder="Plan terapéutico propuesto..."
-            className="resize-none"
+        {/* Diagnóstico */}
+        <section id="history-diagnostico" aria-labelledby="history-diagnostico-title" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
+          <SectionHeader
+            icon={Microscope}
+            title="Diagnóstico"
+            headingId="history-diagnostico-title"
+            description="Diagnóstico registrado para esta historia."
           />
-          <div className="flex flex-wrap gap-1.5">
-            {TRATAMIENTO_TEMPLATES.map((t) => (
-              <TemplateChip
-                key={t}
-                onClick={() =>
-                  set('tratamiento', appendTemplate(form.tratamiento, t))
-                }
-              >
-                {t}
-              </TemplateChip>
-            ))}
+          <div className="space-y-2">
+            <Label htmlFor="history-diagnosis-notes" className="block text-sm leading-5">Diagnóstico clínico</Label>
+            <Textarea
+              id="history-diagnosis-notes"
+              aria-label="Diagnóstico"
+              value={form.diagnostico}
+              onChange={(e) => set('diagnostico', e.target.value)}
+              rows={3}
+              placeholder="Diagnóstico clínico (tipo de alopecia, comorbilidades dermatológicas...)"
+              className="resize-y"
+            />
+            <p className="pt-1 text-sm font-medium text-text-secondary">Añadir texto frecuente</p>
+            <div role="group" aria-label="Añadir texto frecuente" className="flex flex-wrap gap-2">
+              {DIAGNOSTICO_TEMPLATES.map((t) => (
+                <TemplateChip
+                  key={t}
+                  onClick={() =>
+                    set('diagnostico', appendTemplate(form.diagnostico, t))
+                  }
+                >
+                  {t}
+                </TemplateChip>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* Plan de tratamiento */}
+        <section id="history-plan" aria-labelledby="history-plan-title" tabIndex={-1} className="scroll-mt-[calc(var(--dashboard-header-height,0px)+5.5rem)] rounded-xl border border-border bg-surface p-4 shadow-xs sm:p-6">
+          <SectionHeader
+            icon={Pill}
+            title="Plan de tratamiento"
+            headingId="history-plan-title"
+            description="Plan de tratamiento registrado para esta historia."
+          />
+          <div className="space-y-2">
+            <Label htmlFor="history-plan-notes" className="block text-sm leading-5">Plan de tratamiento</Label>
+            <Textarea
+              id="history-plan-notes"
+              aria-label="Plan de tratamiento"
+              value={form.tratamiento}
+              onChange={(e) => set('tratamiento', e.target.value)}
+              rows={3}
+              placeholder="Plan terapéutico propuesto..."
+              className="resize-y"
+            />
+            <p className="pt-1 text-sm font-medium text-text-secondary">Añadir texto frecuente</p>
+            <div role="group" aria-label="Añadir texto frecuente" className="flex flex-wrap gap-2">
+              {TRATAMIENTO_TEMPLATES.map((t) => (
+                <TemplateChip
+                  key={t}
+                  onClick={() =>
+                    set('tratamiento', appendTemplate(form.tratamiento, t))
+                  }
+                >
+                  {t}
+                </TemplateChip>
+              ))}
+            </div>
+          </div>
+        </section>
+
+      </fieldset>
 
       <div ref={actionsRef} className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg lg:left-[248px]">
-        <div className="mx-auto flex max-w-[1424px] flex-wrap items-center justify-between gap-3">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p role="status" aria-live="polite" className={cn('text-sm font-medium', hasUnsavedChanges ? 'text-brand-dark' : 'text-text-secondary')}>
-              {mutation.isPending ? 'Guardando...' : hasUnsavedChanges ? 'Cambios pendientes' : 'Sin cambios pendientes'}
+              {mutation.isPending ? 'Guardando historia…' : mutation.isError ? 'Error al guardar' : hasUnsavedChanges ? 'Cambios sin guardar' : 'Sin cambios pendientes'}
             </p>
-            {mutation.isError && <p role="alert" className="mt-1 text-sm text-destructive [overflow-wrap:anywhere]">
-              {mutation.error?.message || (isEdit ? 'Error al actualizar historia clínica' : 'Error al crear historia clínica')}
-            </p>}
+            {mutation.isError && <a href="#history-save-error" className="mt-1 inline-flex min-h-11 items-center text-sm text-destructive underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Ver error de guardado</a>}
           </div>
           <div className="flex w-full gap-3 sm:w-auto">
         <Button
@@ -1062,8 +1185,9 @@ function HistoryForm({
           className="h-11 flex-1 px-4 font-medium sm:flex-none sm:px-8"
           disabled={mutation.isPending}
         >
+          {mutation.isPending && <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />}
           {mutation.isPending
-            ? 'Guardando...'
+            ? 'Guardando…'
             : isEdit
               ? 'Guardar cambios'
               : 'Guardar historia'}
@@ -1103,10 +1227,10 @@ export default function PatientHistoryPage({
     : null;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-5">
       <Link
         href={`/dashboard/patients/${params.id}`}
-        className="inline-flex min-h-11 w-fit items-center gap-1 text-sm text-text-secondary transition-colors hover:text-foreground"
+        className="inline-flex min-h-11 w-fit items-center gap-1 rounded-md text-sm text-text-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <ChevronLeft className="h-3.5 w-3.5" /> Volver al paciente
       </Link>
@@ -1117,7 +1241,7 @@ export default function PatientHistoryPage({
           <h2 className="cap-h2 mb-1 [overflow-wrap:anywhere]">
             {patientName ?? 'Cargando paciente...'}
           </h2>
-          <p className="text-[13px] text-text-secondary">
+          <p className="text-sm leading-6 text-text-secondary">
             {total === 0
               ? 'Sin historia clínica'
               : total === 1
@@ -1131,7 +1255,7 @@ export default function PatientHistoryPage({
               <Button
                 size="sm"
                 variant="outline"
-                className="gap-1.5"
+                className="h-11 gap-1.5"
                 onClick={() => setMode('edit')}
               >
                 <Pencil className="h-3.5 w-3.5" /> Editar
@@ -1139,7 +1263,7 @@ export default function PatientHistoryPage({
             )}
             <Button
               size="sm"
-              className="gap-1.5"
+              className="h-11 gap-1.5"
               onClick={() => setMode('create')}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -1151,7 +1275,7 @@ export default function PatientHistoryPage({
 
       {!showForm && histories && histories.length > 1 && (
         <div className="rounded-xl border border-border bg-surface p-4 shadow-xs">
-          <div className="cap-eyebrow mb-2.5">Historias previas</div>
+          <div className="mb-2.5 text-sm font-semibold">Historias previas</div>
           <div className="flex flex-wrap gap-1.5">
             {histories.map((h, idx) => {
               const active = h.id === selectedHistory?.id;
@@ -1163,7 +1287,7 @@ export default function PatientHistoryPage({
                   onClick={() => setSelectedId(h.id)}
                   aria-pressed={active}
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors',
+                    'inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                     active
                       ? 'border-brand bg-brand-soft text-brand-dark'
                       : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-foreground',
@@ -1173,7 +1297,7 @@ export default function PatientHistoryPage({
                   {isLatest && (
                     <span
                       className={cn(
-                        'rounded-full px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide',
+                        'rounded-full px-1.5 py-px text-xs font-semibold',
                         active
                           ? 'bg-brand text-white'
                           : 'bg-surface-3 text-text-tertiary',
@@ -1226,7 +1350,7 @@ export default function PatientHistoryPage({
           {canWrite && (
             <Button
               size="sm"
-              className="mt-2 gap-1.5"
+              className="mt-2 h-11 gap-1.5"
               onClick={() => setMode('create')}
             >
               <Plus className="h-3.5 w-3.5" /> Crear historia clínica
