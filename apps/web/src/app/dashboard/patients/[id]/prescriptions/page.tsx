@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from '@/components/patients/patient-context-link';
 import { ArrowLeft, Plus, Pill } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,16 +35,15 @@ export default function PatientPrescriptionsPage({
   params: { id: string };
 }) {
   const { data: patient } = usePatient(params.id);
-  const { data, isLoading } = usePrescriptions(1, 100);
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error, refetch } = usePrescriptions(page, 20, params.id);
   const canWrite = useHasRole('admin', 'doctor');
 
-  const prescriptions = (data?.data || []).filter(
-    (rx) => rx.patientId === params.id,
-  );
+  const prescriptions = data?.data || [];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="rounded-full h-9 w-9" asChild>
             <Link href={`/dashboard/patients/${params.id}`}>
@@ -71,14 +71,16 @@ export default function PatientPrescriptionsPage({
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-muted-foreground">Cargando prescripciones...</p>
+              <p role="status" className="text-sm text-muted-foreground">Cargando prescripciones...</p>
             </div>
+          ) : error ? (
+            <div role="alert" className="p-6 text-destructive">No se pudieron cargar las prescripciones. <Button variant="outline" onClick={() => refetch()}>Reintentar</Button></div>
           ) : prescriptions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                 <Pill className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">No hay prescripciones para este paciente</p>
+              <p className="text-sm text-muted-foreground">{data?.meta.total ? 'No hay recetas en esta página. Vuelve a la anterior.' : 'No hay prescripciones para este paciente'}</p>
               {canWrite && (
                 <Button className="h-10 font-medium mt-2" asChild>
                   <Link href={`/dashboard/patients/${params.id}/prescriptions/new`}>
@@ -146,6 +148,10 @@ export default function PatientPrescriptionsPage({
           )}
         </CardContent>
       </Card>
+      {data && (data.meta.totalPages > 1 || page > 1) && <nav aria-label="Páginas de prescripciones" className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-text-secondary">Página {data.meta.page} de {data.meta.totalPages} · {data.meta.total} recetas de este paciente</p>
+        <div className="flex gap-2"><Button variant="outline" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Anterior</Button><Button variant="outline" disabled={page >= data.meta.totalPages} onClick={() => setPage(p => p + 1)}>Siguiente</Button></div>
+      </nav>}
     </div>
   );
 }

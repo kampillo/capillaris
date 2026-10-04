@@ -1,5 +1,7 @@
 'use client';
 
+import { QueryFeedback } from '@/components/clinic/form-layout';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import {
@@ -44,20 +46,20 @@ import { useHasRole } from '@/hooks/use-has-role';
 
 export default function InventoryPage() {
   const [page, setPage] = useState(1);
+  const [stockSaving, setStockSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [editTarget, setEditTarget] = useState<Product | null>(null);
   const [stockTarget, setStockTarget] = useState<Product | null>(null);
   const canManageProducts = useHasRole('admin', 'inventory_manager');
 
-  const { data, isLoading, error } = useProducts(page, 20);
+  const { data, isLoading, error, refetch } = useProducts(page, 20);
   const { data: lowStock } = useLowStock();
   const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await deleteMutation.mutateAsync(deleteTarget.id);
-    setDeleteTarget(null);
+    try { await deleteMutation.mutateAsync(deleteTarget.id); setDeleteTarget(null); } catch { /* Shown in the dialog. */ }
   };
 
   const products = data?.data || [];
@@ -65,15 +67,15 @@ export default function InventoryPage() {
   const lowStockCount = lowStock?.length ?? 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="min-w-0 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h2 className="text-2xl font-bold tracking-tight">Inventario</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {meta ? `${meta.total} productos registrados` : 'Gestión de inventario y productos'}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Button variant="outline" className="h-10" asChild>
             <Link href="/dashboard/inventory/movements">
               <ArrowRightLeft className="mr-2 h-4 w-4" />
@@ -106,16 +108,14 @@ export default function InventoryPage() {
       )}
 
       {/* Products Table */}
-      <Card className="shadow-sm">
-        <CardContent className="p-0">
+      <Card className="min-w-0 shadow-sm">
+        <CardContent className="min-w-0 p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-muted-foreground">Cargando productos...</p>
+              <p role="status" className="text-sm text-muted-foreground">Cargando productos...</p>
             </div>
           ) : error ? (
-            <div className="flex items-center justify-center py-16">
-              <p className="text-sm text-destructive">Error al cargar productos</p>
-            </div>
+            <QueryFeedback error label="productos" onRetry={() => refetch()} />
           ) : products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
@@ -230,7 +230,7 @@ export default function InventoryPage() {
         </CardContent>
 
         {meta && meta.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t">
             <p className="text-xs text-muted-foreground">
               Página {meta.page} de {meta.totalPages} ({meta.total} resultados)
             </p>
@@ -247,14 +247,15 @@ export default function InventoryPage() {
       </Card>
 
       {/* Edit Product Dialog */}
-      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
-        <DialogContent className="sm:max-w-2xl">
+      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open && !updateMutation.isPending) setEditTarget(null); }}>
+        <DialogContent className="max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar producto</DialogTitle>
             <DialogDescription>{editTarget?.name}</DialogDescription>
           </DialogHeader>
           {editTarget && (
             <ProductForm
+                key={editTarget.id}
               inline
               defaultValues={editTarget}
               isSubmitting={updateMutation.isPending}
@@ -270,7 +271,7 @@ export default function InventoryPage() {
       </Dialog>
 
       {/* Add Stock Dialog */}
-      <Dialog open={!!stockTarget} onOpenChange={(open) => !open && setStockTarget(null)}>
+      <Dialog open={!!stockTarget} onOpenChange={(open) => { if (!open && !stockSaving) setStockTarget(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Agregar stock</DialogTitle>
@@ -281,6 +282,7 @@ export default function InventoryPage() {
           </DialogHeader>
           {stockTarget && (
             <StockMovementForm
+                onSavingChange={setStockSaving}
               productId={stockTarget.id}
               productName={stockTarget.name}
               defaultMovementType="entrada"
@@ -293,7 +295,7 @@ export default function InventoryPage() {
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open && !deleteMutation.isPending) setDeleteTarget(null); } }>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Desactivar Producto</DialogTitle>
@@ -302,8 +304,9 @@ export default function InventoryPage() {
               El producto no se eliminará, solo se marcará como inactivo.
             </DialogDescription>
           </DialogHeader>
+          {deleteMutation.isError && <p role="alert" className="text-sm text-destructive">No se pudo completar la operación. Puedes reintentar.</p>}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+            <Button variant="outline" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(null)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? 'Desactivando...' : 'Desactivar'}
             </Button>

@@ -24,6 +24,7 @@ import { useCreateAppointment } from '@/hooks/use-appointments';
 import { useRequireRole } from '@/hooks/use-has-role';
 import { todayInput, formatDateLong } from '@/lib/dates';
 import { displayName } from '@/lib/names';
+import { appointmentRange } from '@/lib/appointment-range';
 
 const SUGGESTED_SLOTS = [
   '09:00',
@@ -51,14 +52,6 @@ const DURATIONS = [
   { value: '120', label: '2 h' },
   { value: '480', label: 'Día completo' },
 ];
-
-function addMinutes(time: string, minutes: number) {
-  const [h, m] = time.split(':').map(Number);
-  const total = h * 60 + m + minutes;
-  const hh = Math.floor(total / 60) % 24;
-  const mm = total % 60;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-}
 
 function SectionHeader({
   icon: Icon,
@@ -115,7 +108,8 @@ function NewAppointmentForm() {
 
   const patients = patientsData?.data || [];
   const showPatientResults = patientSearch.length >= 2 && !selectedPatientId;
-  const endTime = addMinutes(startTime, parseInt(duration, 10));
+  const range = appointmentRange(date, startTime, Number(duration));
+  const endTime = range?.endTime ?? '—';
 
   const handleSelectPatient = (id: string, nombre: string, apellido: string) => {
     setPatientSelection({ id, name: `${nombre} ${apellido}` });
@@ -136,8 +130,8 @@ function NewAppointmentForm() {
       return;
     }
 
-    const startDatetime = `${date}T${startTime}:00`;
-    const endDatetime = `${date}T${endTime}:00`;
+    if (!range) { setError('La fecha, hora o duración no es válida.'); return; }
+    const { startDatetime, endDatetime } = range;
 
     try {
       await createMutation.mutateAsync({
@@ -310,7 +304,7 @@ function NewAppointmentForm() {
               </div>
 
               <p className="cap-mono text-[11px] text-text-tertiary">
-                Termina a las {endTime}
+                Termina a las {endTime}{range && range.endDate !== date && ` del ${formatDateLong(range.endDate)}`}
               </p>
             </div>
           </section>

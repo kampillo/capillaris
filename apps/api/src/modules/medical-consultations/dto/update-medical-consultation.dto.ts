@@ -24,20 +24,20 @@ export class UpdateMedicalConsultationDto {
   @IsString()
   grosor?: string;
 
-  @ApiPropertyOptional({ example: false })
+  @ApiPropertyOptional({ example: false, type: Boolean, nullable: true })
   @IsOptional()
   @IsBoolean()
-  caspa?: boolean;
+  caspa?: boolean | null;
 
   @ApiPropertyOptional({ example: 'negro' })
   @IsOptional()
   @IsString()
   color?: string;
 
-  @ApiPropertyOptional({ example: false })
+  @ApiPropertyOptional({ example: false, type: Boolean, nullable: true })
   @IsOptional()
   @IsBoolean()
-  grasa?: boolean;
+  grasa?: boolean | null;
 
   @ApiPropertyOptional({ example: 'liso' })
   @IsOptional()
@@ -59,10 +59,10 @@ export class UpdateMedicalConsultationDto {
   @IsString()
   estrategiaQuirurgica?: string;
 
-  @ApiPropertyOptional({ example: '2024-06-15' })
+  @ApiPropertyOptional({ example: '2024-06-15', type: String, nullable: true })
   @IsOptional()
   @IsDateString()
-  fechaSugeridaTransplante?: string;
+  fechaSugeridaTransplante?: string | null;
 
   @ApiPropertyOptional({
     example: false,

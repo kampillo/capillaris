@@ -38,8 +38,8 @@ export class PrescriptionsController {
   @Get()
   @Roles('admin', 'doctor', 'receptionist')
   @ApiOperation({ summary: 'Get all prescriptions (paginated)' })
-  findAll(@Query('page') page?: number, @Query('pageSize') pageSize?: number) {
-    return this.prescriptionsService.findAll(page, pageSize);
+  findAll(@Query('page') page?: number, @Query('pageSize') pageSize?: number, @Query('patientId') patientId?: string) {
+    return this.prescriptionsService.findAll(page, pageSize, patientId);
   }
 
   @Get(':id')

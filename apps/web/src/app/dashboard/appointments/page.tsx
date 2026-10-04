@@ -564,6 +564,7 @@ export default function AppointmentsPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Appointment | null>(null);
+  const [actionError, setActionError] = useState('');
   const [view, setView] = useState<'table' | 'week' | 'month'>('week');
   const canManageAppointments = useHasRole('admin', 'doctor', 'receptionist');
 
@@ -609,23 +610,26 @@ export default function AppointmentsPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await deleteMutation.mutateAsync(deleteTarget.id);
-    setDeleteTarget(null);
+    setActionError('');
+    try { await deleteMutation.mutateAsync(deleteTarget.id); setDeleteTarget(null); }
+    catch { setActionError('No se pudo eliminar la cita. Puedes reintentar.'); }
   };
 
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
+    setActionError('');
+    try {
     await updateMutation.mutateAsync({
       id: appointmentId,
       data: { status: newStatus },
     });
+    } catch { setActionError('No se pudo actualizar el estado de la cita. Puedes reintentar.'); }
   };
 
-  let appointments = data?.data || [];
+  const appointments = useMemo(() => {
+    const rows = data?.data || [];
+    return statusFilter ? rows.filter(a => a.status === statusFilter) : rows;
+  }, [data, statusFilter]);
   const meta = data?.meta;
-
-  if (statusFilter) {
-    appointments = appointments.filter((a) => a.status === statusFilter);
-  }
 
   const calendarItems = useMemo(
     () => mergeItems(appointments, googleEvents),
@@ -829,6 +833,7 @@ export default function AppointmentsPage() {
                       <td className="px-4 py-3.5">
                         {canManageAppointments ? (
                           <Select
+                            disabled={updateMutation.isPending}
                             value={appt.status}
                             onValueChange={(v) => handleStatusChange(appt.id, v)}
                           >
@@ -900,7 +905,8 @@ export default function AppointmentsPage() {
       )}
 
       {/* Delete Dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+      {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
+      <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open && !deleteMutation.isPending) setDeleteTarget(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Eliminar cita</DialogTitle>
@@ -915,8 +921,9 @@ export default function AppointmentsPage() {
               ?
             </DialogDescription>
           </DialogHeader>
+          {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+            <Button variant="outline" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(null)}>
               Cancelar
             </Button>
             <Button

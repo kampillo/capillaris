@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { FormIntro, FormActions, QueryFeedback, useFormDraft, useSaveGuard } from '@/components/clinic/form-layout';
 import Link from '@/components/patients/patient-context-link';
 import {
   ChevronLeft,
@@ -129,10 +130,10 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-5 flex items-center gap-2.5">
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
-        <Icon className="h-4 w-4" />
+      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
+        <Icon className="h-5 w-5" />
       </div>
-      <h3 className="cap-eyebrow">
+      <h3 className="text-lg font-semibold text-foreground">
         {title}
         {required && <span className="ml-1 text-destructive">*</span>}
       </h3>
@@ -163,7 +164,7 @@ function ChoicePill({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
+        'min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
         active
           ? activeClasses
           : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
@@ -423,9 +424,12 @@ function ConsultationForm({
   const createMutation = useCreateConsultation();
   const updateMutation = useUpdateConsultation();
   const mutation = isEdit ? updateMutation : createMutation;
-  const { data: donorZones = [] } = useDonorZones();
-  const { data: variants = [] } = useVariants();
-  const { data: doctors = [] } = useDoctors();
+  const donorZonesQuery = useDonorZones();
+  const { data: donorZones = [] } = donorZonesQuery;
+  const variantsQuery = useVariants();
+  const { data: variants = [] } = variantsQuery;
+  const doctorsQuery = useDoctors();
+  const { data: doctors = [] } = doctorsQuery;
 
   const [form, setForm] = useState({
     doctorId: consultation?.doctorId ?? '',
@@ -450,6 +454,10 @@ function ConsultationForm({
     donorZoneIds: consultation?.donorZones?.map((d) => d.donorZone.id) ?? [],
     variantIds: consultation?.variants?.map((v) => v.variant.id) ?? [],
   });
+  const catalogQueries = [donorZonesQuery, variantsQuery, doctorsQuery];
+  const guard = useSaveGuard();
+  const busy = mutation.isPending || guard.saving;
+  const dirty = useFormDraft(form);
 
   const set = <K extends keyof typeof form>(
     key: K,
@@ -474,6 +482,7 @@ function ConsultationForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     const payload: any = {
       patientId,
       doctorId: form.doctorId,
@@ -481,14 +490,14 @@ function ConsultationForm({
       grosor: form.grosor || undefined,
       color: form.color || undefined,
       textura: form.textura || undefined,
-      caspa: form.caspa,
-      grasa: form.grasa,
+      caspa: form.caspa ?? (isEdit ? null : undefined),
+      grasa: form.grasa ?? (isEdit ? null : undefined),
       valoracionZonaDonante: form.valoracionZonaDonante || undefined,
       diagnostico: form.diagnostico || undefined,
       gradoNorwood: form.gradoNorwood || undefined,
       gradoLudwig: form.gradoLudwig || undefined,
       estrategiaQuirurgica: form.estrategiaQuirurgica || undefined,
-      fechaSugeridaTransplante: form.fechaSugeridaTransplante || undefined,
+      fechaSugeridaTransplante: form.fechaSugeridaTransplante || (isEdit ? null : undefined),
       trasplanteDosDias: form.trasplanteDosDias,
       comentarios: form.comentarios || undefined,
       // On edit, always send the arrays so removals persist; on create, omit when empty.
@@ -504,38 +513,47 @@ function ConsultationForm({
           : undefined,
     };
 
+    if (isEdit) {
+      for (const key of ['grosor', 'color', 'textura', 'valoracionZonaDonante', 'diagnostico', 'gradoNorwood', 'gradoLudwig', 'estrategiaQuirurgica', 'comentarios'] as const) payload[key] = form[key];
+    }
+
     Object.keys(payload).forEach((k) => {
       if (payload[k] === undefined) delete payload[k];
     });
 
     try {
+      await guard.run(async () => {
       if (isEdit && consultation) {
         await updateMutation.mutateAsync({ id: consultation.id, ...payload });
       } else {
         await createMutation.mutateAsync(payload);
       }
       onSuccess();
+      });
     } catch {
       // captured in mutation.error
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} aria-busy={busy} className="flex flex-col gap-5">
+      <FormIntro title={isEdit ? 'Editar consulta' : 'Nueva consulta'} description="Completa la evaluación y revisa el diagnóstico y la estrategia antes de guardar." sections={[{ id: 'consultation-data', label: 'Datos' }, { id: 'consultation-evaluation', label: 'Evaluación capilar' }, { id: 'consultation-zones', label: 'Zonas receptoras' }, { id: 'consultation-plan', label: 'Diagnóstico y estrategia' }]} />
+      <QueryFeedback loading={catalogQueries.some(query => query.isLoading)} error={catalogQueries.some(query => query.isError)} label="catálogos de consulta" onRetry={() => { catalogQueries.filter(query => query.isError).forEach(query => query.refetch()); } } />
+      <fieldset disabled={busy} className="min-w-0 space-y-5">
       {/* Compact header strip: doctor + fecha */}
-      <section className="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-surface px-5 py-4 shadow-xs">
+      <section id="consultation-data" className="flex flex-wrap items-end gap-4 rounded-xl border border-border bg-surface px-5 py-4 shadow-xs">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
           <Stethoscope className="h-4 w-4" />
         </div>
         <div className="min-w-[180px] flex-1 space-y-1">
-          <Label className="text-[11px] text-text-secondary">
+          <Label htmlFor="consultation-doctorId" className="text-sm font-medium text-text-secondary">
             Doctor <span className="text-destructive">*</span>
           </Label>
-          <Select
+          <Select disabled={busy}
             value={form.doctorId}
             onValueChange={(v) => set('doctorId', v)}
           >
-            <SelectTrigger className="h-10">
+            <SelectTrigger id="consultation-doctorId" className="h-11">
               <SelectValue placeholder="Seleccionar doctor..." />
             </SelectTrigger>
             <SelectContent>
@@ -548,24 +566,24 @@ function ConsultationForm({
           </Select>
         </div>
         <div className="min-w-[160px] space-y-1">
-          <Label className="text-[11px] text-text-secondary">
+          <Label htmlFor="consultation-consultationDate" className="text-sm font-medium text-text-secondary">
             Fecha <span className="text-destructive">*</span>
           </Label>
-          <DatePicker
+          <DatePicker disabled={busy} id="consultation-consultationDate"
             value={form.consultationDate}
             onChange={(v) => set('consultationDate', v)}
-            className="h-10"
+            className="h-11"
             toDate={new Date()}
           />
         </div>
       </section>
 
       {/* Evaluación capilar */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="consultation-evaluation" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader icon={Eye} title="Evaluación capilar" />
         <div className="grid gap-4">
-          <div>
-            <Label className="cap-eyebrow mb-2 block">Grosor</Label>
+          <div role="group" aria-labelledby="consultation-group-1">
+            <span id="consultation-group-1" className="text-sm font-medium text-text-secondary mb-2 block">Grosor</span>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(GROSOR_LABELS).map(([v, l]) => (
                 <ChoicePill
@@ -578,8 +596,8 @@ function ConsultationForm({
               ))}
             </div>
           </div>
-          <div>
-            <Label className="cap-eyebrow mb-2 block">Color</Label>
+          <div role="group" aria-labelledby="consultation-group-2">
+            <span id="consultation-group-2" className="text-sm font-medium text-text-secondary mb-2 block">Color</span>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(COLOR_LABELS).map(([v, l]) => (
                 <ChoicePill
@@ -592,8 +610,8 @@ function ConsultationForm({
               ))}
             </div>
           </div>
-          <div>
-            <Label className="cap-eyebrow mb-2 block">Textura</Label>
+          <div role="group" aria-labelledby="consultation-group-3">
+            <span id="consultation-group-3" className="text-sm font-medium text-text-secondary mb-2 block">Textura</span>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(TEXTURA_LABELS).map(([v, l]) => (
                 <ChoicePill
@@ -609,8 +627,8 @@ function ConsultationForm({
 
           {/* Condiciones: caspa + grasa as Sí/No */}
           <div className="grid grid-cols-1 gap-4 border-t border-border pt-4 sm:grid-cols-2">
-            <div>
-              <Label className="cap-eyebrow mb-2 block">Caspa</Label>
+            <div role="group" aria-labelledby="consultation-group-4">
+              <span id="consultation-group-4" className="text-sm font-medium text-text-secondary mb-2 block">Caspa</span>
               <div className="flex gap-1.5">
                 <ChoicePill
                   active={form.caspa === true}
@@ -626,8 +644,8 @@ function ConsultationForm({
                 </ChoicePill>
               </div>
             </div>
-            <div>
-              <Label className="cap-eyebrow mb-2 block">Grasa</Label>
+            <div role="group" aria-labelledby="consultation-group-5">
+              <span id="consultation-group-5" className="text-sm font-medium text-text-secondary mb-2 block">Grasa</span>
               <div className="flex gap-1.5">
                 <ChoicePill
                   active={form.grasa === true}
@@ -648,21 +666,22 @@ function ConsultationForm({
       </section>
 
       {/* Zonas donantes (+ valoración integrada) */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="consultation-zones" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader icon={Scissors} title="Zonas receptoras" />
         <p className="-mt-2 mb-4 text-xs text-text-tertiary">
           Haz clic en el mapa para marcar las zonas donde se van a implantar
           los folículos.
         </p>
         <ScalpZonePicker
+          disabled={busy}
           zones={donorZones}
           value={form.donorZoneIds}
           onChange={(ids) => set('donorZoneIds', ids)}
         />
-        <div className="mt-5 border-t border-border pt-4">
-          <Label className="cap-eyebrow mb-2 block">
+        <div role="group" aria-labelledby="consultation-group-6" className="mt-5 border-t border-border pt-4">
+          <span id="consultation-group-6" className="text-sm font-medium text-text-secondary mb-2 block">
             Valoración de la zona donante
-          </Label>
+          </span>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(VALORACION_LABELS).map(([v, l]) => (
               <ChoicePill
@@ -683,11 +702,11 @@ function ConsultationForm({
       </section>
 
       {/* Diagnóstico y estrategia (incluye variantes) */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="consultation-plan" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader icon={MessageSquare} title="Diagnóstico y estrategia" />
         <div className="grid gap-5">
-          <div>
-            <Label className="cap-eyebrow mb-2 block">Variantes</Label>
+          <div role="group" aria-labelledby="consultation-group-7">
+            <span id="consultation-group-7" className="text-sm font-medium text-text-secondary mb-2 block">Variantes</span>
             <div className="flex flex-wrap gap-1.5">
               {variants.map((v) => {
                 const active = form.variantIds.includes(v.id);
@@ -706,8 +725,8 @@ function ConsultationForm({
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Grado Hamilton-Norwood</Label>
+            <div role="group" aria-labelledby="consultation-group-8" className="space-y-2">
+              <span id="consultation-group-8">Grado Hamilton-Norwood</span>
               <div className="flex flex-wrap gap-1.5">
                 {NORWOOD.map((g) => (
                   <ChoicePill
@@ -722,8 +741,8 @@ function ConsultationForm({
                 ))}
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Grado Ludwig</Label>
+            <div role="group" aria-labelledby="consultation-group-9" className="space-y-2">
+              <span id="consultation-group-9">Grado Ludwig</span>
               <div className="flex flex-wrap gap-1.5">
                 {LUDWIG.map((g) => (
                   <ChoicePill
@@ -745,8 +764,8 @@ function ConsultationForm({
           </div>
 
           <div className="space-y-2">
-            <Label>Diagnóstico</Label>
-            <Textarea
+            <Label htmlFor="consultation-diagnostico">Diagnóstico</Label>
+            <Textarea id="consultation-diagnostico"
               value={form.diagnostico}
               onChange={(e) => set('diagnostico', e.target.value)}
               rows={3}
@@ -768,8 +787,8 @@ function ConsultationForm({
           </div>
 
           <div className="space-y-2">
-            <Label>Estrategia quirúrgica</Label>
-            <Textarea
+            <Label htmlFor="consultation-estrategiaQuirurgica">Estrategia quirúrgica</Label>
+            <Textarea id="consultation-estrategiaQuirurgica"
               value={form.estrategiaQuirurgica}
               onChange={(e) => set('estrategiaQuirurgica', e.target.value)}
               rows={3}
@@ -795,8 +814,8 @@ function ConsultationForm({
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label>Fecha sugerida de trasplante</Label>
-              <DatePicker
+              <Label htmlFor="consultation-fechaSugeridaTransplante">Fecha sugerida de trasplante</Label>
+              <DatePicker disabled={busy} id="consultation-fechaSugeridaTransplante"
                 value={form.fechaSugeridaTransplante}
                 onChange={(v) => set('fechaSugeridaTransplante', v)}
                 fromDate={new Date()}
@@ -819,8 +838,8 @@ function ConsultationForm({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Comentarios</Label>
-            <Textarea
+            <Label htmlFor="consultation-comentarios">Comentarios</Label>
+            <Textarea id="consultation-comentarios"
               value={form.comentarios}
               onChange={(e) => set('comentarios', e.target.value)}
               rows={2}
@@ -832,33 +851,14 @@ function ConsultationForm({
       </section>
 
       {mutation.isError && (
-        <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+        <div role="alert" className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
           {mutation.error?.message ||
             (isEdit ? 'Error al actualizar consulta' : 'Error al crear consulta')}
         </div>
       )}
 
-      <div className="flex justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11"
-          onClick={onCancel}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          className="h-11 px-8 font-medium"
-          disabled={mutation.isPending || !form.doctorId}
-        >
-          {mutation.isPending
-            ? 'Guardando...'
-            : isEdit
-              ? 'Actualizar consulta'
-              : 'Guardar consulta'}
-        </Button>
-      </div>
+      </fieldset>
+      <FormActions busy={busy} dirty={dirty} submitLabel={isEdit ? 'Actualizar consulta' : 'Guardar consulta'} onCancel={onCancel} disabled={!form.doctorId} />
     </form>
   );
 }
@@ -868,7 +868,7 @@ export default function PatientConsultationsPage({
 }: {
   params: { id: string };
 }) {
-  const { data: consultations, isLoading } = useConsultationsByPatient(
+  const { data: consultations, isLoading, error, refetch } = useConsultationsByPatient(
     params.id,
   );
   const [showForm, setShowForm] = useState(false);
@@ -916,7 +916,7 @@ export default function PatientConsultationsPage({
           onSuccess={closeForm}
           onCancel={closeForm}
         />
-      ) : consultations && consultations.length > 0 ? (
+      ) : error ? <QueryFeedback error label="consultas médicas" onRetry={() => refetch()} /> : consultations && consultations.length > 0 ? (
         <div className="flex flex-col gap-4">
           {consultations.map((c) => (
             <ConsultationCard

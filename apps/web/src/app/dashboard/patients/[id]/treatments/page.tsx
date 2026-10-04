@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { QueryFeedback, FormActions, useFormDraft, useSaveGuard } from '@/components/clinic/form-layout';
 import Link from '@/components/patients/patient-context-link';
 import { ChevronLeft, Plus, Syringe, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
   useTreatmentTypes,
   useTreatmentsByPatient,
@@ -58,6 +60,17 @@ function TarjetaTratamiento({
   puedeBorrar: boolean;
 }) {
   const del = useDeleteTreatment(patientId);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const remove = async () => {
+    setDeleteError('');
+    try {
+      await del.mutateAsync(tratamiento.id);
+      setConfirmDelete(false);
+    } catch {
+      setDeleteError('No se pudo eliminar el tratamiento. El registro se conserva; puedes reintentar.');
+    }
+  };
   const tipos = tratamiento.tipos.map((t) => t.treatmentType);
 
   return (
@@ -101,15 +114,29 @@ function TarjetaTratamiento({
         {puedeBorrar && (
           <button
             type="button"
-            onClick={() => del.mutate(tratamiento.id)}
+            onClick={() => { setDeleteError(''); setConfirmDelete(true); }}
             disabled={del.isPending}
-            className="rounded-sm p-1.5 text-text-tertiary transition-colors hover:bg-red-50 hover:text-red-600"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-md text-text-tertiary transition-colors hover:bg-red-50 hover:text-red-600"
             aria-label="Eliminar tratamiento"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>
+
+      <Dialog open={confirmDelete} onOpenChange={open => { if (!del.isPending) setConfirmDelete(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar tratamiento</DialogTitle>
+            <DialogDescription>Se eliminará el registro del {formatDateLong(tratamiento.fecha)}. Esta acción no se puede deshacer desde el expediente.</DialogDescription>
+          </DialogHeader>
+          {deleteError && <p role="alert" className="text-sm text-destructive">{deleteError}</p>}
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" disabled={del.isPending} onClick={() => setConfirmDelete(false)}>Conservar tratamiento</Button>
+            <Button type="button" variant="destructive" disabled={del.isPending} onClick={remove}>{del.isPending ? 'Eliminando…' : 'Sí, eliminar tratamiento'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {tratamiento.zonas.length > 0 && (
         <div className="mt-3">
@@ -171,6 +198,11 @@ function FormularioTratamiento({
     comentarios: '',
   });
 
+  const guard = useSaveGuard();
+  const busy = crear.isPending || guard.saving;
+  const dirty = useFormDraft(form);
+  const [submitError, setSubmitError] = useState('');
+
   const set = (k: string, v: unknown) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
@@ -193,9 +225,12 @@ function FormularioTratamiento({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+    setSubmitError('');
     const num = (v: string) => (v ? Number(v) : undefined);
     const str = (v: string) => v || undefined;
 
+    try { await guard.run(async () => {
     await crear.mutateAsync({
       patientId,
       fecha: form.fecha,
@@ -211,17 +246,20 @@ function FormularioTratamiento({
       comentarios: str(form.comentarios),
     });
     onSuccess();
+    }); } catch { setSubmitError('No se pudo guardar el tratamiento. Los datos permanecen en el formulario.'); }
   };
 
   return (
     <form
       onSubmit={handleSubmit}
+      aria-busy={busy}
       className="flex flex-col gap-5 rounded-xl border border-border bg-surface p-6 shadow-xs"
     >
+      <fieldset disabled={busy} className="min-w-0 space-y-5">
       <div className="grid gap-5 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label className="cap-eyebrow">Fecha</Label>
-          <DatePicker
+          <DatePicker disabled={busy}
             value={form.fecha}
             onChange={(v) => set('fecha', v)}
           />
@@ -350,20 +388,14 @@ function FormularioTratamiento({
         />
       </div>
 
-      {crear.error && (
-        <p className="text-xs text-destructive">
-          No se pudo guardar el tratamiento.
+      {submitError && (
+        <p role="alert" className="text-sm text-destructive">
+          {submitError}
         </p>
       )}
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={crear.isPending}>
-          {crear.isPending ? 'Guardando...' : 'Guardar tratamiento'}
-        </Button>
-      </div>
+      </fieldset>
+      <FormActions busy={busy} dirty={dirty} submitLabel="Guardar tratamiento" onCancel={onCancel} />
     </form>
   );
 }
@@ -373,7 +405,7 @@ export default function TreatmentsPage({
 }: {
   params: { id: string };
 }) {
-  const { data: tratamientos, isLoading } = useTreatmentsByPatient(params.id);
+  const { data: tratamientos, isLoading, error, refetch } = useTreatmentsByPatient(params.id);
   const canWrite = useHasRole('admin', 'doctor', 'receptionist');
   const canDelete = useHasRole('admin', 'doctor');
   const [showForm, setShowForm] = useState(false);
@@ -417,7 +449,7 @@ export default function TreatmentsPage({
           onSuccess={() => setShowForm(false)}
           onCancel={() => setShowForm(false)}
         />
-      ) : tratamientos && tratamientos.length > 0 ? (
+      ) : error ? <QueryFeedback error label="tratamientos" onRetry={() => refetch()} /> : tratamientos && tratamientos.length > 0 ? (
         <div className="flex flex-col gap-3">
           {tratamientos.map((t) => (
             <TarjetaTratamiento

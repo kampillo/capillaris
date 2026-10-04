@@ -32,21 +32,25 @@ export class PrescriptionsService {
     });
   }
 
-  async findAll(page = 1, pageSize = 20) {
+  async findAll(page = 1, pageSize = 20, patientId?: string) {
+    page = Math.max(1, Math.floor(Number(page) || 1));
+    pageSize = Math.min(100, Math.max(1, Math.floor(Number(pageSize) || 20)));
     const skip = (page - 1) * pageSize;
+    const where = patientId ? { patientId } : {};
 
     const [data, total] = await Promise.all([
       this.prisma.prescription.findMany({
+        where,
         skip,
         take: pageSize,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         include: {
           items: true,
           patient: true,
           doctor: { select: USER_PUBLIC_SELECT },
         },
       }),
-      this.prisma.prescription.count(),
+      this.prisma.prescription.count({ where }),
     ]);
 
     return {

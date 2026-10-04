@@ -93,6 +93,7 @@ export default function PrescriptionDetailPage() {
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [actionError, setActionError] = useState('');
   const canWrite = useHasRole('admin', 'doctor');
 
   if (isLoading) {
@@ -123,18 +124,21 @@ export default function PrescriptionDetailPage() {
     : '—';
 
   const handleDelete = async () => {
-    await deleteMutation.mutateAsync(rx.id);
+    setActionError('');
+    try { await deleteMutation.mutateAsync(rx.id); } catch { setActionError('No se pudo eliminar la prescripción. Puedes reintentar.'); return; }
     router.push(patientPrescriptionsPath);
   };
 
   const handleStatusChange = async (newStatus: string) => {
     setStatusOpen(false);
     if (newStatus === rx.status) return;
-    await updateMutation.mutateAsync({ id: rx.id, data: { status: newStatus } });
+    setActionError('');
+    try { await updateMutation.mutateAsync({ id: rx.id, data: { status: newStatus } }); } catch { setActionError('No se pudo actualizar el estado. Puedes reintentar.'); }
   };
 
   return (
     <>
+      {actionError && <p role="alert" className="text-sm text-destructive print:hidden">{actionError}</p>}
       {/* Top bar (hidden on print) */}
       <div className="mb-6 flex items-center justify-between print:hidden">
         <div className="flex items-center gap-3">
@@ -169,6 +173,7 @@ export default function PrescriptionDetailPage() {
       {editing ? (
         <div className="max-w-3xl print:hidden">
           <PrescriptionForm
+            isEdit
             isSubmitting={updateMutation.isPending}
             submitLabel="Guardar cambios"
             lockPatient
@@ -181,6 +186,8 @@ export default function PrescriptionDetailPage() {
               notas: rx.notas,
               status: rx.status,
               items: rx.items.map((i) => ({
+                id: i.id,
+                dispensed: i.dispensed,
                 productId: i.productId,
                 medicineName: i.medicineName,
                 dosage: i.dosage,
@@ -426,7 +433,7 @@ export default function PrescriptionDetailPage() {
         </div>
       )}
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <Dialog open={deleteOpen} onOpenChange={open => { if (!deleteMutation.isPending) setDeleteOpen(open); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Eliminar prescripción</DialogTitle>
@@ -436,8 +443,9 @@ export default function PrescriptionDetailPage() {
               {formatDateLong(rx.prescriptionDate)}? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
+          {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+            <Button variant="outline" disabled={deleteMutation.isPending} onClick={() => setDeleteOpen(false)}>
               Cancelar
             </Button>
             <Button

@@ -12,6 +12,7 @@ export interface ComboboxOption {
 }
 
 interface ComboboxProps {
+  id?: string;
   /** Current text value (free-form). */
   value: string;
   onValueChange: (value: string) => void;
@@ -30,6 +31,7 @@ interface ComboboxProps {
 }
 
 export function Combobox({
+  id,
   value,
   onValueChange,
   options,
@@ -67,6 +69,7 @@ export function Combobox({
   }, [open]);
 
   const handleSelect = (opt: ComboboxOption) => {
+    if (disabled) return;
     onValueChange(opt.label);
     onOptionSelect?.(opt);
     setOpen(false);
@@ -76,6 +79,7 @@ export function Combobox({
     <div ref={containerRef} className={cn('relative', className)}>
       <div className="relative">
         <Input
+          id={id}
           value={value}
           onChange={(e) => {
             onValueChange(e.target.value);

@@ -10,13 +10,16 @@ export function ScalpZonePicker({
   value,
   onChange,
   className,
+  disabled = false,
 }: {
   zones: Zone[];
   value: string[];
   onChange: (ids: string[]) => void;
   className?: string;
+  disabled?: boolean;
 }) {
   const toggle = (id: string) => {
+    if (disabled) return;
     onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
   };
 
@@ -76,7 +79,8 @@ export function ScalpZonePicker({
                         : 'fill-transparent stroke-border hover:fill-brand-softer',
                     )}
                     strokeWidth={active ? 1.5 : 0.6}
-                    tabIndex={0}
+                    tabIndex={disabled ? -1 : 0}
+                    aria-disabled={disabled}
                     role="checkbox"
                     aria-checked={active}
                     aria-label={z.name}
@@ -127,6 +131,7 @@ export function ScalpZonePicker({
                   const active = value.includes(z.id);
                   return (
                     <button
+                      disabled={disabled}
                       key={z.id}
                       type="button"
                       onClick={() => toggle(z.id)}

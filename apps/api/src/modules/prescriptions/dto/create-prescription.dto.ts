@@ -14,31 +14,31 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePrescriptionItemDto {
-  @ApiPropertyOptional({ description: 'Product UUID' })
+  @ApiPropertyOptional({ description: 'Product UUID', type: String, nullable: true })
   @IsOptional()
   @IsUUID()
-  productId?: string;
+  productId?: string | null;
 
   @ApiProperty({ example: 'Minoxidil 5%' })
   @IsString()
   @IsNotEmpty()
   medicineName: string;
 
-  @ApiPropertyOptional({ example: '1ml' })
+  @ApiPropertyOptional({ example: '1ml', type: String, nullable: true })
   @IsOptional()
   @IsString()
-  dosage?: string;
+  dosage?: string | null;
 
-  @ApiPropertyOptional({ example: '2 veces al dia' })
+  @ApiPropertyOptional({ example: '2 veces al dia', type: String, nullable: true })
   @IsOptional()
   @IsString()
-  frequency?: string;
+  frequency?: string | null;
 
-  @ApiPropertyOptional({ example: 90 })
+  @ApiPropertyOptional({ example: 90, type: Number, nullable: true })
   @IsOptional()
   @IsInt()
   @Min(1)
-  durationDays?: number;
+  durationDays?: number | null;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()
@@ -46,10 +46,10 @@ export class CreatePrescriptionItemDto {
   @Min(1)
   quantity?: number;
 
-  @ApiPropertyOptional({ example: 'Aplicar en zona afectada' })
+  @ApiPropertyOptional({ example: 'Aplicar en zona afectada', type: String, nullable: true })
   @IsOptional()
   @IsString()
-  instructions?: string;
+  instructions?: string | null;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

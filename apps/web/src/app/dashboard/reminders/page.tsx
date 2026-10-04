@@ -89,8 +89,7 @@ export default function RemindersPage() {
 
   const handleCancel = async () => {
     if (!cancelTarget) return;
-    await cancelMutation.mutateAsync(cancelTarget.id);
-    setCancelTarget(null);
+    try { await cancelMutation.mutateAsync(cancelTarget.id); setCancelTarget(null); } catch { /* Shown in the dialog. */ }
   };
 
   const handleCreate = async () => {
@@ -253,7 +252,7 @@ export default function RemindersPage() {
       </Card>
 
       {/* Cancel Dialog */}
-      <Dialog open={!!cancelTarget} onOpenChange={() => setCancelTarget(null)}>
+      <Dialog open={!!cancelTarget} onOpenChange={open => { if (!open && !cancelMutation.isPending) setCancelTarget(null); } }>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Cancelar Recordatorio</DialogTitle>
@@ -262,8 +261,9 @@ export default function RemindersPage() {
               <strong>{cancelTarget?.patient?.nombre} {cancelTarget?.patient?.apellido}</strong>?
             </DialogDescription>
           </DialogHeader>
+          {cancelMutation.isError && <p role="alert" className="text-sm text-destructive">No se pudo completar la operación. Puedes reintentar.</p>}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setCancelTarget(null)}>Volver</Button>
+            <Button variant="outline" disabled={cancelMutation.isPending} onClick={() => setCancelTarget(null)}>Volver</Button>
             <Button variant="destructive" onClick={handleCancel} disabled={cancelMutation.isPending}>
               {cancelMutation.isPending ? 'Cancelando...' : 'Cancelar Recordatorio'}
             </Button>

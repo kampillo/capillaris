@@ -73,7 +73,7 @@ export function DatePicker({
           mode="single"
           selected={selected}
           onSelect={(d) => {
-            if (d) {
+            if (d && !disabled) {
               onChange(toISODate(d));
               setOpen(false);
             }
@@ -82,7 +82,7 @@ export function DatePicker({
           startMonth={fromDate}
           endMonth={toDate}
           disabled={
-            fromDate && toDate
+            disabled ? true : fromDate && toDate
               ? { before: fromDate, after: toDate }
               : fromDate
                 ? { before: fromDate }

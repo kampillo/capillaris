@@ -165,9 +165,9 @@ export default function UsersManagementPage() {
           nombre: editNombre.trim(),
           apellido: editApellido.trim(),
           email: editEmail.trim(),
-          celular: editCelular.trim() || undefined,
-          cedulaProfesional: editCedula.trim() || undefined,
-          roleId: editRoleId,
+          celular: editCelular.trim(),
+          cedulaProfesional: editCedula.trim(),
+          ...(editRoleId !== (editTarget.roles[0]?.id ?? '') && { roleId: editRoleId }),
         },
       });
       setEditTarget(null);
@@ -178,14 +178,12 @@ export default function UsersManagementPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await deleteMutation.mutateAsync(deleteTarget.id);
-    setDeleteTarget(null);
+    try { await deleteMutation.mutateAsync(deleteTarget.id); setDeleteTarget(null); } catch { /* Shown in the dialog. */ }
   };
 
   const handleReactivate = async () => {
     if (!reactivateTarget) return;
-    await reactivateMutation.mutateAsync(reactivateTarget.id);
-    setReactivateTarget(null);
+    try { await reactivateMutation.mutateAsync(reactivateTarget.id); setReactivateTarget(null); } catch { /* Shown in the dialog. */ }
   };
 
   if (!authorized) return null;
@@ -480,7 +478,7 @@ export default function UsersManagementPage() {
       </Dialog>
 
       {/* Deactivate Dialog */}
-      <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open && !deleteMutation.isPending) setDeleteTarget(null); } }>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Desactivar Usuario</DialogTitle>
@@ -490,8 +488,9 @@ export default function UsersManagementPage() {
               El usuario no podrá acceder al sistema. Podrás reactivarlo más adelante.
             </DialogDescription>
           </DialogHeader>
+          {deleteMutation.isError && <p role="alert" className="text-sm text-destructive">No se pudo completar la operación. Puedes reintentar.</p>}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+            <Button variant="outline" disabled={deleteMutation.isPending} onClick={() => setDeleteTarget(null)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
               {deleteMutation.isPending ? 'Desactivando...' : 'Desactivar'}
             </Button>
@@ -500,7 +499,7 @@ export default function UsersManagementPage() {
       </Dialog>
 
       {/* Reactivate Dialog */}
-      <Dialog open={!!reactivateTarget} onOpenChange={() => setReactivateTarget(null)}>
+      <Dialog open={!!reactivateTarget} onOpenChange={open => { if (!open && !reactivateMutation.isPending) setReactivateTarget(null); } }>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Reactivar Usuario</DialogTitle>
@@ -510,8 +509,9 @@ export default function UsersManagementPage() {
               Podrá iniciar sesión nuevamente con sus credenciales anteriores.
             </DialogDescription>
           </DialogHeader>
+          {reactivateMutation.isError && <p role="alert" className="text-sm text-destructive">No se pudo completar la operación. Puedes reintentar.</p>}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setReactivateTarget(null)}>Cancelar</Button>
+            <Button variant="outline" disabled={reactivateMutation.isPending} onClick={() => setReactivateTarget(null)}>Cancelar</Button>
             <Button onClick={handleReactivate} disabled={reactivateMutation.isPending}>
               {reactivateMutation.isPending ? 'Reactivando...' : 'Reactivar'}
             </Button>

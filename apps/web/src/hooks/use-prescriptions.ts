@@ -39,13 +39,13 @@ export interface Prescription {
 export interface CreatePrescriptionItemData {
   id?: string;
   refillReminderDays?: number;
-  productId?: string;
+  productId?: string | null;
   medicineName: string;
-  dosage?: string;
-  frequency?: string;
-  durationDays?: number;
+  dosage?: string | null;
+  frequency?: string | null;
+  durationDays?: number | null;
   quantity?: number;
-  instructions?: string;
+  instructions?: string | null;
   requiresRefill?: boolean;
 }
 
@@ -59,14 +59,17 @@ export interface CreatePrescriptionData {
   items?: CreatePrescriptionItemData[];
 }
 
-export type UpdatePrescriptionData = Partial<CreatePrescriptionData>;
+export type UpdatePrescriptionData = Partial<Pick<
+  CreatePrescriptionData,
+  'notas' | 'status' | 'expiresAt' | 'items'
+>>;
 
-export function usePrescriptions(page = 1, pageSize = 20) {
+export function usePrescriptions(page = 1, pageSize = 20, patientId?: string) {
   return useQuery<PaginatedResponse<Prescription>>({
-    queryKey: ['prescriptions', page, pageSize],
+    queryKey: ['prescriptions', page, pageSize, patientId],
     queryFn: () =>
       api.get('/prescriptions', {
-        params: { page: String(page), pageSize: String(pageSize) },
+        params: { page: String(page), pageSize: String(pageSize), ...(patientId && { patientId }) },
       }),
   });
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { FormIntro, FormActions, QueryFeedback, useFormDraft, useSaveGuard } from '@/components/clinic/form-layout';
 import { procedureTotals } from '@capillaris/shared';
 import { useState, useMemo } from 'react';
 import Link from '@/components/patients/patient-context-link';
@@ -88,10 +89,10 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-5 flex items-center gap-2.5">
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
-        <Icon className="h-4 w-4" />
+      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-soft text-brand-dark">
+        <Icon className="h-5 w-5" />
       </div>
-      <h3 className="cap-eyebrow">
+      <h3 className="text-lg font-semibold text-foreground">
         {title}
         {required && <span className="ml-1 text-destructive">*</span>}
       </h3>
@@ -114,7 +115,7 @@ function ChoicePill({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors',
+        'min-h-11 rounded-md border px-3 py-2 text-sm font-medium transition-colors',
         active
           ? 'border-brand bg-brand-soft text-brand-dark'
           : 'border-border-strong bg-surface text-foreground hover:bg-surface-2',
@@ -246,7 +247,7 @@ function TarjetaSesion({
           <div className="mt-1.5 pl-1">
             {uniendo ? (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] text-text-secondary">
+                <span className="text-sm font-medium text-text-secondary">
                   Unir con:
                 </span>
                 {candidatos.map((c) => (
@@ -670,28 +671,32 @@ function AnesthesiaRow({
   placeholder?: string;
 }) {
   return (
-    <div className="grid grid-cols-[140px_1fr_1fr] items-center gap-3 border-b border-border py-2 last:border-b-0">
-      <Label className="text-xs text-text-secondary">
+    <div className="grid grid-cols-2 items-center gap-3 border-b border-border py-3 sm:grid-cols-[140px_1fr_1fr] last:border-b-0">
+      <span className="col-span-2 text-sm font-medium text-text-secondary sm:col-span-1">
         {label}
         {unit && (
           <span className="ml-1 text-[10px] text-text-tertiary">({unit})</span>
         )}
-      </Label>
+      </span>
+      <span className="text-xs text-text-secondary sm:hidden">Extracción</span>
+      <span className="text-xs text-text-secondary sm:hidden">Implantación</span>
       <Input
+        aria-label={`${label} — extracción${unit ? ` (${unit})` : ''}`}
         type={type}
         step={type === 'number' ? '0.01' : undefined}
         value={extValue}
         onChange={(e) => onExtChange(e.target.value)}
         placeholder={placeholder}
-        className="h-9"
+        className="h-11"
       />
       <Input
+        aria-label={`${label} — implantación${unit ? ` (${unit})` : ''}`}
         type={type}
         step={type === 'number' ? '0.01' : undefined}
         value={impValue}
         onChange={(e) => onImpChange(e.target.value)}
         placeholder={placeholder}
-        className="h-9"
+        className="h-11"
       />
     </div>
   );
@@ -709,9 +714,12 @@ function ProcedureForm({
   onCancel: () => void;
 }) {
   const createMutation = useCreateProcedure();
-  const { data: doctors = [] } = useDoctors();
-  const { data: hairTypes = [] } = useHairTypes();
-  const { data: operatingRooms = [] } = useOperatingRooms();
+  const doctorsQuery = useDoctors();
+  const { data: doctors = [] } = doctorsQuery;
+  const hairTypesQuery = useHairTypes();
+  const { data: hairTypes = [] } = hairTypesQuery;
+  const operatingRoomsQuery = useOperatingRooms();
+  const { data: operatingRooms = [] } = operatingRoomsQuery;
 
   const [form, setForm] = useState({
     procedureDate: todayInput(),
@@ -771,6 +779,11 @@ function ProcedureForm({
     }));
   };
 
+  const catalogQueries = [doctorsQuery, hairTypesQuery, operatingRoomsQuery];
+  const guard = useSaveGuard();
+  const busy = createMutation.isPending || guard.saving;
+  const dirty = useFormDraft(form);
+
   // Live follicle totals
   const cb1n = parseInt(form.cb1, 10) || 0;
   const cb2n = parseInt(form.cb2, 10) || 0;
@@ -799,6 +812,7 @@ function ProcedureForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
 
     const num = (v: string) => (v ? Number(v) : undefined);
     const str = (v: string) => v || undefined;
@@ -841,17 +855,19 @@ function ProcedureForm({
     });
 
     try {
-      await createMutation.mutateAsync(payload);
-      onSuccess();
+      await guard.run(async () => { await createMutation.mutateAsync(payload); onSuccess(); });
     } catch {
       // captured in createMutation.error
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} aria-busy={busy} className="flex flex-col gap-5">
+      <FormIntro title="Nuevo reporte de procedimiento" description="Registra los datos del día y revisa tiempos, conteos y descripción antes de guardar." sections={[{ id: "procedure-data", label: "Datos" }, { id: "procedure-times", label: "Tiempos" }, { id: "procedure-doctors", label: "Doctores" }, { id: "procedure-counts", label: "Conteos" }, { id: "procedure-anesthesia", label: "Anestesia" }, { id: "procedure-notes", label: "Descripción" }]} />
+      <QueryFeedback loading={catalogQueries.some(query => query.isLoading)} error={catalogQueries.some(query => query.isError)} label="catálogos de procedimiento" onRetry={() => { catalogQueries.filter(query => query.isError).forEach(query => query.refetch()); } } />
+      <fieldset disabled={busy} className="min-w-0 space-y-5">
       {/* Datos del procedimiento */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="procedure-data" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader
           icon={Scissors}
           title="Datos del procedimiento"
@@ -859,18 +875,18 @@ function ProcedureForm({
         />
         <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-3">
           <div className="space-y-1.5">
-            <Label>
+            <Label htmlFor="procedure-procedureDate">
               Fecha <span className="text-destructive">*</span>
             </Label>
-            <DatePicker
+            <DatePicker disabled={busy} id="procedure-procedureDate"
               value={form.procedureDate}
               onChange={(v) => set('procedureDate', v)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Punch (mm)</Label>
+            <Label htmlFor="procedure-punchSize">Punch (mm)</Label>
             <div className="space-y-1.5">
-              <Input
+              <Input id="procedure-punchSize"
                 type="number"
                 step="0.1"
                 value={form.punchSize}
@@ -892,9 +908,9 @@ function ProcedureForm({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Implantador</Label>
+            <Label htmlFor="procedure-implantador">Implantador</Label>
             <div className="space-y-1.5">
-              <Input
+              <Input id="procedure-implantador"
                 value={form.implantador}
                 onChange={(e) => set('implantador', e.target.value)}
                 placeholder="Choi"
@@ -916,8 +932,8 @@ function ProcedureForm({
         </div>
 
         {operatingRooms.length > 0 && (
-          <div className="mt-4 space-y-2 border-t border-border pt-4">
-            <Label className="cap-eyebrow">Quirófano</Label>
+          <div role="group" aria-labelledby="procedure-group-1" className="mt-4 space-y-2 border-t border-border pt-4">
+            <span id="procedure-group-1" className="text-sm font-medium text-text-secondary">Quirófano</span>
             <div className="flex flex-wrap gap-1.5">
               {operatingRooms.map((room) => (
                 <ChoicePill
@@ -939,7 +955,7 @@ function ProcedureForm({
       </section>
 
       {/* Tiempos */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="procedure-times" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader icon={Clock} title="Tiempos del procedimiento" />
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {(
@@ -952,7 +968,7 @@ function ProcedureForm({
             ] as const
           ).map(([key, label]) => (
             <div key={key} className="space-y-1.5">
-              <Label htmlFor={key} className="cap-eyebrow">
+              <Label htmlFor={key} className="text-sm font-medium text-text-secondary">
                 {label}
               </Label>
               <Input
@@ -971,7 +987,7 @@ function ProcedureForm({
       </section>
 
       {/* Doctores */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="procedure-doctors" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader icon={Users} title="Doctores" />
         {doctors.length === 0 ? (
           <p className="text-sm text-text-tertiary">
@@ -1003,14 +1019,14 @@ function ProcedureForm({
       </section>
 
       {/* Folículos */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="procedure-counts" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader icon={Hash} title="Conteo de folículos" />
         <div className="grid grid-cols-2 gap-x-4 gap-y-4 md:grid-cols-5">
           <div className="space-y-1.5">
-            <Label>
+            <Label htmlFor="procedure-cb1">
               CB1 <span className="text-[10px] text-text-tertiary">(1 pelo)</span>
             </Label>
-            <Input
+            <Input id="procedure-cb1"
               type="number"
               min="0"
               value={form.cb1}
@@ -1019,10 +1035,10 @@ function ProcedureForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>
+            <Label htmlFor="procedure-cb2">
               CB2 <span className="text-[10px] text-text-tertiary">(2 pelos)</span>
             </Label>
-            <Input
+            <Input id="procedure-cb2"
               type="number"
               min="0"
               value={form.cb2}
@@ -1031,10 +1047,10 @@ function ProcedureForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>
+            <Label htmlFor="procedure-cb3">
               CB3 <span className="text-[10px] text-text-tertiary">(3 pelos)</span>
             </Label>
-            <Input
+            <Input id="procedure-cb3"
               type="number"
               min="0"
               value={form.cb3}
@@ -1043,10 +1059,10 @@ function ProcedureForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>
+            <Label htmlFor="procedure-cb4">
               CB4 <span className="text-[10px] text-text-tertiary">(4 pelos)</span>
             </Label>
-            <Input
+            <Input id="procedure-cb4"
               type="number"
               min="0"
               value={form.cb4}
@@ -1055,11 +1071,11 @@ function ProcedureForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>
+            <Label htmlFor="procedure-totalFoliculos">
               Total{' '}
               <span className="text-[10px] text-text-tertiary">(opcional)</span>
             </Label>
-            <Input
+            <Input id="procedure-totalFoliculos"
               type="number"
               min="0"
               value={form.totalFoliculos}
@@ -1073,7 +1089,7 @@ function ProcedureForm({
         {follicleSum > 0 && (
           <div className="mt-5 rounded-md border border-border bg-surface-2 p-4">
             <div className="mb-2 flex items-center justify-between">
-              <div className="cap-eyebrow">Distribución en vivo</div>
+              <div className="text-sm font-medium text-text-secondary">Distribución en vivo</div>
               <div className="cap-mono text-xs text-text-secondary">
                 <span className="font-medium text-foreground">
                   {follicleSum.toLocaleString()}
@@ -1101,7 +1117,7 @@ function ProcedureForm({
 
       {/* Zonas tratadas */}
       {hairTypes.length > 0 && (
-        <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+        <section id="procedure-zones" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
           <SectionHeader icon={Scissors} title="Zonas tratadas" />
           <div className="flex flex-wrap gap-1.5">
             {hairTypes.map((ht) => {
@@ -1128,12 +1144,12 @@ function ProcedureForm({
       )}
 
       {/* Anestesia — unified */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="procedure-anesthesia" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader icon={Syringe} title="Anestesia" />
 
         <div className="mb-4 flex items-center gap-2">
           <Zap className="h-3.5 w-3.5 text-text-tertiary" />
-          <span className="cap-eyebrow">Recetas rápidas</span>
+          <span className="text-sm font-medium text-text-secondary">Recetas rápidas</span>
           <div className="flex flex-wrap gap-1.5">
             {ANESTHESIA_RECIPES.map((r) => (
               <ChoicePill key={r.label} active={false} onClick={() => applyRecipe(r)}>
@@ -1143,10 +1159,10 @@ function ProcedureForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-[140px_1fr_1fr] items-center gap-3 border-b border-border pb-2">
+        <div className="hidden grid-cols-[140px_1fr_1fr] items-center gap-3 border-b border-border pb-2 sm:grid">
           <span />
-          <span className="cap-eyebrow">Extracción</span>
-          <span className="cap-eyebrow">Implantación</span>
+          <span className="text-sm font-medium text-text-secondary">Extracción</span>
+          <span className="text-sm font-medium text-text-secondary">Implantación</span>
         </div>
 
         <AnesthesiaRow
@@ -1201,7 +1217,7 @@ function ProcedureForm({
       </section>
 
       {/* Descripción */}
-      <section className="rounded-xl border border-border bg-surface p-6 shadow-xs">
+      <section id="procedure-notes" className="scroll-mt-24 rounded-xl border border-border bg-surface p-5 shadow-xs sm:p-6">
         <SectionHeader icon={FileText} title="Descripción" />
         <Textarea
           value={form.descripcion}
@@ -1213,28 +1229,13 @@ function ProcedureForm({
       </section>
 
       {createMutation.isError && (
-        <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+        <div role="alert" className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
           {createMutation.error?.message || 'Error al crear procedimiento'}
         </div>
       )}
 
-      <div className="flex justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11"
-          onClick={onCancel}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          className="h-11 px-8 font-medium"
-          disabled={createMutation.isPending}
-        >
-          {createMutation.isPending ? 'Guardando...' : 'Guardar procedimiento'}
-        </Button>
-      </div>
+      </fieldset>
+      <FormActions busy={busy} dirty={dirty} submitLabel={'Guardar procedimiento'} onCancel={onCancel} />
     </form>
   );
 }
@@ -1244,7 +1245,7 @@ export default function PatientProceduresPage({
 }: {
   params: { id: string };
 }) {
-  const { data: procedures, isLoading } = useProceduresByPatient(params.id);
+  const { data: procedures, isLoading, error, refetch } = useProceduresByPatient(params.id);
   const [showForm, setShowForm] = useState(false);
   const canWrite = useHasRole('admin', 'doctor');
 
@@ -1285,7 +1286,7 @@ export default function PatientProceduresPage({
           onSuccess={() => setShowForm(false)}
           onCancel={() => setShowForm(false)}
         />
-      ) : procedures && procedures.length > 0 ? (
+      ) : error ? <QueryFeedback error label="procedimientos" onRetry={() => refetch()} /> : procedures && procedures.length > 0 ? (
         <div className="flex flex-col gap-4">
           {sesiones.map((sesion, _i, todas) => (
             <TarjetaSesion

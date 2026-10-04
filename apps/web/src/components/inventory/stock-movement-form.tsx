@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { FormActions, useFormDraft, useSaveGuard } from '@/components/clinic/form-layout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -24,6 +24,7 @@ interface StockMovementFormProps {
   lockMovementType?: boolean;
   onDone?: () => void;
   onCancel?: () => void;
+  onSavingChange?: (saving: boolean) => void;
 }
 
 const ENTRY_REASONS = [
@@ -45,6 +46,7 @@ export function StockMovementForm({
   lockMovementType = false,
   onDone,
   onCancel,
+  onSavingChange,
 }: StockMovementFormProps) {
   const [movementType, setMovementType] = useState(defaultMovementType);
   const [reason, setReason] = useState(
@@ -55,6 +57,9 @@ export function StockMovementForm({
   const [error, setError] = useState('');
 
   const createMovement = useCreateStockMovement();
+  const guard = useSaveGuard();
+  const busy = createMovement.isPending || guard.saving;
+  const dirty = useFormDraft({ movementType, reason, quantity, notes });
 
   const reasons =
     movementType === 'salida' ? EXIT_REASONS : ENTRY_REASONS;
@@ -66,10 +71,11 @@ export function StockMovementForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setError('');
-    const qty = parseInt(quantity);
-    if (!qty || qty < 1) {
-      setError('Cantidad debe ser mayor a 0');
+    const qty = Number(quantity);
+    if (!Number.isInteger(qty) || qty < 1) {
+      setError('Cantidad debe ser un entero mayor a 0');
       return;
     }
     try {
@@ -80,17 +86,20 @@ export function StockMovementForm({
         quantity: qty,
         notes: notes.trim() || undefined,
       };
-      await createMovement.mutateAsync(payload);
-      onDone?.();
+      await guard.run(async () => {
+        onSavingChange?.(true);
+        try { await createMovement.mutateAsync(payload); onDone?.(); }
+        finally { onSavingChange?.(false); }
+      });
     } catch (err: any) {
       setError(err?.message || 'Error al registrar movimiento');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} aria-busy={busy} className="space-y-4">
       {error && (
-        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+        <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -102,11 +111,12 @@ export function StockMovementForm({
         </div>
       )}
 
+      <fieldset disabled={busy} className="min-w-0 space-y-4">
       {!lockMovementType && (
         <div className="space-y-1.5">
-          <Label>Tipo de movimiento</Label>
-          <Select value={movementType} onValueChange={handleTypeChange}>
-            <SelectTrigger className="h-11">
+          <Label htmlFor="stock-type">Tipo de movimiento</Label>
+          <Select disabled={busy} value={movementType} onValueChange={handleTypeChange}>
+            <SelectTrigger id="stock-type" className="h-11">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -119,10 +129,11 @@ export function StockMovementForm({
       )}
 
       <p className="text-xs text-muted-foreground">Para corregir existencias usa Entrada o Salida y la razón Ajuste manual. La cantidad indica cuánto agregar o retirar.</p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>Cantidad <span className="text-destructive">*</span></Label>
+          <Label htmlFor="stock-quantity">Cantidad <span className="text-destructive">*</span></Label>
           <Input
+            id="stock-quantity" required step={1}
             type="number"
             min="1"
             value={quantity}
@@ -133,9 +144,9 @@ export function StockMovementForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Razón</Label>
-          <Select value={reason} onValueChange={setReason}>
-            <SelectTrigger className="h-11">
+          <Label htmlFor="stock-reason">Razón</Label>
+          <Select disabled={busy} value={reason} onValueChange={setReason}>
+            <SelectTrigger id="stock-reason" className="h-11">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -150,8 +161,9 @@ export function StockMovementForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label>Notas</Label>
+        <Label htmlFor="stock-notes">Notas</Label>
         <Input
+          id="stock-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Notas opcionales…"
@@ -159,16 +171,8 @@ export function StockMovementForm({
         />
       </div>
 
-      <div className="flex justify-end gap-2 pt-1">
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancelar
-          </Button>
-        )}
-        <Button type="submit" disabled={createMovement.isPending}>
-          {createMovement.isPending ? 'Registrando…' : 'Registrar'}
-        </Button>
-      </div>
+      </fieldset>
+      <FormActions busy={busy} dirty={dirty} submitLabel="Registrar" onCancel={onCancel} />
     </form>
   );
 }

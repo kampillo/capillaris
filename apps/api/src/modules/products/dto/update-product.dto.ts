@@ -15,10 +15,10 @@ export class UpdateProductDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ example: 'MIN-5-60' })
+  @ApiPropertyOptional({ example: 'MIN-5-60', type: String, nullable: true })
   @IsOptional()
   @IsString()
-  sku?: string;
+  sku?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -30,20 +30,20 @@ export class UpdateProductDto {
   @IsUUID()
   categoryId?: string;
 
-  @ApiPropertyOptional({ example: 60 })
+  @ApiPropertyOptional({ example: 60, type: Number, nullable: true })
   @IsOptional()
   @IsNumber()
-  content?: number;
+  content?: number | null;
 
   @ApiPropertyOptional({ example: 'ml' })
   @IsOptional()
   @IsString()
   unit?: string;
 
-  @ApiPropertyOptional({ example: 350.00 })
+  @ApiPropertyOptional({ example: 350.00, type: Number, nullable: true })
   @IsOptional()
   @IsNumber()
-  unitPrice?: number;
+  unitPrice?: number | null;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()

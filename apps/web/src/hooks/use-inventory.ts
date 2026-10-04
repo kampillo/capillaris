@@ -46,12 +46,12 @@ export interface StockMovement {
 
 export interface CreateProductData {
   name: string;
-  sku?: string;
+  sku?: string | null;
   description?: string;
   categoryId?: string;
-  content?: number;
+  content?: number | null;
   unit?: string;
-  unitPrice?: number;
+  unitPrice?: number | null;
   isMedicine?: boolean;
   requiresPrescription?: boolean;
   minStockAlert?: number;

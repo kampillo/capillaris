@@ -1,5 +1,6 @@
 'use client';
 
+import { QueryFeedback } from '@/components/clinic/form-layout';
 import { useState } from 'react';
 import Link from 'next/link';
 import {
@@ -85,10 +86,11 @@ function MovementBadge({ m }: { m: StockMovement }) {
 
 export default function StockMovementsPage() {
   const [page, setPage] = useState(1);
+  const [stockSaving, setStockSaving] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
 
-  const { data: movementsData, isLoading } = useAllMovements(page, 30);
+  const { data: movementsData, isLoading, error, refetch } = useAllMovements(page, 30);
   const { data: productsData } = useProducts(1, 200);
 
   const movements = movementsData?.data || [];
@@ -131,7 +133,7 @@ export default function StockMovementsPage() {
             <div className="flex items-center justify-center py-16">
               <p className="text-sm text-muted-foreground">Cargando…</p>
             </div>
-          ) : movements.length === 0 ? (
+          ) : error ? <QueryFeedback error label="movimientos de inventario" onRetry={() => refetch()} /> : movements.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                 <Package className="h-6 w-6 text-muted-foreground" />
@@ -225,21 +227,22 @@ export default function StockMovementsPage() {
       </Card>
 
       {/* New Movement Dialog */}
-      <Dialog open={showNew} onOpenChange={setShowNew}>
+      <Dialog open={showNew} onOpenChange={open => { if (!stockSaving) setShowNew(open); }}>
         <DialogContent className={cn('sm:max-w-md')}>
           <DialogHeader>
             <DialogTitle>Nuevo movimiento de stock</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">
+              <label htmlFor="stock-product" className="text-sm font-medium">
                 Producto <span className="text-destructive">*</span>
               </label>
               <Select
+                disabled={stockSaving}
                 value={selectedProductId}
                 onValueChange={setSelectedProductId}
               >
-                <SelectTrigger className="h-11">
+                <SelectTrigger id="stock-product" className="h-11">
                   <SelectValue placeholder="Seleccionar producto" />
                 </SelectTrigger>
                 <SelectContent>
@@ -253,6 +256,8 @@ export default function StockMovementsPage() {
             </div>
             {selectedProductId && (
               <StockMovementForm
+                key={selectedProductId}
+                onSavingChange={setStockSaving}
                 productId={selectedProductId}
                 productName={selectedProduct?.name}
                 onCancel={() => setShowNew(false)}

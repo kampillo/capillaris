@@ -115,7 +115,7 @@ export class MedicalConsultationsService {
         consultationDate: data.consultationDate
           ? new Date(data.consultationDate)
           : undefined,
-        fechaSugeridaTransplante: data.fechaSugeridaTransplante
+        fechaSugeridaTransplante: data.fechaSugeridaTransplante === null ? null : data.fechaSugeridaTransplante
           ? new Date(data.fechaSugeridaTransplante)
           : undefined,
         updatedBy: userId,

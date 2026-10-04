@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { QueryFeedback } from '@/components/clinic/form-layout';
 import {
   Users,
   Activity,
@@ -131,13 +132,24 @@ export default function ReportsPage() {
     else if (preset === 'year') setStartDate(startOfYear());
   }, [preset]);
 
-  const { data: patientsRpt } = usePatientsReport(startDate, endDate, clinicalAccess);
-  const { data: proceduresRpt } = useProceduresReport(startDate, endDate, clinicalAccess);
-  const { data: appointmentsRpt } = useAppointmentsReport(startDate, endDate, clinicalAccess);
-  const { data: prescriptionsRpt } = usePrescriptionsReport(startDate, endDate, clinicalAccess);
-  const { data: inventoryRpt } = useInventoryReport(startDate, endDate);
-  const { data: sourcesRpt } = useSourcesReport(startDate, endDate, clinicalAccess);
-  const { data: clinicalRpt } = useClinicalReport(startDate, endDate, clinicalAccess);
+  const patientsQuery = usePatientsReport(startDate, endDate, clinicalAccess);
+  const { data: patientsRpt } = patientsQuery;
+  const proceduresQuery = useProceduresReport(startDate, endDate, clinicalAccess);
+  const { data: proceduresRpt } = proceduresQuery;
+  const appointmentsQuery = useAppointmentsReport(startDate, endDate, clinicalAccess);
+  const { data: appointmentsRpt } = appointmentsQuery;
+  const prescriptionsQuery = usePrescriptionsReport(startDate, endDate, clinicalAccess);
+  const { data: prescriptionsRpt } = prescriptionsQuery;
+  const inventoryQuery = useInventoryReport(startDate, endDate);
+  const { data: inventoryRpt } = inventoryQuery;
+  const sourcesQuery = useSourcesReport(startDate, endDate, clinicalAccess);
+  const { data: sourcesRpt } = sourcesQuery;
+  const clinicalQuery = useClinicalReport(startDate, endDate, clinicalAccess);
+  const { data: clinicalRpt } = clinicalQuery;
+
+  const reportQueries = [inventoryQuery, ...(clinicalAccess ? [patientsQuery, proceduresQuery, appointmentsQuery, prescriptionsQuery, sourcesQuery, clinicalQuery] : [])];
+  const reportLoading = reportQueries.some(query => query.isLoading);
+  const reportError = reportQueries.some(query => query.isError);
 
   // Pie data: patient types
   const patientTypeData = useMemo(
@@ -232,6 +244,7 @@ export default function ReportsPage() {
       {/* ============================================================ */}
       {/* OPERATIVO */}
       {/* ============================================================ */}
+      {reportLoading || reportError ? <QueryFeedback loading={reportLoading} error={reportError} label="reportes del periodo" onRetry={() => { reportQueries.filter(query => query.isError).forEach(query => query.refetch()); }} /> : <>
       <section className="space-y-4">
         <SectionHeader
           eyebrow="Operación"
@@ -673,6 +686,7 @@ export default function ReportsPage() {
           </ChartCard>
         </div>
       </section>
+      </>}
     </div>
   );
 }

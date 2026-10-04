@@ -87,6 +87,7 @@ export default function ProductDetailPage() {
   const deleteMutation = useDeleteProduct();
 
   const [editOpen, setEditOpen] = useState(false);
+  const [stockSaving, setStockSaving] = useState(false);
   const [stockOpen, setStockOpen] = useState<'entrada' | 'salida' | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -113,7 +114,7 @@ export default function ProductDetailPage() {
   const movements = movementsData?.data || [];
 
   const handleDelete = async () => {
-    await deleteMutation.mutateAsync(product.id);
+    try { await deleteMutation.mutateAsync(product.id); } catch { return; }
     router.push('/dashboard/inventory');
   };
 
@@ -268,8 +269,8 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-2xl">
+      <Dialog open={editOpen} onOpenChange={open => { if (!updateMutation.isPending) setEditOpen(open); }}>
+        <DialogContent className="max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar producto</DialogTitle>
           </DialogHeader>
@@ -290,7 +291,7 @@ export default function ProductDetailPage() {
       {/* Stock Dialog */}
       <Dialog
         open={stockOpen !== null}
-        onOpenChange={(open) => !open && setStockOpen(null)}
+        onOpenChange={(open) => { if (!open && !stockSaving) setStockOpen(null); }}
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -303,6 +304,7 @@ export default function ProductDetailPage() {
           </DialogHeader>
           {stockOpen && (
             <StockMovementForm
+                onSavingChange={setStockSaving}
               productId={product.id}
               productName={product.name}
               defaultMovementType={stockOpen}
@@ -315,7 +317,7 @@ export default function ProductDetailPage() {
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <Dialog open={deleteOpen} onOpenChange={open => { if (!deleteMutation.isPending) setDeleteOpen(open); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Desactivar producto</DialogTitle>
@@ -325,8 +327,9 @@ export default function ProductDetailPage() {
               marcará como inactivo.
             </DialogDescription>
           </DialogHeader>
+          {deleteMutation.isError && <p role="alert" className="text-sm text-destructive">No se pudo desactivar el producto. Puedes reintentar.</p>}
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+            <Button variant="outline" disabled={deleteMutation.isPending} onClick={() => setDeleteOpen(false)}>
               Cancelar
             </Button>
             <Button
