@@ -48,6 +48,7 @@ const NAV: NavGroup[] = [
     section: 'Gestión',
     items: [
       { href: '/dashboard/inventory', label: 'Inventario', icon: Package },
+      { href: '/dashboard/deliveries', label: 'Entregas', icon: Package, roles: ['admin', 'receptionist', 'inventory_manager'] },
       {
         href: '/dashboard/reports',
         label: 'Reportes',

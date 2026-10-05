@@ -22,6 +22,7 @@ export interface Product {
   categoryId?: string;
   content?: number;
   unit?: string;
+  stockUnit?: string | null;
   unitPrice?: number;
   isMedicine: boolean;
   requiresPrescription: boolean;
@@ -51,6 +52,7 @@ export interface CreateProductData {
   categoryId?: string;
   content?: number | null;
   unit?: string;
+  stockUnit?: string | null;
   unitPrice?: number | null;
   isMedicine?: boolean;
   requiresPrescription?: boolean;
@@ -70,7 +72,7 @@ export interface CreateStockMovementData {
 export function useProducts(
   page = 1,
   pageSize = 20,
-  filters: { isMedicine?: boolean } = {},
+  filters: { isMedicine?: boolean; search?: string; isActive?: boolean } = {},
 ) {
   const params: Record<string, string> = {
     page: String(page),
@@ -79,6 +81,8 @@ export function useProducts(
   if (filters.isMedicine !== undefined) {
     params.isMedicine = String(filters.isMedicine);
   }
+  if (filters.search) params.search = filters.search;
+  if (filters.isActive !== undefined) params.isActive = String(filters.isActive);
   return useQuery<PaginatedResponse<Product>>({
     queryKey: ['products', page, pageSize, filters],
     queryFn: () => api.get('/products', { params }),

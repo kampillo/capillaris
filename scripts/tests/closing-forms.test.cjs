@@ -201,7 +201,7 @@ test('editing notes preserves legacy dispensing values exactly and editable item
   assert.deepEqual(payload.items, [{ id: old.id, medicineName: old.medicineName }]);
   const { PrescriptionsService } = load('apps/api/src/modules/prescriptions/prescriptions.service.ts');
   let saved;
-  const tx = { prescriptionItem: { findMany: async () => [old], update: async () => assert.fail('Dispensed item must not be written') }, prescription: { update: async args => { saved = args.data; return {}; } } };
+  const tx = { $queryRaw: async () => [], prescriptionItem: { findMany: async () => [old], update: async () => assert.fail('Dispensed item must not be written') }, prescription: { findUnique: async () => ({ id: 'qa-rx', items: [old] }), update: async args => { saved = args.data; return {}; } } };
   const service = new PrescriptionsService({ prescription: { findUnique: async () => ({ id: 'qa-rx' }) }, $transaction: fn => fn(tx) });
   await service.update('qa-rx', { notas: payload.notas, items: payload.items });
   assert.equal(saved.notas, 'Notas QA actualizadas');

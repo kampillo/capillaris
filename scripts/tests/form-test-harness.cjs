@@ -14,6 +14,7 @@ const React = local('react');
 const sources = new Map();
 const proofs = [];
 let h;
+let auditSnapshot;
 const hooks = {
   ...React,
   useState(initial) {
@@ -45,6 +46,10 @@ function load(relative, mocks = {}, extra = '') {
     if (request === '@nestjs/common') return nest;
     if (request === '@nestjs/swagger') return { ApiProperty: () => () => {}, ApiPropertyOptional: () => () => {} };
     if (request === 'class-validator' || request === 'class-transformer') return local(request);
+    if (request === 'crypto') return local('node:crypto');
+    if (request === 'async_hooks') return local('node:async_hooks');
+    if (request.endsWith('/audit-snapshot')) return auditSnapshot ??= load('apps/api/src/common/audit/audit-snapshot.ts');
+    if (request === './sensitive-fields') return load('apps/api/src/common/audit/sensitive-fields.ts', { '@prisma/client': { Prisma: local('@prisma/client').Prisma } });
     if (request === 'bcrypt') return { hash() { throw Error('Password operations excluded'); } };
     if (request === '@prisma/client') return { Prisma: { TransactionIsolationLevel: { Serializable: 'Serializable' } } };
     if (request.includes('prisma.service') || request.includes('google-calendar.service')) return {};
@@ -55,6 +60,7 @@ function load(relative, mocks = {}, extra = '') {
     if (request === './dates') return load('apps/web/src/lib/dates.ts');
     if (request === '@/lib/dates') return load('apps/web/src/lib/dates.ts');
     if (request === '@/lib/prescription-items') return load('apps/web/src/lib/prescription-items.ts');
+    if (request === '@/lib/audit-diff') return load('apps/web/src/lib/audit-diff.ts');
     if (request === '@capillaris/shared') return load('packages/shared/src/enums.ts');
     if (request === '@/lib/utils') return { cn: (...args) => args.filter(Boolean).join(' ') };
     if (request === '@/lib/names') return { displayName: p => p ? `${p.nombre} ${p.apellido}` : '' };

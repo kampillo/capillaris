@@ -9,6 +9,7 @@ import {
   IsInt,
   IsBoolean,
   Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -45,6 +46,10 @@ export class CreatePrescriptionItemDto {
   @IsInt()
   @Min(1)
   quantity?: number;
+
+  @ApiPropertyOptional({ description: 'Objetivo explícito de entrega en envases completos del producto vinculado; sin conversión de cantidad histórica', nullable: true, type: Number })
+  @IsOptional() @IsInt() @Min(1) @Max(2147483647)
+  fulfillmentQuantity?: number | null;
 
   @ApiPropertyOptional({ example: 'Aplicar en zona afectada', type: String, nullable: true })
   @IsOptional()

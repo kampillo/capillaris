@@ -95,6 +95,7 @@ export default function PrescriptionDetailPage() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [actionError, setActionError] = useState('');
   const canWrite = useHasRole('admin', 'doctor');
+  const canDeliver = useHasRole('admin', 'receptionist');
 
   if (isLoading) {
     return (
@@ -139,6 +140,7 @@ export default function PrescriptionDetailPage() {
   return (
     <>
       {actionError && <p role="alert" className="text-sm text-destructive print:hidden">{actionError}</p>}
+      {canDeliver && <div className="mb-4 print:hidden"><Button asChild variant="outline"><Link href={`/dashboard/deliveries?prescriptionId=${rx.id}`}>Entregar productos de esta receta</Link></Button></div>}
       {/* Top bar (hidden on print) */}
       <div className="mb-6 flex items-center justify-between print:hidden">
         <div className="flex items-center gap-3">
@@ -188,6 +190,9 @@ export default function PrescriptionDetailPage() {
               items: rx.items.map((i) => ({
                 id: i.id,
                 dispensed: i.dispensed,
+                deliveryLocked: !!i.deliveryLines?.length,
+                stockUnit: i.product?.stockUnit ?? undefined,
+                fulfillmentQuantity: i.fulfillmentQuantity,
                 productId: i.productId,
                 medicineName: i.medicineName,
                 dosage: i.dosage,

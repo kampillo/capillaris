@@ -42,10 +42,12 @@ export class ProductsController {
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
     @Query('isMedicine') isMedicine?: string,
+    @Query('search') search?: string,
+    @Query('isActive') isActive?: string,
   ) {
     const filter =
       isMedicine === 'true' ? true : isMedicine === 'false' ? false : undefined;
-    return this.productsService.findAll(page, pageSize, filter);
+    return this.productsService.findAll(page, pageSize, filter, search, isActive === 'true' ? true : isActive === 'false' ? false : undefined);
   }
 
   @Get(':id')

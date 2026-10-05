@@ -42,6 +42,7 @@ export class InventoryService {
   }
 
   async createMovement(dto: CreateStockMovementDto, userId?: string) {
+    if (dto.relatedEntityType === 'delivery') throw new BadRequestException('Usa el flujo de Entregas para registrar o revertir una entrega');
     if (!['entrada', 'salida'].includes(dto.movementType) || !Number.isInteger(dto.quantity) || dto.quantity < 1) throw new BadRequestException('Usa una entrada o salida con cantidad positiva');
     const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
     if (!product || !product.isActive) throw new NotFoundException('Producto no disponible');

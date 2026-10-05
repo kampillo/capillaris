@@ -57,6 +57,8 @@ const DURATION_PRESETS = [7, 15, 30, 60, 90];
 interface ItemForm extends CreatePrescriptionItemData {
   key: number;
   dispensed?: boolean;
+  deliveryLocked?: boolean;
+  stockUnit?: string;
 }
 
 let itemKeyCounter = 0;
@@ -192,7 +194,7 @@ export interface PrescriptionFormValues {
   prescriptionDate: string;
   notas?: string;
   status?: string;
-  items: (CreatePrescriptionItemData & { dispensed?: boolean })[];
+  items: (CreatePrescriptionItemData & { dispensed?: boolean; deliveryLocked?: boolean; stockUnit?: string })[];
 }
 
 interface PrescriptionFormBaseProps {
@@ -257,7 +259,7 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
       medicines.map((m) => ({
         id: m.id,
         label: m.name,
-        sublabel: [m.content && m.unit ? `${m.content} ${m.unit}` : null, m.category?.name]
+        sublabel: [m.sku, m.stockUnit, m.content && m.unit ? `${m.content} ${m.unit}` : null, m.category?.name]
           .filter(Boolean)
           .join(' · ') || undefined,
       })),
@@ -270,7 +272,7 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
 
   const updateItem = (
     key: number,
-    patch: Partial<CreatePrescriptionItemData>,
+    patch: Partial<ItemForm>,
   ) => {
     setItems((prev) =>
       prev.map((item) => (item.key === key ? { ...item, ...patch } : item)),
@@ -302,7 +304,7 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
       const data: UpdatePrescriptionData = {
         notas: notas.trim(),
         status: defaultValues?.status ?? 'active',
-        items: validItems.map(item => item.dispensed
+        items: validItems.map(item => (item.dispensed || item.deliveryLocked)
           ? { id: item.id, medicineName: item.medicineName }
           : prescriptionItemPayload(item)),
       };
@@ -481,13 +483,13 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
 
           <div className="space-y-3">
             {items.map((item, idx) => (
-              <fieldset disabled={busy || !!item.dispensed}
+              <fieldset disabled={busy || (!!item.dispensed || !!item.deliveryLocked)}
                 key={item.key}
                 className="space-y-3 rounded-lg border bg-accent/20 p-3.5"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase text-muted-foreground">
-                    Medicamento {idx + 1}{item.dispensed && <span className="ml-2 text-sm normal-case">Dispensado · se conserva</span>}
+                    Medicamento {idx + 1}{(item.dispensed || item.deliveryLocked) && <span className="ml-2 text-sm normal-case">Con entregas · se conserva</span>}
                     {item.productId && (
                       <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] normal-case text-emerald-700">
                         del catálogo
@@ -499,7 +501,7 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-11 w-11 text-destructive hover:text-destructive" aria-label={`Eliminar medicamento ${idx + 1}`} disabled={!!item.dispensed || busy}
+                      className="h-11 w-11 text-destructive hover:text-destructive" aria-label={`Eliminar medicamento ${idx + 1}`} disabled={(!!item.dispensed || !!item.deliveryLocked) || busy}
                       onClick={() =>
                         setItems((prev) => prev.filter((i) => i.key !== item.key))
                       }
@@ -513,10 +515,10 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
                   <Label htmlFor={`rx-${item.key}-medicineName`} className="text-xs">
                     Nombre <span className="text-destructive">*</span>
                   </Label>
-                  <Combobox disabled={busy || !!item.dispensed} id={`rx-${item.key}-medicineName`}
+                  <Combobox disabled={busy || (!!item.dispensed || !!item.deliveryLocked)} id={`rx-${item.key}-medicineName`}
                     value={item.medicineName}
                     onValueChange={(v) => {
-                      const patch: Partial<CreatePrescriptionItemData> = {
+                      const patch: Partial<ItemForm> = {
                         medicineName: v,
                       };
                       if (
@@ -524,6 +526,8 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
                         medicines.find((m) => m.id === item.productId)?.name !== v
                       ) {
                         patch.productId = undefined;
+                        patch.fulfillmentQuantity = null;
+                        patch.stockUnit = undefined;
                       }
                       updateItem(item.key, patch);
                     }}
@@ -533,12 +537,24 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
                       updateItem(item.key, {
                         medicineName: opt.label,
                         productId: opt.id,
+                        fulfillmentQuantity: null,
+                        stockUnit: medicines.find(m => m.id === opt.id)?.stockUnit ?? undefined,
                       });
                     }}
                     placeholder="Click para ver catálogo o escribir libremente…"
                     inputClassName="h-10"
                     minChars={0}
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor={`rx-${item.key}-fulfillment`}>Objetivo de entrega en envases completos</Label>
+                  <Input id={`rx-${item.key}-fulfillment`} type="number" min={1} max={2147483647} step={1}
+                    value={item.fulfillmentQuantity ?? ''}
+                    disabled={!item.productId || !(medicines.find(m => m.id === item.productId)?.stockUnit || item.stockUnit)}
+                    onChange={e => updateItem(item.key, { fulfillmentQuantity: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="Sin objetivo autorizado" className="h-11" />
+                  <p className="text-xs text-muted-foreground">{item.productId ? `Unidad física: ${medicines.find(m => m.id === item.productId)?.stockUnit || item.stockUnit || 'pendiente de validar'}.` : 'Vincula explícitamente un producto del catálogo.'} Guardar la receta no descuenta stock. La dosis y duración no calculan este objetivo.</p>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -553,7 +569,7 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor={`rx-${item.key}-frequency`} className="text-xs">Frecuencia</Label>
-                    <PresetsInput disabled={busy || !!item.dispensed} id={`rx-${item.key}-frequency`}
+                    <PresetsInput disabled={busy || (!!item.dispensed || !!item.deliveryLocked)} id={`rx-${item.key}-frequency`}
                       value={item.frequency || ''}
                       onChange={(v) => updateItem(item.key, { frequency: v })}
                       presets={FREQUENCY_PRESETS}
@@ -562,7 +578,7 @@ export function PrescriptionForm(props: PrescriptionFormProps) {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor={`rx-${item.key}-durationDays`} className="text-xs">Duración (días)</Label>
-                    <PresetsInput disabled={busy || !!item.dispensed} id={`rx-${item.key}-durationDays`}
+                    <PresetsInput disabled={busy || (!!item.dispensed || !!item.deliveryLocked)} id={`rx-${item.key}-durationDays`}
                       type="number"
                       min={1}
                       value={item.durationDays?.toString() ?? ''}

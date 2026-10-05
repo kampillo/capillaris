@@ -48,6 +48,7 @@ model User {
   treatmentsRealizados       Treatment[]            @relation("TreatmentsRealizados")
   googleToken                GoogleToken?
   googleOAuthStates          GoogleOAuthState[]
+  deliveries                 Delivery[]
 
   @@index([email])
   @@index([isActive])
@@ -240,6 +241,7 @@ model Prescription {
   patient Patient            @relation(fields: [patientId], references: [id])
   doctor  User               @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
   items   PrescriptionItem[]
+  deliveries Delivery[]
 
   @@index([patientId])
   @@index([doctorId])
@@ -256,6 +258,8 @@ model PrescriptionItem {
   frequency          String?   @db.VarChar(100)
   durationDays       Int?      @map("duration_days")
   quantity           Int       @default(1)
+  // Explicit whole-package target; legacy quantity is never converted.
+  fulfillmentQuantity Int?     @map("fulfillment_quantity")
   instructions       String?   @db.Text
   requiresRefill     Boolean   @default(false) @map("requires_refill")
   refillReminderDays Int?      @map("refill_reminder_days")
@@ -269,6 +273,7 @@ model PrescriptionItem {
   // Relations
   prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
   product      Product?     @relation(fields: [productId], references: [id])
+  deliveryLines DeliveryLine[]
 
   @@index([prescriptionId])
   @@index([productId])
@@ -781,6 +786,7 @@ model Product {
   categoryId           String?  @map("category_id") @db.Uuid
   content              Decimal? @db.Decimal(10, 2)
   unit                 String?  @db.VarChar(20)
+  stockUnit            String?  @map("stock_unit") @db.VarChar(30)
   unitPrice            Decimal? @map("unit_price") @db.Decimal(10, 2)
   isMedicine           Boolean  @default(false) @map("is_medicine")
   requiresPrescription Boolean  @default(false) @map("requires_prescription")
@@ -797,6 +803,7 @@ model Product {
   stockMovements  StockMovement[]
   stockBalance    StockBalance?
   prescriptionItems PrescriptionItem[]
+  deliveryLines   DeliveryLine[]
 
   @@index([categoryId])
   @@index([isActive])
@@ -818,6 +825,7 @@ model StockMovement {
 
   // Relations
   product Product @relation(fields: [productId], references: [id])
+  deliveryLine DeliveryLine?
 
   @@index([productId])
   @@index([movementType])
@@ -835,6 +843,53 @@ model StockBalance {
   product Product @relation(fields: [productId], references: [id])
 
   @@map("stock_balances")
+}
+
+// Immutable physical deliveries and full, linked reversals. No payment data.
+model Delivery {
+  id             String   @id @default(uuid()) @db.Uuid
+  kind           String   @db.VarChar(20)
+  source         String   @db.VarChar(20)
+  prescriptionId String?  @map("prescription_id") @db.Uuid
+  reversalOfId   String?  @unique @map("reversal_of_id") @db.Uuid
+  idempotencyKey String   @unique @map("idempotency_key") @db.Uuid
+  requestHash    String   @map("request_hash") @db.VarChar(64)
+  reason         String?  @db.VarChar(500)
+  physicalStockConfirmed Boolean @default(false) @map("physical_stock_confirmed")
+  createdAt      DateTime @default(now()) @map("created_at")
+  createdBy      String   @map("created_by") @db.Uuid
+
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id], onDelete: Restrict)
+  actor        User          @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  reversalOf   Delivery?     @relation("DeliveryReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversal     Delivery?     @relation("DeliveryReversal")
+  lines        DeliveryLine[]
+
+  @@index([prescriptionId, createdAt])
+  @@index([createdAt])
+  @@map("deliveries")
+}
+
+model DeliveryLine {
+  id                 String @id @default(uuid()) @db.Uuid
+  deliveryId         String @map("delivery_id") @db.Uuid
+  productId          String @map("product_id") @db.Uuid
+  prescriptionItemId String? @map("prescription_item_id") @db.Uuid
+  stockMovementId    String @unique @map("stock_movement_id") @db.Uuid
+  quantity           Int
+  productName        String @map("product_name") @db.VarChar(255)
+  productSku         String? @map("product_sku") @db.VarChar(50)
+  presentation       String? @db.VarChar(100)
+  stockUnit          String @map("stock_unit") @db.VarChar(30)
+
+  delivery         Delivery @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  product          Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  prescriptionItem PrescriptionItem? @relation(fields: [prescriptionItemId], references: [id], onDelete: Restrict)
+  stockMovement    StockMovement @relation(fields: [stockMovementId], references: [id], onDelete: Restrict)
+
+  @@index([deliveryId])
+  @@index([prescriptionItemId])
+  @@map("delivery_lines")
 }
 
 // ============================================================

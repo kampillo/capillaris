@@ -27,6 +27,7 @@ import { MicropigmentationsModule } from './modules/micropigmentations/micropigm
 import { HairmedicinesModule } from './modules/hairmedicines/hairmedicines.module';
 import { ProductsModule } from './modules/products/products.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { DeliveriesModule } from './modules/deliveries/deliveries.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
@@ -59,6 +60,7 @@ import { AuditFeatureModule } from './modules/audit/audit.module';
     HairmedicinesModule,
     ProductsModule,
     InventoryModule,
+    DeliveriesModule,
     ReportsModule,
     RemindersModule,
     NotificationsModule,

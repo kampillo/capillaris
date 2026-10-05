@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { Prisma, PrismaClient } from '@prisma/client';
 import { getAuditContext } from '../common/audit/audit-context';
 import { isUuid, maskSensitive } from '../common/audit/sensitive-fields';
+import { auditSnapshotSelect, auditSnapshotTransaction, projectAuditSnapshot, scopedAuditSnapshot } from '../common/audit/audit-snapshot';
 
 const SKIP_AUDIT_MODELS: ReadonlySet<string> = new Set([
   // Avoid recursion — audit_log writes generate their own writes otherwise.
@@ -41,15 +42,22 @@ export class PrismaService
       const isBulk = BULK_WRITE_ACTIONS.has(params.action);
       if (!isSingle && !isBulk) return next(params);
 
-      // Pre-fetch the old row for update/delete on a single record.
-      let oldValues: any = null;
+      const snapshot = params.action === 'update'
+        ? scopedAuditSnapshot(params.model, params.args?.where?.id)
+        : undefined;
+      const transaction = auditSnapshotTransaction();
+      // Aggregate updates provide the before-state read inside their tx.
+      let oldValues: any = snapshot?.before ?? null;
       if (
+        !snapshot &&
         (params.action === 'update' || params.action === 'delete') &&
         params.args?.where
       ) {
         try {
-          const delegate = this.getDelegate(params.model);
-          oldValues = await delegate.findUnique({ where: params.args.where });
+          const key = params.model.charAt(0).toLowerCase() + params.model.slice(1);
+          const delegate = transaction ? (transaction as any)[key] : this.getDelegate(params.model);
+          const select = auditSnapshotSelect(params.model);
+          oldValues = await delegate.findUnique({ where: params.args.where, ...(select && { select }) });
         } catch {
           // ignore — fall back to no oldValues
         }
@@ -57,10 +65,15 @@ export class PrismaService
 
       const result = await next(params);
 
-      try {
-        await this.writeAudit(params, result, oldValues);
-      } catch (err) {
-        this.logger.error('Audit write failed');
+      if (transaction) {
+        // A failed aggregate audit rolls back the corresponding edit as well.
+        await this.writeAudit(params, result, oldValues, transaction.auditLog);
+      } else {
+        try {
+          await this.writeAudit(params, result, oldValues);
+        } catch (err) {
+          this.logger.error('Audit write failed');
+        }
       }
 
       return result;
@@ -84,6 +97,7 @@ export class PrismaService
     params: Prisma.MiddlewareParams,
     result: any,
     oldValues: any,
+    writer: Prisma.TransactionClient['auditLog'] = this.auditLog,
   ) {
     const ctx = getAuditContext();
     const entityType = params.model!.charAt(0).toLowerCase() + params.model!.slice(1);
@@ -97,7 +111,7 @@ export class PrismaService
       case 'create':
       case 'upsert': {
         action = 'CREATE';
-        newVals = maskSensitive(result);
+        newVals = maskSensitive(projectAuditSnapshot(params.model!, result));
         entityId = result?.id ?? null;
         break;
       }
@@ -109,14 +123,14 @@ export class PrismaService
           oldValues &&
           oldValues.deletedAt == null;
         action = isSoftDelete ? 'DELETE' : 'UPDATE';
-        oldVals = maskSensitive(oldValues);
-        newVals = maskSensitive(result);
+        oldVals = maskSensitive(projectAuditSnapshot(params.model!, oldValues));
+        newVals = maskSensitive(projectAuditSnapshot(params.model!, result));
         entityId = result?.id ?? oldValues?.id ?? null;
         break;
       }
       case 'delete': {
         action = 'DELETE';
-        oldVals = maskSensitive(oldValues);
+        oldVals = maskSensitive(projectAuditSnapshot(params.model!, oldValues));
         entityId = oldValues?.id ?? result?.id ?? null;
         break;
       }
@@ -143,7 +157,7 @@ export class PrismaService
         return;
     }
 
-    await this.auditLog.create({
+    await writer.create({
       data: {
         userId: ctx.userId ?? null,
         userEmail: ctx.userEmail ?? null,
@@ -158,4 +172,3 @@ export class PrismaService
     });
   }
 }
-

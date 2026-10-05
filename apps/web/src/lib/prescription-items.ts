@@ -8,6 +8,7 @@ export function prescriptionItemPayload(item: CreatePrescriptionItemData) {
     frequency: item.frequency?.trim() || (item.id ? null : undefined),
     durationDays: item.durationDays || (item.id ? null : undefined),
     quantity: item.quantity,
+    fulfillmentQuantity: item.fulfillmentQuantity,
     instructions: item.instructions?.trim() || (item.id ? null : undefined),
     requiresRefill: item.requiresRefill,
     refillReminderDays: item.refillReminderDays,

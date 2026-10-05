@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateClinicalHistoryDto } from './dto/create-clinical-history.dto';
 import { UpdateClinicalHistoryDto } from './dto/update-clinical-history.dto';
+import { auditSnapshotSelect, withAuditSnapshot } from '../../common/audit/audit-snapshot';
 
 @Injectable()
 export class ClinicalHistoriesService {
@@ -117,52 +119,56 @@ export class ClinicalHistoriesService {
       ...data
     } = dto;
 
-    return this.prisma.clinicalHistory.update({
-      where: { id },
-      data: {
-        ...data,
-        updatedBy: userId,
-        inheritRelatives: inheritRelatives
-          ? {
-              upsert: {
-                create: inheritRelatives,
-                update: inheritRelatives,
-              },
-            }
-          : undefined,
-        nonPathologicalPersonal: nonPathologicalPersonal
-          ? {
-              upsert: {
-                create: nonPathologicalPersonal,
-                update: nonPathologicalPersonal,
-              },
-            }
-          : undefined,
-        previousTreatment: previousTreatment
-          ? {
-              upsert: {
-                create: previousTreatment,
-                update: previousTreatment,
-              },
-            }
-          : undefined,
-        physicalExploration: physicalExploration
-          ? {
-              upsert: {
-                create: physicalExploration,
-                update: physicalExploration,
-              },
-            }
-          : undefined,
-      } as any,
-      include: {
-        patient: true,
-        inheritRelatives: true,
-        nonPathologicalPersonal: true,
-        previousTreatment: true,
-        physicalExploration: true,
-      },
-    });
+    return this.prisma.$transaction(async tx => {
+      const before = await tx.clinicalHistory.findUnique({ where: { id }, select: auditSnapshotSelect('ClinicalHistory') });
+      if (!before) throw new NotFoundException(`Clinical history with ID ${id} not found`);
+      return withAuditSnapshot('ClinicalHistory', id, before, tx, () => tx.clinicalHistory.update({
+        where: { id },
+        data: {
+          ...data,
+          updatedBy: userId,
+          inheritRelatives: inheritRelatives
+            ? {
+                upsert: {
+                  create: inheritRelatives,
+                  update: inheritRelatives,
+                },
+              }
+            : undefined,
+          nonPathologicalPersonal: nonPathologicalPersonal
+            ? {
+                upsert: {
+                  create: nonPathologicalPersonal,
+                  update: nonPathologicalPersonal,
+                },
+              }
+            : undefined,
+          previousTreatment: previousTreatment
+            ? {
+                upsert: {
+                  create: previousTreatment,
+                  update: previousTreatment,
+                },
+              }
+            : undefined,
+          physicalExploration: physicalExploration
+            ? {
+                upsert: {
+                  create: physicalExploration,
+                  update: physicalExploration,
+                },
+              }
+            : undefined,
+        } as any,
+        include: {
+          patient: true,
+          inheritRelatives: true,
+          nonPathologicalPersonal: true,
+          previousTreatment: true,
+          physicalExploration: true,
+        },
+      }));
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   }
 
   async remove(id: string) {

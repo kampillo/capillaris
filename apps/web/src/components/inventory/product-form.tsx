@@ -87,11 +87,12 @@ export function ProductForm({
 
   const [initialStock, setInitialStock] = useState('');
   const [initialReason, setInitialReason] = useState('compra');
+  const [stockUnit, setStockUnit] = useState(defaultValues?.stockUnit ?? '');
 
   const [error, setError] = useState('');
   const guard = useSaveGuard();
   const busy = !!isSubmitting || guard.saving;
-  const dirty = useFormDraft({ name, sku, description, unitPrice, content, unit, isMedicine, requiresPrescription, minStockAlert, initialStock, initialReason });
+  const dirty = useFormDraft({ name, sku, description, unitPrice, content, unit, stockUnit, isMedicine, requiresPrescription, minStockAlert, initialStock, initialReason });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +110,7 @@ export function ProductForm({
         unitPrice: unitPrice ? Number(unitPrice) : (defaultValues ? null : undefined),
         content: content ? Number(content) : (defaultValues ? null : undefined),
         unit: unit.trim(),
+        stockUnit: stockUnit.trim() || (defaultValues ? null : undefined),
         isMedicine: isMedicine === 'true',
         requiresPrescription: requiresPrescription === 'true',
         minStockAlert: minStockAlert === '' ? 5 : Number(minStockAlert),
@@ -202,7 +204,7 @@ export function ProductForm({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="product-unit">Unidad</Label>
+            <Label htmlFor="product-unit">Unidad del contenido</Label>
             <Input id="product-unit"
               placeholder="Ej. ml"
               value={unit}
@@ -210,6 +212,11 @@ export function ProductForm({
               className="h-11"
             />
           </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="product-stock-unit">Unidad física de stock</Label>
+          <Input id="product-stock-unit" value={stockUnit} onChange={e => setStockUnit(e.target.value)} maxLength={30} placeholder="Ej. frasco, caja, pieza" className="h-11" />
+          <p className="text-xs text-muted-foreground">Cada unidad corresponde a un envase completo. El contenido en ml o mg se registra aparte. Sin esta unidad validada no se pueden confirmar entregas.</p>
         </div>
       </ProductSection>
 

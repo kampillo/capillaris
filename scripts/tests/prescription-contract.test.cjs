@@ -57,6 +57,7 @@ test('edited notes pass the real update boundary and preserve identity, item IDs
   const historyBefore = structuredClone(history);
   const writes = [];
   const tx = {
+    $queryRaw: async () => [],
     prescriptionItem: {
       findMany: async () => state.items,
       update: async ({ where, data }) => {
@@ -67,7 +68,7 @@ test('edited notes pass the real update boundary and preserve identity, item IDs
       create: async () => assert.fail('Editing existing items must preserve their IDs'),
       deleteMany: async () => assert.fail('Both existing items must be retained'),
     },
-    prescription: { update: async ({ data }) => { Object.assign(state, data); return state; } },
+    prescription: { findUnique: async () => state, update: async ({ data }) => { Object.assign(state, data); return state; } },
   };
   const { PrescriptionsService } = load('apps/api/src/modules/prescriptions/prescriptions.service.ts');
   const service = new PrescriptionsService({

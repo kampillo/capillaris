@@ -5,6 +5,10 @@ interface FetchOptions extends RequestInit {
   responseType?: 'json' | 'blob';
 }
 
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) { super(message); this.name = 'ApiError'; }
+}
+
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('auth_token');
@@ -52,7 +56,7 @@ async function request<T>(
     const msg = Array.isArray(error.message)
       ? error.message.join(', ')
       : error.message || `HTTP ${response.status}`;
-    throw new Error(msg);
+    throw new ApiError(msg, response.status);
   }
 
   if (response.status === 204) {

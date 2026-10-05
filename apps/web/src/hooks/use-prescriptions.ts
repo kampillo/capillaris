@@ -10,6 +10,8 @@ export interface PrescriptionItem {
   frequency?: string;
   durationDays?: number;
   quantity: number;
+  fulfillmentQuantity?: number | null;
+  deliveryLines?: { id: string }[];
   instructions?: string;
   requiresRefill: boolean;
   dispensed: boolean;
@@ -18,6 +20,7 @@ export interface PrescriptionItem {
     name: string;
     unit?: string;
     content?: number;
+    stockUnit?: string | null;
   };
 }
 
@@ -45,6 +48,7 @@ export interface CreatePrescriptionItemData {
   frequency?: string | null;
   durationDays?: number | null;
   quantity?: number;
+  fulfillmentQuantity?: number | null;
   instructions?: string | null;
   requiresRefill?: boolean;
 }
@@ -101,6 +105,7 @@ export function useUpdatePrescription() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
       queryClient.invalidateQueries({ queryKey: ['prescription', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['fulfillment', variables.id] });
     },
   });
 }

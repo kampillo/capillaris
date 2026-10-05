@@ -36,6 +36,7 @@ import {
 } from '@/hooks/use-audit-logs';
 import { useRequireRole } from '@/hooks/use-has-role';
 import { actionLabel, actionVariant, entityLabel } from '@/lib/audit-labels';
+import { computeDiff, renderAuditValue, type AuditFieldDiff } from '@/lib/audit-diff';
 
 const ALL_VALUE = '__all__';
 const PAGE_SIZE = 30;
@@ -314,7 +315,7 @@ export default function AuditLogsPage() {
 
       {/* Detail dialog */}
       <Dialog open={!!detail} onOpenChange={() => setDetail(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>
               {detail && `${actionLabel(detail.action)} · ${entityLabel(detail.entityType)}`}
@@ -329,8 +330,8 @@ export default function AuditLogsPage() {
 
 function DetailBody({ log }: { log: AuditLog }) {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 text-sm">
+    <div className="min-w-0 space-y-4">
+      <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
         <Meta label="Fecha">{formatDateTime(log.createdAt)}</Meta>
         <Meta label="Usuario">
           {log.user
@@ -342,7 +343,7 @@ function DetailBody({ log }: { log: AuditLog }) {
           <span className="font-mono text-[11px]">{log.entityId ?? '—'}</span>
         </Meta>
         <Meta label="IP">{log.ipAddress ?? '—'}</Meta>
-        <Meta label="Navegador" className="col-span-2 break-words">
+        <Meta label="Navegador" className="sm:col-span-2">
           <span className="text-[11px] text-muted-foreground">{log.userAgent ?? '—'}</span>
         </Meta>
       </div>
@@ -362,7 +363,7 @@ function Meta({
   className?: string;
 }) {
   return (
-    <div className={className}>
+    <div className={cn('min-w-0 [overflow-wrap:anywhere]', className)}>
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
@@ -377,7 +378,7 @@ function Diff({ before, after }: { before: unknown; after: unknown }) {
   if (fields.length === 0) {
     // Just show whatever has data.
     return (
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
         {before != null && <Snapshot label="Antes" data={before} />}
         {after != null && <Snapshot label="Después" data={after} />}
       </div>
@@ -386,7 +387,7 @@ function Diff({ before, after }: { before: unknown; after: unknown }) {
 
   return (
     <div className="overflow-hidden rounded-md border">
-      <div className="grid grid-cols-[160px_1fr_1fr] gap-px bg-border">
+      <div className="hidden gap-px bg-border sm:grid sm:grid-cols-[160px_minmax(0,1fr)_minmax(0,1fr)]">
         <div className="bg-muted px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Campo
         </div>
@@ -396,10 +397,8 @@ function Diff({ before, after }: { before: unknown; after: unknown }) {
         <div className="bg-muted px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
           Después
         </div>
-        {fields.map((f) => (
-          <FieldRow key={f.key} field={f} />
-        ))}
       </div>
+      {fields.map((f) => <FieldRow key={f.key} field={f} />)}
     </div>
   );
 }
@@ -407,57 +406,30 @@ function Diff({ before, after }: { before: unknown; after: unknown }) {
 function FieldRow({
   field,
 }: {
-  field: { key: string; before: unknown; after: unknown };
+  field: AuditFieldDiff;
 }) {
   return (
-    <>
-      <div className="bg-card px-3 py-2 font-mono text-[11px]">{field.key}</div>
-      <div className="bg-red-50/30 px-3 py-2 text-[12px] text-red-700 break-words">
-        {renderValue(field.before)}
+    <div className="grid min-w-0 grid-cols-1 gap-px border-t bg-border sm:grid-cols-[160px_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="min-w-0 bg-card px-3 py-2 font-mono text-[11px] [overflow-wrap:anywhere]">{field.key}</div>
+      <div className="min-w-0 bg-red-50/30 px-3 py-2 text-[12px] text-red-700">
+        <span className="mb-1 block text-[10px] font-semibold uppercase sm:sr-only">Antes</span>
+        <div className="whitespace-pre-wrap [overflow-wrap:anywhere]">{renderAuditValue(field.before, field.beforeCaptured)}</div>
       </div>
-      <div className="bg-emerald-50/30 px-3 py-2 text-[12px] text-emerald-700 break-words">
-        {renderValue(field.after)}
+      <div className="min-w-0 bg-emerald-50/30 px-3 py-2 text-[12px] text-emerald-700">
+        <span className="mb-1 block text-[10px] font-semibold uppercase sm:sr-only">Después</span>
+        <div className="whitespace-pre-wrap [overflow-wrap:anywhere]">{renderAuditValue(field.after, field.afterCaptured)}</div>
       </div>
-    </>
+    </div>
   );
 }
 
 function Snapshot({ label, data }: { label: string; data: unknown }) {
   return (
-    <div className="rounded-md border">
+    <div className="min-w-0 rounded-md border">
       <div className="border-b bg-muted px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
-      <pre className="overflow-auto p-3 text-[11px]">{JSON.stringify(data, null, 2)}</pre>
+      <pre className="min-w-0 whitespace-pre-wrap p-3 text-[11px] [overflow-wrap:anywhere]">{renderAuditValue(data)}</pre>
     </div>
   );
-}
-
-function renderValue(v: unknown): string {
-  if (v === null || v === undefined) return '—';
-  if (typeof v === 'string') return v;
-  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-  return JSON.stringify(v);
-}
-
-function computeDiff(
-  before: unknown,
-  after: unknown,
-): { key: string; before: unknown; after: unknown }[] {
-  if (
-    !before ||
-    !after ||
-    typeof before !== 'object' ||
-    typeof after !== 'object' ||
-    Array.isArray(before) ||
-    Array.isArray(after)
-  ) {
-    return [];
-  }
-  const b = before as Record<string, unknown>;
-  const a = after as Record<string, unknown>;
-  const keys = Array.from(new Set([...Object.keys(b), ...Object.keys(a)])).sort();
-  return keys
-    .filter((k) => JSON.stringify(b[k]) !== JSON.stringify(a[k]))
-    .map((k) => ({ key: k, before: b[k], after: a[k] }));
 }
