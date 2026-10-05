@@ -6,6 +6,12 @@ Stack:
 - **Database** (PostgreSQL) → **Neon** (already migrated)
 - Object storage (S3/R2): **deshabilitado por ahora** — uploads de imágenes no funcionarán hasta configurar `S3_*`. El resto del sistema sí funciona.
 
+## Compilación de la librería compartida
+
+`@capillaris/shared` expone JavaScript CommonJS y declaraciones desde `dist`, con objetivo ES2022 y Node >=20. No requiere carga de TypeScript en producción. `npm install` y `npm ci` ejecutan `prepare` en la raíz para compilarla; Turbo vuelve a construirla antes de API/web por su dependencia `^build`. Una instalación con `--ignore-scripts` necesita ejecutar explícitamente `npm run --workspace @capillaris/shared build` antes de tipos, tests o arranque.
+
+Para validar el release, usar una instalación limpia con `npm ci --include=dev`, generar Prisma desde `apps/api/prisma/schema.prisma`, ejecutar `node --test scripts/tests/*.test.cjs` y `npm run build`. El comando de Railway sigue siendo `node apps/api/dist/src/main`. El build web descarga Instrument Serif de Google Fonts; requiere acceso a ese proveedor durante compilación. Confirmar la versión Node efectiva del servicio antes de publicar; el runtime local disponible para la comprobación aislada es Node 24.
+
 ---
 
 ## 0. Secrets a generar / tener listos
@@ -78,7 +84,7 @@ CORS_ORIGIN=https://capillaris-web.vercel.app
 
 (Reemplazando con tu URL real de Vercel). Railway hace redeploy automático.
 
-> Las URLs de preview de Vercel (`*.vercel.app`) están permitidas automáticamente sin configurar nada gracias al matcher en `main.ts`.
+> Cada origen del navegador, también previews de Vercel, debe aparecer de forma exacta en `CORS_ORIGIN`; se pueden separar varios orígenes con comas.
 
 ---
 

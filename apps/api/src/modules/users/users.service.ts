@@ -93,7 +93,13 @@ export class UsersService {
 
     const user = await this.prisma.$transaction(async (tx) => {
       if (Object.keys(rest).length > 0) {
-        await tx.user.update({ where: { id }, data: rest });
+        await tx.user.update({
+          where: { id },
+          data: {
+            ...rest,
+            ...(rest.isActive === false && { authVersion: { increment: 1 } }),
+          },
+        });
       }
       if (roleId !== undefined) {
         await tx.userRole.deleteMany({ where: { userId: id } });
